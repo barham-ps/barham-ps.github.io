@@ -1,0 +1,21 @@
+"use strict";
+(() => {
+const by=id=>document.getElementById(id), list=by("list-panel"), visual=by("visual-panel"), chart=by("visual-chart"), path=by("ancestor-path"), info=by("visual-info"), tree=by("family-tree");
+const nodes=[...tree.querySelectorAll(".branch")].map(el=>({id:Number(el.dataset.node),name:el.dataset.name,generation:Number(el.dataset.generation),parent:el.parentElement.closest(".branch")?.dataset.node??null,children:[]}));
+const map=new Map(nodes.map(n=>[n.id,n]));for(const n of nodes){if(n.parent!==null)map.get(Number(n.parent))?.children.push(n.id);}
+let active=0,mode="list";const num=n=>new Intl.NumberFormat("ar-EG").format(n);
+function make(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function button(label,fn,cls="btn btn-ghost"){const b=make("button",cls,label);b.type="button";b.addEventListener("click",fn);return b;}
+function ancestors(n){const a=[];while(n){a.unshift(n);n=n.parent===null?null:map.get(Number(n.parent));}return a;}
+function descendants(n){return n.children.reduce((total,id)=>total+1+descendants(map.get(id)),0);}
+function card(n,cls=""){const b=button("",()=>focus(n.id),"visual-card "+cls);b.append(make("span","visual-card-name",n.name),make("small","visual-card-meta",n.id===0?"عنوان العائلة":"الجيل "+num(n.generation)+" · "+num(n.children.length)+" فروع مباشرة"));return b;}
+function focus(id){if(!map.has(id))return;active=id;const n=map.get(id),chain=ancestors(n);by("focus-title").textContent=n.name;path.replaceChildren(...chain.map((p,i)=>{const b=button(p.name,()=>focus(p.id),"path-item");if(i===chain.length-1)b.setAttribute("aria-current","true");return b;}));chart.replaceChildren();const parent=n.parent===null?null:map.get(Number(n.parent));if(parent){const up=make("div","chart-parent");up.append(make("span","chart-label",parent.id===0?"رأس الشجرة":"الجيل السابق"),card(parent));chart.append(up,make("div","connector-vertical"));}
+const current=make("div","chart-current");current.append(make("span","chart-label","الفرع المحدد"),card(n,"is-focused"));chart.append(current);
+if(n.children.length){chart.append(make("div","connector-vertical"));const group=make("div","chart-children");group.setAttribute("aria-label","الفروع المباشرة");for(const id of n.children){const c=make("div","chart-child");c.append(card(map.get(id)));group.append(c);}chart.append(group);}else{chart.append(make("p","chart-end","لا توجد فروع لاحقة مدرجة لهذا الاسم في السجل."));}
+info.replaceChildren();for(const [label,value] of [["المستوى",n.id===0?"رأس الشجرة":num(n.generation)],["الفروع المباشرة",num(n.children.length)],["الأفراد في الفروع اللاحقة",num(descendants(n))]]){const box=make("div","visual-stat");box.append(make("strong","",value),make("span","",label));info.append(box);}by("visual-up").disabled=n.parent===null;by("visual-home").disabled=id===0;}
+function switchView(view,fromSearch=false){mode=view;list.hidden=view!=="list";visual.hidden=view!=="visual";by("visual-view").setAttribute("aria-pressed",String(view==="visual"));by("list-view").setAttribute("aria-pressed",String(view==="list"));if(view==="visual"){const hit=tree.querySelector(".current")||tree.querySelector(".match");focus(fromSearch&&hit?Number(hit.dataset.node):active);}}
+by("visual-view").addEventListener("click",()=>switchView("visual",true));by("list-view").addEventListener("click",()=>switchView("list"));by("visual-up").addEventListener("click",()=>{const p=map.get(active).parent;if(p!==null)focus(Number(p));});by("visual-home").addEventListener("click",()=>focus(0));for(const id of ["query","scope","generation"]){by(id).addEventListener(id==="query"?"input":"change",()=>switchView("list"));}
+for(const id of ["expand","collapse","smaller","larger","prev","next","print"]){by(id).addEventListener("click",()=>switchView("list"),{capture:true});}
+by("clear").addEventListener("click",()=>{focus(0);switchView("list");});
+focus(0);switchView(location.hash==="#explore"?"list":"visual");
+})();
