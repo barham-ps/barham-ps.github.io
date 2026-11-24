@@ -17,3 +17,15 @@
 .source-panel{border-inline-start:3px solid var(--gold);padding:24px}.source-panel p+p{margin-top:7px}.tree-footer .wrap{justify-content:space-between}
 @media(max-width:680px){.tree-hero .wrap{grid-template-columns:1fr;gap:12px}.hero-emblem{display:none}.stats{gap:7px}.stats>div{padding:10px 5px}.tree-hero h1{font-size:42px}.view-tabs{width:100%}.view-tab{flex:1;padding-inline:5px}.visual-info{gap:5px}.visual-stat{padding:10px 4px}.visual-stat strong{font-size:16px}.chart-children{gap:10px}.chart-child{flex:1 1 125px}.chart-child .visual-card{width:100%;min-width:0;padding:10px 6px}.visual-card-name{font-size:17px}.visual-card-meta{font-size:11px}.tree summary,.leaf-row{padding:7px;gap:5px}.tree .person{font-size:var(--node-font)}}
 @media print{.genealogy-page .explorer-switch,.genealogy-page .visual-panel{display:none!important}.genealogy-page .tree-panel{display:block!important}.genealogy-page .tree-panel [hidden]{display:none!important}.genealogy-page .source-panel .tree-actions{display:none!important}}
+
+/* V4: additional polish with the existing portal palette. */
+@media screen {
+ .genealogy-page .visual-actions .btn,.genealogy-page .tree-actions .btn,.genealogy-page .view-tab,.genealogy-page .path-item{min-height:44px}
+ .genealogy-page .tree-toolbar,.genealogy-page .tree-panel,.genealogy-page .visual-panel,.genealogy-page .source-panel{border-color:var(--glass-border,var(--line))}
+ .genealogy-page .stats>div{border-color:var(--glass-border,var(--line));border-top-color:var(--gold)}
+ .genealogy-page .path-item{padding:8px 10px}
+ .genealogy-page .visual-card-name{line-height:1.5}
+ .genealogy-page .chart-children{row-gap:18px}
+ .genealogy-page #focus-title:focus{outline:2px solid var(--gold);outline-offset:5px}
+ @media(max-width:420px){.genealogy-page .visual-actions{width:100%}.genealogy-page .visual-actions .btn{flex:1 1 125px;white-space:normal;font-size:13px;padding:8px}.genealogy-page .ancestor-path{padding:8px;gap:5px}}
+}
