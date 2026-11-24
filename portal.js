@@ -415,7 +415,55 @@
     adminRows = make('div', admin);
   action(admin, 'تحديث الطلبات', () => loadAdmin());
   adminRows.className = 'grid';
+
+  var cms = make('div', admin); cms.className='card'; cms.hidden=true;
+  var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
+  async function renderPublicCMS(){
+    for(const [key,label] of Object.entries(sectionsCMS)){
+      const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host) continue;
+      let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
+      const q=await client().from('family_public_content').select('*').eq('section',key).eq('published',true).order('created_at',{ascending:false});
+      if(q.error) continue; panel.replaceChildren();
+      for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';
+        if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
+      }
+    }
+  }
+  async function loadPublicCMS(){
+    cms.hidden=true;cms.replaceChildren();
+    const auth=await client().rpc('family_is_admin');if(auth.error||auth.data!==true)return;
+    cms.hidden=false;make('h2',cms,'إدارة محتوى العائلة العام');
+    make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
+    const msg=make('p',cms);const section=make('select',cms);
+    for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}
+    const title=make('input',cms);title.placeholder='عنوان المحتوى';title.maxLength=200;
+    const body=make('textarea',cms);body.placeholder='النص';body.maxLength=30000;
+    const file=make('input',cms);file.type='file';file.accept='image/jpeg,image/png,image/webp';
+    const label=make('label',cms,' نشر للعامة ');const pub=make('input',label);pub.type='checkbox';
+    let current=null;
+    action(cms,'حفظ المحتوى',async function(){
+      if(!title.value.trim()){msg.textContent='أدخل العنوان';return;}
+      if(pub.checked&&!confirm('تأكيد النشر العام؟'))return;
+      this.disabled=true;let uploaded=null;
+      try{
+        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
+        const row={section:section.value,title:title.value.trim(),body:body.value,published:pub.checked,image_path:uploaded||current?.image_path||null};
+        const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;
+        if(uploaded&&current?.image_path)await client().storage.from('family-public-content').remove([current.image_path]);
+        await loadPublicCMS();await renderPublicCMS();
+      }catch(e){if(uploaded)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent='تعذر الحفظ: '+e.message;}finally{this.disabled=false;}
+    });
+    action(cms,'محتوى جديد',()=>loadPublicCMS());
+    const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
+    for(const item of q.data){const c=make('div',cms);c.className='card';make('p',c,sectionsCMS[item.section]+' — '+item.title+' — '+(item.published?'منشور':'مسودة'));
+      action(c,'تعديل',()=>{current=item;section.value=item.section;title.value=item.title;body.value=item.body;pub.checked=item.published;file.value='';msg.textContent='تعديل: '+item.title;});
+      action(c,'حذف',async()=>{if(!confirm('حذف المحتوى نهائيًا؟'))return;const d=await client().from('family_public_content').delete().eq('id',item.id).select('id').single();if(d.error){msg.textContent='تعذر الحذف';return;}if(item.image_path)await client().storage.from('family-public-content').remove([item.image_path]);await loadPublicCMS();await renderPublicCMS();});
+    }
+  }
+  renderPublicCMS().catch(()=>{});
+
   async function loadAdmin() {
+    cms.hidden=true;
     adminRows.replaceChildren();
     adminMsg.textContent = 'جارٍ التحقق من الصلاحية';
     try {
@@ -424,6 +472,7 @@
         adminMsg.textContent = 'هذه الصفحة مخصصة للمشرف المعتمد. سجل الدخول بحساب الإدارة.';
         return;
       }
+      loadPublicCMS().catch(()=>{cms.hidden=true;});
       adminMsg.textContent = 'الطلبات: ' + q.data.length + ' | المعتمدة: ' + q.data.filter(x => x.status ===
         'approved').length + ' | قيد المراجعة: ' + q.data.filter(x => x.status === 'under_review').length;
       const stats = make('div', adminRows); stats.className = 'family-admin-stats';
