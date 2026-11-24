@@ -1536,6 +1536,7 @@
       isHome = hash === '#home';
     if (!isHome && hash !== '#news' && !hash.startsWith('#news/')) return;
     var target = isHome ? home : feed;
+    target.setAttribute('aria-busy','true');
     try {
       var selected = hash.startsWith('#news/') ? hash.slice(6) : '';
       if (selected && !/^[0-9a-f-]{36}$/i.test(selected)) {
@@ -1635,6 +1636,8 @@
       target.replaceChildren();
       make('p', target, 'تعذر تحميل الأخبار. تحقق من الاتصال.');
       action(target, 'إعادة المحاولة', loadPublicNews);
+    } finally {
+      if (epoch === newsEpoch) target.removeAttribute('aria-busy');
     }
   }
 
@@ -1870,9 +1873,6 @@
     }
   }
   window.addEventListener('hashchange', extraRoute);
-  var contactLink = make('a', document.querySelector('#v-contact .sec .wrap'), 'مراسلة إدارة العائلة');
-  contactLink.href = 'mailto:albarham.inc@gmail.com';
-  contactLink.className = 'btn btn-gold';
   var reset = newView('reset', 'استعادة كلمة المرور'),
     resetBox = make('div', reset);
   resetBox.className = 'card';
@@ -2469,7 +2469,7 @@
         'verify', 'membership', 'security', 'mfa'
       ].includes(r)) r = 'account';
     if (['history', 'tree', 'archive', 'stories'].includes(r)) r = 'heritage';
-    if (r === 'events') r = 'news';
+    if (r === 'events' || r === 'community' || r === 'initiatives' || r === 'contact') r = 'news';
     Array.from(dock.querySelectorAll('a')).forEach(a => {
       if (a.getAttribute('href') === '#' + r) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
