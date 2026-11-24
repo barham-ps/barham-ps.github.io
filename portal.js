@@ -595,35 +595,21 @@
         return;
       }
       var d = q.data[0];
-      var box = make('div', certBody);
-      box.className = 'in';
-      make('h3', box, 'آل برهم');
-      make('p', box, 'شهادة عضوية العائلة الرقمية');
-      make('p', box, 'تشهد إدارة المنصة بأن');
-      make('h2', box, d.full_name);
-      make('p', box, 'عضو معتمد في البوابة العائلية الرقمية');
-      make('p', box, 'رقم العضوية: ' + d.membership_number);
-      make('p', box, 'تاريخ الإصدار: ' + new Date(d.issued_at).toLocaleDateString('ar'));
+      var box = make('article', certBody);
+      box.className = 'membership-document';
+      box.innerHTML = '<header class="md-head"><img src="./icon.svg" alt="شعار آل برهم"><div><h3>آل برهم</h3><small>AL BARHAM · OFFICIAL PORTAL</small><p>أصالة الجذور وعهد الأجيال</p></div><span>سجل العضوية<br>MEMBERSHIP REGISTER</span></header><div class="md-main"><div class="md-kicker">وثيقة اعتماد عضوية رقمية</div><h1>شهادة عضوية</h1><div class="md-en">CERTIFICATE OF MEMBERSHIP</div><p class="md-intro">تشهد إدارة البوابة العائلية الرقمية لآل برهم، استنادًا إلى سجل العضوية المعتمد لديها، بأن</p><h2 class="md-name"></h2><p>قد استوفى إجراءات اعتماد العضوية في المنصة، ويتمتع بخدمات الأعضاء وفق سياسات البوابة.</p><div class="md-fields"></div><p class="md-note">هذه الوثيقة صادرة إلكترونيًا عن إدارة البوابة، وتثبت العضوية في المنصة فقط. تخضع صلاحيتها للحالة المسجلة عند التحقق الإلكتروني، ولا تعد وثيقة حكومية أو إثباتًا للنسب.</p><div class="md-auth"><div class="md-sign"><div class="md-signature">إدارة آل برهم</div><strong>إدارة البوابة العائلية الرقمية</strong><small>اعتماد إلكتروني مؤسسي</small></div><div class="md-seal"><span>✦ آل برهم ✦</span><strong>معتمد</strong><small>AL BARHAM</small><span>سجل العضوية الرقمية</span></div><div class="md-qr"></div></div></div><footer class="md-foot"><span>البوابة العائلية الرقمية · آل برهم</span><span dir="ltr">barham-ps.github.io</span></footer>';
+      box.querySelector('.md-name').textContent = d.full_name;
+      var fields = box.querySelector('.md-fields');
+      var issued = new Date(d.issued_at).toLocaleDateString('ar-PS', {year:'numeric',month:'long',day:'numeric'});
+      [['رقم العضوية',d.membership_number],['تاريخ الإصدار',issued],['حالة العضوية','معتمدة وسارية'],['الجهة المصدرة','إدارة بوابة آل برهم'],['نوع الوثيقة','شهادة عضوية رقمية'],['مرجع السجل',d.membership_number]].forEach(([label,value]) => {
+        var item = make('div',fields); make('small',item,label); var val=make('strong',item,value); if(label==='رقم العضوية'||label==='مرجع السجل') val.dir='ltr';
+      });
       var url = location.origin + location.pathname + '#verify/' + d.verification_token;
-      var qr = make('div', box);
+      var qr = box.querySelector('.md-qr');
       await ensureQR();
-      if (window.QRCode) {
-        new QRCode(qr, {
-          text: url,
-          width: 180,
-          height: 180,
-          correctLevel: QRCode.CorrectLevel.M
-        });
-      } else make('p', box, 'تعذر تحميل مولد QR؛ استخدم رابط التحقق.');
-      var link = make('a', box, 'رابط التحقق من الشهادة');
-      link.href = url;
-      var seal = make('div', box);
-      seal.setAttribute('aria-label', 'ختم اعتماد بوابة آل برهم');
-      seal.style.cssText = 'width:132px;height:132px;border:6px double #a47b29;border-radius:50%;margin:20px auto;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#785615;background:#fff9e8;font-weight:bold;text-align:center;box-sizing:border-box;print-color-adjust:exact';
-      make('span', seal, '✦ آل برهم ✦');
-      make('strong', seal, 'عضوية معتمدة');
-      make('small', seal, 'AL BARHAM');
-      make('p', box, 'يُرجى مطابقة رقم العضوية بنتيجة التحقق.');
+      if (window.QRCode) new QRCode(qr,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});
+      var link = make('a',qr,'تحقق من صحة الوثيقة'); link.href=url;
+      make('small',qr,'امسح الرمز أو استخدم الرابط');
       printButton.hidden = false;
     } catch (e) {
       make('p', certBody, 'تعذر تحميل الشهادة.');
