@@ -10,4 +10,4 @@ done
 
 # Publish the genealogy viewer and its static assets.
 mkdir -p dist/genealogy
-cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/gaza.json dist/genealogy/
+cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.js genealogy/gaza.json dist/genealogy/
