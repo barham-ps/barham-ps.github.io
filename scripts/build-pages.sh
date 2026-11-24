@@ -7,3 +7,7 @@ for page in about history membership; do
   mkdir -p "dist/$page"
   cp "$page/index.html" "dist/$page/"
 done
+
+# Publish the genealogy viewer and its static assets.
+mkdir -p dist/genealogy
+cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/gaza.json dist/genealogy/
