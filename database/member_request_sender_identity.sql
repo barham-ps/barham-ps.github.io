@@ -24,6 +24,6 @@ revoke all on function public.family_admin_request_senders(uuid[]) from public, 
 grant execute on function public.family_admin_request_senders(uuid[]) to authenticated;
 comment on function public.family_admin_request_senders(uuid[]) is 'Admin-only, live AAL2 authorization via family_is_admin; returns registered sender contact fields only for the selected requests. No public access.';
 
--- Preserve the existing announcement and its image; move it to the genealogy section.
-update public.family_public_content set section='tree'
-where section='history' and title='عائلة برهم | جذور وامتداد عبر فلسطين' and published=true;
+-- Historical announcement belongs in history, not genealogy. Restore the original section without changing its text or image.
+update public.family_public_content set section='history'
+where section='tree' and title='عائلة برهم | جذور وامتداد عبر فلسطين' and published=true;
