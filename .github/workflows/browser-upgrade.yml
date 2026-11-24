@@ -1,7 +1,19 @@
 name: Browser and performance validation (no deployment)
 on:
   push:
-    branches: [professional-upgrade]
+    branches: [professional-upgrade, main]
+    paths:
+      - 'index.html'
+      - 'portal.css'
+      - 'portal.js'
+      - 'public.css'
+      - 'about/**'
+      - 'history/**'
+      - 'membership/**'
+      - 'genealogy/**'
+      - 'tests/browser-smoke.cjs'
+      - 'scripts/build-pages.sh'
+      - '.github/workflows/browser-upgrade.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,26 +35,6 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 --directory dist >/tmp/portal-http.log 2>&1 &
           trap 'kill $!' EXIT
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
-          node <<'JS'
-          const {chromium}=require('playwright');
-          (async()=>{
-            const browser=await chromium.launch({args:['--no-sandbox']});
-            try {
-              const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});
-              await page.route('**/*.supabase.co/**',r=>r.abort());
-              await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
-              for(const route of ['login','register','membership']){
-                await page.goto('http://127.0.0.1:8765/#'+route);
-                await page.locator('#v-'+route).waitFor({state:'visible',timeout:15000});
-                console.log('Public route visible:',route);
-              }
-              for(const slug of ['about','history','membership']){
-                await page.goto('http://127.0.0.1:8765/'+slug+'/');
-                await page.locator('h1').waitFor({state:'visible'});
-                if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow: '+slug);
-              }
-            } finally {await browser.close();}
-          })().catch(e=>{console.error(e);process.exitCode=1});
-          JS
+          node tests/browser-smoke.cjs
           CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")" npx lighthouse http://127.0.0.1:8765/about/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse.json --quiet
           node -e "const r=require('/tmp/lighthouse.json'); console.log(JSON.stringify(Object.fromEntries(Object.entries(r.categories).map(([k,v])=>[k,v.score])),null,2))"
