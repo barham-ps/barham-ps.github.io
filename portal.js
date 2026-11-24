@@ -184,6 +184,8 @@
     $('#member-number').textContent = q.data?.membership_number || 'لم يصدر بعد';
     $('#member-certificate').hidden = q.data?.status !== 'approved';
     hubLink.hidden = q.data?.status !== 'approved';
+    memberQuick.hidden = q.data?.status !== 'approved';
+    if(q.data?.full_name)$('#member-welcome').textContent='أهلًا بك، '+q.data.full_name;
     if (q.data?.status === 'approved') {
       var notice = await client().from('family_member_notices').select('id', {
         count: 'exact',
@@ -413,8 +415,13 @@
   var admin = newView('admin', 'لوحة إدارة العضويات'),
     adminMsg = make('p', admin),
     adminRows = make('div', admin);
-  action(admin, 'تحديث الطلبات', () => loadAdmin());
-  adminRows.className = 'grid';
+  var adminRefresh=action(admin,'تحديث بيانات العضويات',()=>guardPrivate(loadAdmin));
+  adminRefresh.hidden=true;
+  adminRows.className = 'admin-members';
+  var adminNavigation=make('div',admin);adminNavigation.className='dashboard-grid admin-navigation';adminNavigation.hidden=true;
+  admin.insertBefore(adminNavigation,adminMsg);
+  adminMsg.setAttribute('role','status');
+  var activeAdminPanel='members';
 
   var cms = make('div', admin); cms.className='card'; cms.hidden=true;
   var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
@@ -432,7 +439,7 @@
   async function loadPublicCMS(){
     cms.hidden=true;cms.replaceChildren();
     const auth=await client().rpc('family_is_admin');if(auth.error||auth.data!==true)return;
-    cms.hidden=false;make('h2',cms,'إدارة محتوى العائلة العام');
+    cms.hidden=activeAdminPanel!=='content';make('h2',cms,'إدارة محتوى العائلة العام');
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
     const msg=make('p',cms);const section=make('select',cms);
     for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}
@@ -462,8 +469,27 @@
   }
   renderPublicCMS().catch(()=>{});
 
+  function switchAdminPanel(key){
+    activeAdminPanel=key;
+    adminRows.hidden=key!=='members';adminRefresh.hidden=key!=='members';cms.hidden=key!=='content';
+    adminNavigation.querySelectorAll('[data-admin-panel]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.adminPanel===key)));
+  }
+  function mountAdminNavigation(){
+    adminNavigation.replaceChildren();
+    for(const [key,title,description,icon] of [['members','العضويات','مراجعة الطلبات والقرارات والشهادات','users'],['content','محتوى الموقع','التاريخ والشجرة والأرشيف العام','archive']]){
+      const tile=make('button',adminNavigation);tile.type='button';tile.className='dashboard-tile';tile.dataset.adminPanel=key;
+      dashboardIcon(tile,icon);const text=make('span',tile);make('strong',text,title);make('small',text,description);
+      tile.onclick=()=>switchAdminPanel(key);
+    }
+    dashboardLink(adminNavigation,'#member-services-admin','طلبات الأعضاء','الشكاوى والمساهمات والردود والمحتوى الخاص','heart');
+    dashboardLink(adminNavigation,'#news-admin','الأخبار والإعلانات','تحرير الأخبار والمناسبات العامة','file');
+    dashboardLink(adminNavigation,'#security','الأمان والصلاحيات','التحقق الثنائي وسجل العمليات','shield');
+    dashboardLink(adminNavigation,'#account','حسابي','العودة إلى حساب العضو','users');
+    adminNavigation.hidden=false;
+  }
   async function loadAdmin() {
-    cms.hidden=true;
+    adminNavigation.hidden=true;adminRefresh.hidden=true;
+    cms.hidden=true;cms.replaceChildren();
     adminRows.replaceChildren();
     adminMsg.textContent = 'جارٍ التحقق من الصلاحية';
     try {
@@ -472,7 +498,9 @@
         adminMsg.textContent = 'هذه الصفحة مخصصة للمشرف المعتمد. سجل الدخول بحساب الإدارة.';
         return;
       }
-      loadPublicCMS().catch(()=>{cms.hidden=true;});
+      mountAdminNavigation();
+      loadPublicCMS().then(()=>switchAdminPanel(activeAdminPanel)).catch(()=>{cms.hidden=true;});
+      switchAdminPanel(activeAdminPanel);
       adminMsg.textContent = 'الطلبات: ' + q.data.length + ' | المعتمدة: ' + q.data.filter(x => x.status ===
         'approved').length + ' | قيد المراجعة: ' + q.data.filter(x => x.status === 'under_review').length;
       const stats = make('div', adminRows); stats.className = 'family-admin-stats';
@@ -480,29 +508,32 @@
         const stat = make('div', stats); stat.className = 'card'; make('strong', stat, String(n)); make('p', stat, label);
       }
       var filterBar = make('div', adminRows);
-      filterBar.className = 'row';
+      filterBar.className = 'card dashboard-filter';
       var search = field(filterBar, 'بحث بالاسم أو رقم العضوية', 'search', 'search', 150),
         filter = selectField(filterBar, 'حالة العضوية', 'status', {
           all: 'الكل',
           ...statusLabels
         });
       var cards = [];
-
+      var filteredCount=make('p',filterBar);filteredCount.setAttribute('role','status');
+      var memberList=make('div',adminRows);memberList.className='dashboard-records';
       function applyFilter() {
-        cards.forEach(x => x.el.hidden = (filter.value !== 'all' && x.status !== filter.value) || !x.text.includes(
-          search.value.trim().toLowerCase()));
+        const terms=normalizeSearch(search.value).split(/\s+/).filter(Boolean);let count=0;
+        cards.forEach(x=>{x.el.hidden=(filter.value!=='all'&&x.status!==filter.value)||!terms.every(t=>normalizeSearch(x.text).includes(t));if(!x.el.hidden)count++;});
+        filteredCount.textContent='النتائج: '+new Intl.NumberFormat('ar-EG').format(count)+' من '+new Intl.NumberFormat('ar-EG').format(cards.length);
       }
       search.oninput = filter.onchange = applyFilter;
       for (var item of q.data) {
         let a = item;
-        let c = make('div', adminRows);
+        let entry=make('details',memberList);entry.className='card dashboard-record';
+        let summary=make('summary',entry);make('strong',summary,a.full_name||'عضو');make('span',summary,statusLabels[a.status]||a.status).className='dashboard-state';
+        let c=make('div',entry);c.className='dashboard-record-body';
         cards.push({
-          el: c,
+          el: entry,
           status: a.status,
           text: [a.full_name, a.email, a.membership_number, a.phone].join(' ').toLowerCase()
         });
-        c.className = 'card';
-        make('h3', c, a.full_name);
+        make('h3', c, 'بيانات العضوية');
         make('p', c, a.email + ' | ' + (a.phone || ''));
         make('p', c, (statusLabels[a.status] || a.status) + ' ' + (a.membership_number || ''));
         if (a.status === 'approved') {
@@ -516,10 +547,9 @@
               subject) + '&body=' + encodeURIComponent(body);
           });
         }
-        let note = make('input', c);
-        note.type = 'text';
-        note.placeholder = 'ملاحظة المراجعة';
-        let choices = make('select', c);
+        let note = field(c,'ملاحظة المراجعة','review-note','text',1000);
+        let choiceLabel=make('label',c,'قرار العضوية');choiceLabel.className='f';
+        let choices = make('select', choiceLabel);
         for (let k of ['approved', 'more_info', 'rejected', 'suspended', 'revoked']) {
           let o = make('option', choices, statusLabels[k]);
           o.value = k;
@@ -543,6 +573,7 @@
           }
         });
       }
+      applyFilter();
     } catch (e) {
       adminMsg.textContent = 'تعذر الاتصال بالخدمة.';
     }
@@ -650,12 +681,13 @@
     }
   }
   var memberBox = make('div', panel.querySelector('.wrap'));
-  memberBox.className = 'card';
+  memberBox.className = 'card account-summary';
   memberBox.innerHTML =
     '<h2 id="member-welcome">حساب العضو</h2><p id="member-email" dir="ltr"></p><p>رقم العضوية: <strong id="member-number">—</strong></p><p>يظل تسجيل دخولك محفوظًا على هذا المتصفح حتى تسجيل الخروج أو انتهاء صلاحية الجلسة.</p>';
   panel.querySelector('.wrap').insertBefore(memberBox, $('#account-status'));
   var accountLinks = make('div', panel.querySelector('.wrap'));
-  accountLinks.className = 'row';
+  accountLinks.className = 'row account-actions';
+  panel.querySelector('.wrap').insertBefore(accountLinks,$('#completeForm'));
   var certShortcut = make('a', accountLinks, 'شهادتي الرقمية');
   certShortcut.id = 'member-certificate';
   certShortcut.href = '#certificate';
@@ -670,6 +702,7 @@
   pwBox.innerHTML =
     '<summary>إعدادات وأمان الحساب</summary><form id="change-password"><label class="f">كلمة مرور جديدة<input type="password" minlength="15" maxlength="128" autocomplete="new-password" required></label><button class="btn btn-dark" type="submit">تغيير كلمة المرور</button><p role="status"></p></form>';
   pwBox.appendChild($('#logout'));
+  $('#logout').className='btn btn-ghost';
   $('#change-password').onsubmit = async function(e) {
     e.preventDefault();
     var f = this,
@@ -732,10 +765,18 @@
   hubLink.href = '#member-hub';
   hubLink.className = 'btn btn-gold';
   hubLink.hidden = true;
+  var memberQuick = make('div',panel.querySelector('.wrap'));
+  memberQuick.className='dashboard-grid account-quick';memberQuick.hidden=true;
+  panel.querySelector('.wrap').insertBefore(memberQuick,pwBox);
+  for(const [key,title,description,icon] of [['requests','إرسال طلب أو مساهمة','الشكاوى والمقترحات والمعلومات العائلية','heart'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','file'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['identity','بطاقتي الرقمية','عرض بطاقة العضوية والشهادة','shield'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
+    const l=dashboardLink(memberQuick,'#member-hub',title,description,icon);l.dataset.hubTarget=key;
+  }
+  hubLink.dataset.hubTarget='overview';
   var adminServices = newView('member-services-admin', 'إدارة خدمات الأعضاء'),
     adminServiceBody = make('div', adminServices);
   var adminServiceLink = make('a', admin, 'إدارة خدمات الأعضاء');
   adminServiceLink.href = '#member-services-admin';
+  adminServiceLink.hidden=true;
   adminServiceLink.className = 'btn btn-dark';
   var kinds = {
     initiative: 'مبادرة',
@@ -773,36 +814,97 @@
     c.className = 'card';
     c.style.marginBottom = '16px';
     make('h2', c, title);
+    if(parent===hubBody)c.dataset.hubService=hubCardKeys[title]||'overview';
     return c;
   }
-  var activeHubGroup = 0;
+  var activeHubGroup = 'overview';
+  var hubNavigate = null;
 
-  function decorateHub() {
-    var cards = Array.from(hubBody.children).filter(x => x.classList.contains('card'));
-    if (!cards.length) return;
-    var groups = [
-      ['هويتي', [0, 1]],
-      ['عائلتي', [2, 3]],
-      ['المستجدات', [4, 5, 6]],
-      ['طلباتي', [7]]
-    ];
-    var menu = make('div', hubBody);
-    menu.className = 'hub-tabs';
-    menu.setAttribute('aria-label', 'أقسام خدمات العضو');
-    hubBody.prepend(menu);
-    var buttons = [];
-
-    function showGroup(i) {
-      activeHubGroup = i;
-      cards.forEach((c, n) => c.hidden = !groups[i][1].includes(n));
-      buttons.forEach((b, n) => b.setAttribute('aria-pressed', String(i === n)));
+  // Explicit service keys prevent a missing or reordered card from changing the navigation.
+  const hubServices = [
+    ['identity','بطاقتي وشهادتي','البطاقة الرقمية ووثيقة العضوية','shield'],
+    ['profile','ملفي الشخصي','تحديث معلوماتي ودليل الكفاءات','users'],
+    ['lineage','سجل قراباتي','إدارة سجل النسب الخاص','network'],
+    ['directory','دليل الكفاءات','التخصصات والمهارات المتاحة','landmark'],
+    ['notices','الإشعارات','الرسائل الخاصة من الإدارة','file'],
+    ['archive','الأرشيف','الوثائق والمصادر المتاحة للأعضاء','archive'],
+    ['occasions','المناسبات','التهاني والمواعيد','cal'],
+    ['requests','طلباتي ومساهماتي','شكوى أو مقترح أو مادة أرشيفية','heart']
+  ];
+  const hubCardKeys = {
+    'بطاقتي العائلية الرقمية':'identity','البطاقة الرقمية':'identity',
+    'ملفي الشخصي':'profile','الملف الشخصي':'profile',
+    'شجرة نسبي الشخصية':'lineage','سجل القرابة':'lineage',
+    'دليل المهن والكفاءات':'directory','دليل الكفاءات':'directory',
+    'صندوق الإشعارات الخاص':'notices','الإشعارات':'notices',
+    'الأرشيف الحصري':'archive','الأرشيف':'archive',
+    'المناسبات والتهاني':'occasions','المناسبات':'occasions',
+    'الطلبات والمساهمات والشكاوى':'requests','الطلبات':'requests'
+  };
+  function dashboardIcon(parent,name){
+    const icon=make('span',parent);icon.className='dashboard-icon';
+    icon.innerHTML='<svg width="24" height="24" aria-hidden="true"><use href="#i-'+name+'"/></svg>';
+  }
+  function dashboardLink(parent,href,title,description,icon){
+    const link=make('a',parent);link.className='dashboard-tile';link.href=href;
+    dashboardIcon(link,icon);const text=make('span',link);make('strong',text,title);make('small',text,description);
+    return link;
+  }
+  function decorateHub(app) {
+    const cards=Array.from(hubBody.children).filter(x=>x.classList.contains('card'));
+    if(!cards.length)return;
+    const shell=make('div',hubBody);shell.className='dashboard-shell';hubBody.prepend(shell);
+    const heading=make('div',shell);heading.className='dashboard-heading';
+    const intro=make('div',heading);
+    make('span',intro,'مساحتي الخاصة').className='eyebrow';
+    make('h2',intro,'أهلًا بك، '+app.full_name);
+    make('p',intro,'عضوية معتمدة • '+(app.membership_number||'رقم العضوية غير متاح'));
+    const back=make('a',heading,'إعدادات حسابي');back.href='#account';back.className='btn btn-ghost';
+    const menu=make('nav',shell);menu.className='dashboard-tabs';menu.setAttribute('aria-label','خدمات العضو');
+    const content=make('div',shell);content.className='dashboard-content';
+    const overview=make('div',content);overview.className='dashboard-overview';
+    make('h3',overview,'اختر الخدمة التي تحتاج إليها');
+    const grid=make('div',overview);grid.className='dashboard-grid';
+    const buttons=new Map();
+    const toolbar=make('div',shell);toolbar.className='dashboard-search';
+    const search=field(toolbar,'البحث داخل خدماتي','hub-search','search',150);
+    search.placeholder='مثال: شكوى، شهادة، وثيقة';
+    const result=make('p',toolbar);result.setAttribute('role','status');
+    shell.insertBefore(toolbar,content);
+    function showGroup(key,resetSearch=true){
+      if(key!=='overview'&&!hubServices.some(s=>s[0]===key))key='overview';
+      activeHubGroup=key;
+      if(resetSearch)search.value='';
+      const term=normalizeSearch(search.value);
+      overview.hidden=key!=='overview'||!!term;
+      let count=0;
+      cards.forEach(card=>{
+        const group=card.dataset.hubService;
+        card.hidden=term?!normalizeSearch(card.textContent).includes(term):group!==key;
+        if(!card.hidden)count++;
+      });
+      buttons.forEach((button,id)=>button.setAttribute('aria-pressed',String(!term&&id===key)));
+      result.textContent=term?'الأقسام المطابقة: '+new Intl.NumberFormat('ar-EG').format(count):'';
     }
-    groups.forEach((g, i) => {
-      var b = action(menu, g[0], () => showGroup(i));
-      buttons.push(b);
-    });
+    for(const [key,title,description,icon] of [['overview','نظرة عامة','','landmark'],...hubServices]){
+      const button=action(menu,title,()=>showGroup(key));button.className='btn btn-ghost';buttons.set(key,button);
+      if(key!=='overview'){
+        const tile=make('button',grid);tile.type='button';tile.className='dashboard-tile';dashboardIcon(tile,icon);
+        const text=make('span',tile);make('strong',text,title);make('small',text,description);
+        tile.addEventListener('click',()=>{showGroup(key);const first=cards.find(c=>c.dataset.hubService===key);first?.scrollIntoView({block:'start',behavior:'auto'});});
+      }
+    }
+    for(const card of cards)content.appendChild(card);
+    search.addEventListener('input',()=>showGroup(activeHubGroup,false));
+    hubNavigate=showGroup;
     showGroup(activeHubGroup);
   }
+  document.addEventListener('click',e=>{
+    const link=e.target.closest?.('[data-hub-target]');
+    if(!link)return;
+    activeHubGroup=link.dataset.hubTarget;
+    if(location.hash==='#member-hub'&&hubNavigate){e.preventDefault();hubNavigate(activeHubGroup);}
+  });
 
   function formAction(f, label, fn) {
     var b = make('button', f, label);
@@ -867,6 +969,7 @@
   }
 
   async function loadHub() {
+    hubNavigate=null;
     hubBody.replaceChildren();
     make('p', hubBody, 'جارٍ تحميل خدمات العضوية…');
     try {
@@ -1225,15 +1328,7 @@
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       }
-      var searchAll = field(hubBody, 'بحث داخل خدمات العضو', 'hub-search', 'search', 150);
-      hubBody.prepend(searchAll.parentNode);
-      searchAll.oninput = () => {
-        var term = searchAll.value.trim();
-        Array.from(hubBody.children).filter(c => c.classList.contains('card')).forEach(c => {
-          c.hidden = term ? !c.textContent.includes(term) : false;
-        });
-      };
-      decorateHub();
+      decorateHub(app);
     } catch (e) {
       hubBody.replaceChildren();
       make('p', hubBody, 'تعذر تحميل الخدمات؛ سجل الدخول بحساب معتمد ثم حاول مجددًا.');
@@ -1243,6 +1338,8 @@
   }
   async function loadServicesAdmin() {
     adminServiceBody.replaceChildren();
+    const nav=make('div',adminServiceBody);nav.className='dashboard-subnav';
+    const back=make('a',nav,'العودة إلى لوحة الإدارة');back.href='#admin';back.className='btn btn-ghost';
     try {
       if (ok(await client().rpc('family_is_admin')) !== true) {
         make('p', adminServiceBody, 'هذه الصفحة للإدارة فقط.');
@@ -1254,7 +1351,7 @@
         declined: 'مرفوض',
         completed: 'مكتمل'
       };
-      var req = section(adminServiceBody, 'طلبات الأعضاء الخاصة');
+      var req = section(adminServiceBody, 'صندوق طلبات الأعضاء');
       var rows = ok(await client().from('family_member_requests').select('*').order('created_at', {
         ascending: false
       }).limit(200));
@@ -1265,12 +1362,21 @@
         if(identity.error)make('p',req,'تعذر تحميل بيانات المرسلين. الطلبات محفوظة؛ تحقق من صلاحيات الإدارة ثم أعد التحميل.');
         else for(const person of identity.data||[])senderMap.set(person.request_id,person);
       }
-      const filters = make('div',req);
-      filters.className='request-admin-filters';
+      const stats=make('div',req);stats.className='family-admin-stats';
+      for(const [label,n] of [['الطلبات المعروضة',rows.length],['قيد المراجعة',rows.filter(x=>x.status==='pending').length],['الشكاوى',rows.filter(x=>x.kind==='complaint').length],['المساهمات الأرشيفية',rows.filter(x=>x.kind==='archive').length]]){
+        const stat=make('div',stats);stat.className='card';make('strong',stat,new Intl.NumberFormat('ar-EG').format(n));make('p',stat,label);
+      }
+      const filters=make('div',req);filters.className='request-admin-filters dashboard-filter';
+      const search=field(filters,'بحث في الاسم أو رقم العضوية أو الطلب','search','search',150);
+      const type=selectField(filters,'نوع الطلب','kind',{all:'كل الأنواع',...kinds});
+      const state=selectField(filters,'حالة الطلب','status',{all:'كل الحالات',...states});
+      const results=make('p',filters);results.setAttribute('role','status');
       const records=[];
       rows.forEach(x => {
-        var c = section(req, (kinds[x.kind]||x.kind) + ' — ' + x.title);
         const person=senderMap.get(x.id);
+        const entry=make('details',req);entry.className='card dashboard-record';
+        const summary=make('summary',entry);make('strong',summary,(kinds[x.kind]||x.kind)+' — '+x.title);make('small',summary,person?.full_name||'مرسل غير متاح');make('span',summary,states[x.status]||x.status).className='dashboard-state';
+        var c=make('div',entry);c.className='dashboard-record-body';
         const identityBox=make('div',c);identityBox.className='request-identity';
         make('h3',identityBox,'بيانات المرسل المسجلة');
         const fields=[['الاسم الكامل',person?.full_name],['رقم العضوية',person?.membership_number],['البريد الإلكتروني',person?.email],['الهاتف',person?.phone],['واتساب',person?.whatsapp],['حالة العضوية',statusLabels[person?.member_status]||person?.member_status],['تاريخ التسجيل',person?.submitted_at?new Date(person.submitted_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}):null]];
@@ -1280,7 +1386,7 @@
         if(x.created_at)make('p',c,'تاريخ الإرسال: '+new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}));
         make('p',c,'الحالة: '+(states[x.status]||x.status));
         make('p', c, x.body).className='request-body';
-        records.push({el:c,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')});
+        const record={el:entry,kind:x.kind,status:x.status,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')};records.push(record);
         var f = make('form', c),
           st = selectField(f, 'القرار', 'status', states),
           rp = field(f, 'رد الإدارة', 'reply', 'textarea', 2000);
@@ -1291,6 +1397,7 @@
             status: st.value,
             reply: rp.value
           }).eq('id', x.id).select('id').single());
+          record.status=st.value;summary.querySelector('.dashboard-state').textContent=states[st.value]||st.value;applyRequestFilters();
         });
         var nf = make('form', c),
           nt = field(nf, 'عنوان الإشعار', 'title', 'text', 150),
@@ -1305,8 +1412,13 @@
           nf.reset();
         });
       });
-      if(records.length)attachSearch(filters,'بحث في الطلبات وبيانات المرسل',records);
-      action(req,'تحديث الطلبات',loadServicesAdmin);
+      function applyRequestFilters(){
+        const terms=normalizeSearch(search.value).split(/\s+/).filter(Boolean);let count=0;
+        for(const r of records){r.el.hidden=(type.value!=='all'&&r.kind!==type.value)||(state.value!=='all'&&r.status!==state.value)||!terms.every(t=>normalizeSearch(r.text).includes(t));if(!r.el.hidden)count++;}
+        results.textContent='النتائج: '+new Intl.NumberFormat('ar-EG').format(count)+' من '+new Intl.NumberFormat('ar-EG').format(records.length);
+      }
+      search.oninput=type.onchange=state.onchange=applyRequestFilters;applyRequestFilters();
+      action(req,'تحديث الطلبات',()=>guardPrivate(loadServicesAdmin));
       var pub = section(adminServiceBody, 'نشر الأرشيف والمناسبات'),
         f = make('form', pub),
         k = selectField(f, 'القسم', 'kind', {
@@ -1361,6 +1473,11 @@
         }
         loadServicesAdmin();
       });
+      const serviceTabs=make('div',nav);serviceTabs.className='dashboard-tabs';
+      const requestsButton=action(serviceTabs,'طلبات الأعضاء',()=>showServices('requests'));
+      const contentButton=action(serviceTabs,'الأرشيف والمناسبات',()=>showServices('content'));
+      function showServices(key){req.hidden=key!=='requests';pub.hidden=key!=='content';requestsButton.setAttribute('aria-pressed',String(key==='requests'));contentButton.setAttribute('aria-pressed',String(key==='content'));}
+      showServices('requests');
       var items = ok(await client().from('family_member_content').select('*').order('created_at', {
         ascending: false
       }).limit(100));
@@ -1417,6 +1534,7 @@
     newsEditorBody = make('div', newsEditor);
   var newsLink = make('a', admin, 'إدارة الأخبار والمناسبات');
   newsLink.href = '#news-admin';
+  newsLink.hidden=true;
   newsLink.className = 'btn btn-gold';
   var newsLabels = {
     news: 'خبر عائلي',
@@ -1900,6 +2018,7 @@
     }
     if (nh === '' || nh === '#home' || nh === '#news' || nh.startsWith('#news/')) loadPublicNews();
     if (nh === '#news-admin') guardPrivate(loadNewsEditor);
+    if (['#history','#tree','#archive'].includes(nh))renderPublicCMS().catch(()=>{});
     if (location.hash === '#reset') showReset();
     var hash = location.hash.slice(1);
     if (hash === 'admin') guardPrivate(loadAdmin);
@@ -2104,6 +2223,7 @@
     secBody = make('div', secPage);
   var secLink = make('a', admin, 'مركز الأمن الرقمي');
   secLink.href = '#security';
+  secLink.hidden=true;
   secLink.className = 'btn btn-dark';
   async function loadSecurity() {
     secBody.replaceChildren();
@@ -2539,7 +2659,10 @@
     recoveredSession = null;
 
   function clearPrivate() {
+    hubNavigate=null;activeHubGroup='overview';memberQuick.hidden=true;
     hubBody.replaceChildren();
+    cms.replaceChildren();cms.hidden=true;
+    adminNavigation.hidden=true;
     adminRows.replaceChildren();
     adminServiceBody.replaceChildren();
     newsEditorBody.replaceChildren();
