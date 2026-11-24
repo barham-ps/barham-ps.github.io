@@ -742,7 +742,8 @@
     suggestion: 'مقترح',
     occasion: 'مناسبة أو تهنئة',
     solidarity: 'طلب تكافل خاص',
-    archive: 'مادة أرشيفية'
+    archive: 'مساهمة أرشيفية أو معلومات عائلية',
+    complaint: 'شكوى'
   };
 
   function field(form, label, name, type, max) {
@@ -1166,37 +1167,56 @@
       } {
         var beforeCount = hubBody.children.length;
         try {
-          var req = section(hubBody, 'المبادرات والمقترحات والتكافل');
-          make('p', req, 'طلباتك خاصة بك وبالإدارة. لا ترفق بيانات طبية أو مالية حساسة.');
+          var req = section(hubBody, 'الطلبات والمساهمات والشكاوى');
+          make('p', req, 'تُرسل طلباتك إلى الإدارة بسرية. يمكنك إرسال طلبات مستقلة متعددة (حتى ١٠ خلال ٢٤ ساعة). لا تدرج بيانات طبية أو مالية حساسة.');
           var rf = make('form', req),
             rk = selectField(rf, 'نوع الطلب', 'kind', kinds),
             rt = field(rf, 'العنوان', 'title', 'text', 150),
             rb = field(rf, 'التفاصيل', 'body', 'textarea', 3000);
           rt.required = rb.required = true;
-          formAction(rf, 'إرسال الطلب', async () => {
-            ok(await client().from('family_member_requests').insert({
-              user_id: uid,
-              kind: rk.value,
-              title: rt.value.trim(),
-              body: rb.value.trim()
-            }));
-            loadHub();
+          rt.minLength = 3; rb.minLength = 5;
+          var send = make('button', rf, 'إرسال طلب جديد');
+          send.type = 'submit'; send.className = 'btn btn-gold';
+          var requestMsg = make('p', rf); requestMsg.setAttribute('role','status'); requestMsg.setAttribute('aria-live','polite');
+          var list = make('div', req); list.className = 'request-history';
+          var states = {pending:'قيد المراجعة',accepted:'مقبول',declined:'مرفوض',completed:'مكتمل'};
+          var mine = [];
+          function drawRequests(){
+            list.replaceChildren();
+            make('h3',list,'سجل طلباتي — '+new Intl.NumberFormat('ar-EG').format(mine.length));
+            if(!mine.length)make('p',list,'لم ترسل طلبات بعد.');
+            for(const x of mine){
+              var card=section(list,(kinds[x.kind]||x.kind)+' — '+x.title);
+              make('p',card,'الحالة: '+(states[x.status]||x.status));
+              if(x.created_at)make('time',card,new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'})).dateTime=x.created_at;
+              make('p',card,x.body).className='request-body';
+              make('p',card,'رد الإدارة: '+(x.reply||'لا رد بعد'));
+            }
+          }
+          async function refreshRequests(){
+            mine=ok(await client().from('family_member_requests').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(100));
+            drawRequests();
+          }
+          var refresh = action(req,'تحديث سجل الطلبات',async()=>{
+            refresh.disabled=true;try{await refreshRequests();requestMsg.textContent='تم تحديث السجل.';}catch(e){requestMsg.textContent='تعذر تحديث السجل، حاول مجددًا.';}finally{refresh.disabled=false;}
           });
-          var mine = ok(await client().from('family_member_requests').select('*').eq('user_id', uid).order(
-            'created_at', {
-              ascending: false
-            }).limit(100));
-          var states = {
-            pending: 'قيد المراجعة',
-            accepted: 'مقبول',
-            declined: 'مرفوض',
-            completed: 'مكتمل'
+          rf.onsubmit=async e=>{
+            e.preventDefault();
+            if(send.disabled)return;
+            const title=rt.value.trim(),body=rb.value.trim(),kind=rk.value;
+            if(title.length<3||body.length<5){requestMsg.textContent='اكتب عنوانًا من ٣ أحرف على الأقل وتفاصيل من ٥ أحرف على الأقل.';return;}
+            send.disabled=true;requestMsg.textContent='جارٍ إرسال طلبك…';
+            try{
+              const created=ok(await client().from('family_member_requests').insert({user_id:uid,kind,title,body}).select('id,kind,title,body,status,reply,created_at').single());
+              mine=[created,...mine.filter(x=>x.id!==created.id)];
+              drawRequests();rf.reset();
+              requestMsg.textContent='تم إرسال الطلب بنجاح. يمكنك الآن إرسال طلب آخر.';
+            }catch(err){
+              const msg=String(err?.message||'');
+              requestMsg.textContent=msg.includes('Daily request limit')?'بلغت الحد الوقائي: ١٠ طلبات خلال ٢٤ ساعة. حاول لاحقًا.':err?.code==='42501'?'تعذر الإرسال: تحقق من اعتماد العضوية وصلاحية الجلسة.':err?.code==='23514'?'تعذر الإرسال: تحقق من طول العنوان والتفاصيل ونوع الطلب.':'تعذر تأكيد إرسال الطلب. حدّث السجل أولًا لتجنب التكرار ثم حاول مجددًا.';
+            }finally{send.disabled=false;}
           };
-          mine.forEach(x => {
-            var c = section(req, kinds[x.kind] + ' — ' + x.title);
-            make('p', c, states[x.status]);
-            make('p', c, x.reply || 'لا رد بعد');
-          });
+          try{await refreshRequests();}catch(e){drawRequests();requestMsg.textContent='تعذر تحميل الطلبات السابقة؛ يمكنك تحديث السجل.';}
         } catch (e) {
           var existing = Array.from(hubBody.children).slice(beforeCount);
           existing.forEach(x => x.remove());
@@ -1239,9 +1259,28 @@
         ascending: false
       }).limit(200));
       if (!rows.length) make('p', req, 'لا طلبات جديدة.');
+      const senderMap = new Map();
+      if(rows.length){
+        const identity=await client().rpc('family_admin_request_senders',{p_request_ids:rows.map(x=>x.id)});
+        if(identity.error)make('p',req,'تعذر تحميل بيانات المرسلين. الطلبات محفوظة؛ تحقق من صلاحيات الإدارة ثم أعد التحميل.');
+        else for(const person of identity.data||[])senderMap.set(person.request_id,person);
+      }
+      const filters = make('div',req);
+      filters.className='request-admin-filters';
+      const records=[];
       rows.forEach(x => {
-        var c = section(req, kinds[x.kind] + ' — ' + x.title);
-        make('p', c, x.body);
+        var c = section(req, (kinds[x.kind]||x.kind) + ' — ' + x.title);
+        const person=senderMap.get(x.id);
+        const identityBox=make('div',c);identityBox.className='request-identity';
+        make('h3',identityBox,'بيانات المرسل المسجلة');
+        const fields=[['الاسم الكامل',person?.full_name],['رقم العضوية',person?.membership_number],['البريد الإلكتروني',person?.email],['الهاتف',person?.phone],['واتساب',person?.whatsapp],['حالة العضوية',statusLabels[person?.member_status]||person?.member_status],['تاريخ التسجيل',person?.submitted_at?new Date(person.submitted_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}):null]];
+        const dl=make('dl',identityBox);
+        for(const [label,value] of fields){const cell=make('div',dl);make('dt',cell,label);make('dd',cell,value||'غير متاح');}
+        if(!person?.full_name)make('p',identityBox,'لم يُعثر على سجل عضوية مرتبط بهذا الطلب.');
+        if(x.created_at)make('p',c,'تاريخ الإرسال: '+new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}));
+        make('p',c,'الحالة: '+(states[x.status]||x.status));
+        make('p', c, x.body).className='request-body';
+        records.push({el:c,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')});
         var f = make('form', c),
           st = selectField(f, 'القرار', 'status', states),
           rp = field(f, 'رد الإدارة', 'reply', 'textarea', 2000);
@@ -1251,7 +1290,7 @@
           ok(await client().from('family_member_requests').update({
             status: st.value,
             reply: rp.value
-          }).eq('id', x.id));
+          }).eq('id', x.id).select('id').single());
         });
         var nf = make('form', c),
           nt = field(nf, 'عنوان الإشعار', 'title', 'text', 150),
@@ -1266,6 +1305,8 @@
           nf.reset();
         });
       });
+      if(records.length)attachSearch(filters,'بحث في الطلبات وبيانات المرسل',records);
+      action(req,'تحديث الطلبات',loadServicesAdmin);
       var pub = section(adminServiceBody, 'نشر الأرشيف والمناسبات'),
         f = make('form', pub),
         k = selectField(f, 'القسم', 'kind', {
