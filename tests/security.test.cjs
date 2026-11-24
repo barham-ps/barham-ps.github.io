@@ -206,7 +206,7 @@ test('genealogy controls, local links, public pages and published assets are pre
  for(const name of ['index.html','gaza.json','tree.css','tree.js','explorer.js'])assert.ok(build.includes('genealogy/'+name));
  for(const slug of ['about','history','membership']){
   const page=fs.readFileSync(slug+'/index.html','utf8');
-  assert.match(page,/href="\.\.\/genealogy\/"/);
+  if(slug==="history")assert.doesNotMatch(page,/href="\.\.\/genealogy\/"/);else assert.match(page,/href="\.\.\/genealogy\/"/);
   assert.match(page,/aria-current="page"/);
   assert.match(page,/Content-Security-Policy/);
  }
@@ -229,11 +229,38 @@ test('history does not duplicate genealogy call to action and sender details sta
  assert.match(sql,/where r\.id=any\(p_request_ids\)/);
 });
 test('repeat request submissions are independent and new submissions do not reload the member hub',()=>{
- const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('var searchAll = field(hubBody'));
+ const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app);',js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')")));
  assert.match(req,/\.insert\(\{user_id:uid,kind,title,body\}\)\.select/);
  assert.match(req,/mine=\[created,\.\.\.mine\.filter/);
  assert.match(req,/drawRequests\(\);rf\.reset\(\)/);
  assert.match(req,/finally\{send\.disabled=false;\}/);
  assert.match(req,/Daily request limit/);
  assert.doesNotMatch(req,/loadHub\(\);/);
+});
+
+test('member dashboard uses named service keys and direct shortcuts rather than array positions',()=>{
+ const hub=js.slice(js.indexOf('const hubServices ='),js.indexOf('function formAction'));
+ const section=js.slice(js.indexOf('function section(parent'),js.indexOf('var activeHubGroup'));
+ for(const key of ['identity','profile','lineage','directory','notices','archive','occasions','requests'])assert.ok(hub.includes("['"+key+"',"));
+ assert.match(section,/dataset\.hubService=hubCardKeys\[title\]/);
+ assert.match(hub,/card\.dataset\.hubService/);
+ assert.match(hub,/hubNavigate=showGroup/);
+ assert.doesNotMatch(hub,/groups\[i\]\[1\]/);
+ assert.match(html,/data-hub-target="requests"/);
+ assert.match(html,/data-hub-target="archive"/);
+});
+test('administrator workspace includes distinct tools and remains gated',()=>{
+ const admin=js.slice(js.indexOf('function mountAdminNavigation'),js.indexOf('var cert = newView'));
+ assert.match(admin,/rpc\('family_admin_list'\)/);
+ assert.ok(admin.indexOf("rpc('family_admin_list')")<admin.indexOf('mountAdminNavigation();'));
+ for(const route of ['#member-services-admin','#news-admin','#security'])assert.ok(admin.includes(route));
+ assert.match(admin,/make\('details',memberList\)/);
+ const services=js.slice(js.indexOf('async function loadServicesAdmin'),js.indexOf('var heritage = newView'));
+ assert.match(services,/rpc\('family_is_admin'\)/);
+ assert.match(services,/function applyRequestFilters/);
+ assert.match(services,/function showServices/);
+ assert.match(services,/record\.status=st\.value/);
+ const logout=js.slice(js.indexOf('function clearPrivate'),js.indexOf('guestLogin.hidden = true;',js.indexOf('function clearPrivate')));
+ assert.match(logout,/cms\.replaceChildren\(\)/);
+ assert.match(logout,/memberQuick\.hidden=true/);
 });
