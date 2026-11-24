@@ -1,0 +1,48 @@
+name: Browser and performance validation (no deployment)
+on:
+  push:
+    branches: [professional-upgrade]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build and install browser tools
+        run: |
+          sh scripts/build-pages.sh
+          npm install --no-save --ignore-scripts playwright@1.56.1 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+      - name: Local browser smoke test and Lighthouse
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory dist >/tmp/portal-http.log 2>&1 &
+          trap 'kill $!' EXIT
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({args:['--no-sandbox']});
+            try {
+              const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});
+              await page.route('**/*.supabase.co/**',r=>r.abort());
+              await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              for(const route of ['login','register','membership']){
+                await page.goto('http://127.0.0.1:8765/#'+route);
+                await page.locator('#v-'+route).waitFor({state:'visible',timeout:15000});
+                console.log('Public route visible:',route);
+              }
+              for(const slug of ['about','history','membership']){
+                await page.goto('http://127.0.0.1:8765/'+slug+'/');
+                await page.locator('h1').waitFor({state:'visible'});
+                if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow: '+slug);
+              }
+            } finally {await browser.close();}
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
+          CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")" npx lighthouse http://127.0.0.1:8765/about/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse.json --quiet
+          node -e "const r=require('/tmp/lighthouse.json'); console.log(JSON.stringify(Object.fromEntries(Object.entries(r.categories).map(([k,v])=>[k,v.score])),null,2))"

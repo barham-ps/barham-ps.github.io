@@ -15,5 +15,16 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
+  ],
+  "description": "بوابة آل برهم للأخبار والتراث والعضوية الإلكترونية",
+  "shortcuts": [
+    {
+      "name": "أخبار العائلة",
+      "url": "./#news"
+    },
+    {
+      "name": "العضوية",
+      "url": "./#membership"
+    }
   ]
 }

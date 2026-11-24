@@ -591,3 +591,15 @@ html{padding-block:0!important;scroll-padding-top:0}
  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.menu-btn,nav.main a,.seg button,a.card{transition:none;transform:none}}
  @media(max-width:700px){.home-news-card,form.auth{backdrop-filter:none;-webkit-backdrop-filter:none}}
 }
+
+/* Professional upgrade: mobile readability and keyboard navigation */
+:focus-visible { outline: 3px solid #94743a; outline-offset: 3px; }
+@media (max-width:700px) {
+  .home-services #features { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .home-services #features .card { padding:14px 10px; min-height:120px; }
+  .home-services #features .card h3 { font-size:16px; line-height:1.5; }
+  .home-services #features .card p { font-size:14px; line-height:1.65; }
+  header.site .brand .brand-wordmark .brand-motto[lang=en] { font-size:10px; white-space:normal; }
+  .mobile-dock a { min-height:44px; }
+}
+@media (max-width:360px) { .home-services #features { grid-template-columns:1fr; } }
