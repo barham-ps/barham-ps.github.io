@@ -140,7 +140,7 @@ test('featured announcement does not inherit the light glass card surface', () =
   assert.match(release,/\.home-news-card\{\s*background:#123b30/);
   assert.match(release,/\.home-news-card h3\{color:#fffaf0\}/);
   assert.match(release,/\.home-news-card p\{color:#f2f4ed\}/);
-  assert.match(html,/portal\.css\?v=41/);
+  assert.match(html,/portal\.css\?v=42/);
 });
 
 test('luminous glass preserves separate announcement contrast and print layout', () => {
