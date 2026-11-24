@@ -6,8 +6,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#fbf9f3",
-  "theme_color": "#123b30",
+  "background_color": "#03251c",
+  "theme_color": "#03251c",
   "icons": [
     {
       "src": "icon.svg",
@@ -18,6 +18,10 @@
   ],
   "description": "بوابة آل برهم للأخبار والتراث والعضوية الإلكترونية",
   "shortcuts": [
+    {
+      "name": "شجرة العائلة",
+      "url": "./genealogy/"
+    },
     {
       "name": "أخبار العائلة",
       "url": "./#news"
