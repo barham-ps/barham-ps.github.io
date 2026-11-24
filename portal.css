@@ -603,3 +603,27 @@ html{padding-block:0!important;scroll-padding-top:0}
   .mobile-dock a { min-height:44px; }
 }
 @media (max-width:360px) { .home-services #features { grid-template-columns:1fr; } }
+
+/* V43: restrained, accessible motion; no additional network requests. */
+@media screen and (prefers-reduced-motion:no-preference) {
+ @keyframes family-enter {from{opacity:.72;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+ @keyframes family-gold {from{opacity:.2;transform:translateX(35%)}to{opacity:.65;transform:translateX(-35%)}}
+ .view:not([hidden]){animation:family-enter 280ms ease-out}
+ header.site .brand{animation:family-enter 420ms ease-out}
+ .home-intro{position:relative;isolation:isolate;overflow:hidden}
+ .home-intro::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(232,210,160,.13) 50%,transparent 70%);animation:family-gold 1600ms ease-out both}
+ .home-services #features .card,.home-news-card,.lux-news-card{animation:family-enter 350ms ease-out;transition:transform 180ms ease,border-color 180ms ease,box-shadow 180ms ease}
+ .home-services #features .card:nth-child(2n){animation-delay:45ms}
+ .home-services #features .card:nth-child(3n){animation-delay:90ms}
+ .news-gallery-item img{transition:transform 220ms ease}
+ .btn:active,.menu-btn:active,.mobile-dock a:active{transform:scale(.97)}
+ nav.main:not([hidden]) a{transition:background-color 180ms ease,color 180ms ease}
+ @media(hover:hover) and (pointer:fine){
+  .home-services #features .card:hover,.home-news-card:hover,.lux-news-card:hover{transform:translateY(-3px);border-color:#c4a56a}
+  .news-gallery-item:hover img{transform:scale(1.025)}
+  .btn:hover{transform:translateY(-1px)}
+ }
+}
+@media screen and (prefers-reduced-motion:reduce){
+ .view,header.site .brand,.home-intro::after,.home-services #features .card,.home-news-card,.lux-news-card,.news-gallery-item img,.btn,.menu-btn,.mobile-dock a{animation:none!important;transition:none!important;transform:none!important}
+}
