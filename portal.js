@@ -499,7 +499,6 @@
         return;
       }
       mountAdminNavigation();
-      loadPublicCMS().then(()=>switchAdminPanel(activeAdminPanel)).catch(()=>{cms.hidden=true;});
       switchAdminPanel(activeAdminPanel);
       adminMsg.textContent = 'الطلبات: ' + q.data.length + ' | المعتمدة: ' + q.data.filter(x => x.status ===
         'approved').length + ' | قيد المراجعة: ' + q.data.filter(x => x.status === 'under_review').length;
@@ -574,6 +573,7 @@
         });
       }
       applyFilter();
+      try{await loadPublicCMS();switchAdminPanel(activeAdminPanel);}catch(e){cms.replaceChildren();make('p',cms,'تعذر تحميل إدارة المحتوى. حدّث الصفحة ثم أعد المحاولة.');switchAdminPanel(activeAdminPanel);}
     } catch (e) {
       adminMsg.textContent = 'تعذر الاتصال بالخدمة.';
     }
@@ -1336,6 +1336,7 @@
       l.href = '#account';
     }
   }
+  var activeServicePanel='requests';
   async function loadServicesAdmin() {
     adminServiceBody.replaceChildren();
     const nav=make('div',adminServiceBody);nav.className='dashboard-subnav';
@@ -1384,7 +1385,7 @@
         for(const [label,value] of fields){const cell=make('div',dl);make('dt',cell,label);make('dd',cell,value||'غير متاح');}
         if(!person?.full_name)make('p',identityBox,'لم يُعثر على سجل عضوية مرتبط بهذا الطلب.');
         if(x.created_at)make('p',c,'تاريخ الإرسال: '+new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}));
-        make('p',c,'الحالة: '+(states[x.status]||x.status));
+        const stateText=make('p',c,'الحالة: '+(states[x.status]||x.status));
         make('p', c, x.body).className='request-body';
         const record={el:entry,kind:x.kind,status:x.status,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')};records.push(record);
         var f = make('form', c),
@@ -1397,7 +1398,7 @@
             status: st.value,
             reply: rp.value
           }).eq('id', x.id).select('id').single());
-          record.status=st.value;summary.querySelector('.dashboard-state').textContent=states[st.value]||st.value;applyRequestFilters();
+          record.status=st.value;record.text=[x.title,x.body,kinds[x.kind],states[st.value],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ');summary.querySelector('.dashboard-state').textContent=states[st.value]||st.value;stateText.textContent='الحالة: '+(states[st.value]||st.value);applyRequestFilters();
         });
         var nf = make('form', c),
           nt = field(nf, 'عنوان الإشعار', 'title', 'text', 150),
@@ -1476,8 +1477,8 @@
       const serviceTabs=make('div',nav);serviceTabs.className='dashboard-tabs';
       const requestsButton=action(serviceTabs,'طلبات الأعضاء',()=>showServices('requests'));
       const contentButton=action(serviceTabs,'الأرشيف والمناسبات',()=>showServices('content'));
-      function showServices(key){req.hidden=key!=='requests';pub.hidden=key!=='content';requestsButton.setAttribute('aria-pressed',String(key==='requests'));contentButton.setAttribute('aria-pressed',String(key==='content'));}
-      showServices('requests');
+      function showServices(key){activeServicePanel=key;req.hidden=key!=='requests';pub.hidden=key!=='content';requestsButton.setAttribute('aria-pressed',String(key==='requests'));contentButton.setAttribute('aria-pressed',String(key==='content'));}
+      showServices(activeServicePanel);
       var items = ok(await client().from('family_member_content').select('*').order('created_at', {
         ascending: false
       }).limit(100));
@@ -2659,10 +2660,10 @@
     recoveredSession = null;
 
   function clearPrivate() {
-    hubNavigate=null;activeHubGroup='overview';memberQuick.hidden=true;
+    hubNavigate=null;activeHubGroup='overview';activeServicePanel='requests';memberQuick.hidden=true;
     hubBody.replaceChildren();
     cms.replaceChildren();cms.hidden=true;
-    adminNavigation.hidden=true;
+    adminNavigation.hidden=true;adminRefresh.hidden=true;adminMsg.textContent='';activeAdminPanel='members';
     adminRows.replaceChildren();
     adminServiceBody.replaceChildren();
     newsEditorBody.replaceChildren();
