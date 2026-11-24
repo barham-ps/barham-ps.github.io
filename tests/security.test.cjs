@@ -140,7 +140,7 @@ test('featured announcement does not inherit the light glass card surface', () =
   assert.match(release,/\.home-news-card\{\s*background:#123b30/);
   assert.match(release,/\.home-news-card h3\{color:#fffaf0\}/);
   assert.match(release,/\.home-news-card p\{color:#f2f4ed\}/);
-  assert.match(html,/portal\.css\?v=39/);
+  assert.match(html,/portal\.css\?v=41/);
 });
 
 test('luminous glass preserves separate announcement contrast and print layout', () => {
@@ -150,4 +150,9 @@ test('luminous glass preserves separate announcement contrast and print layout',
  assert.match(css,/\.home-news-card h3\{color:#fffaf0\}/);
  assert.match(css,/prefers-reduced-transparency/);
  assert.ok(!css.includes('.cert-prev'));
+});
+
+test('V41 design tokens and touch baseline are present', () => {
+ const css=fs.readFileSync('portal.css','utf8');
+ for(const token of ['--space-1:8px','--radius-card:16px','--radius-large:20px','--content-max:1360px','--motion:180ms','min-height:44px','line-height:1.7']) assert.ok(css.includes(token),token);
 });
