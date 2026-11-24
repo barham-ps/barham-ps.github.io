@@ -140,16 +140,27 @@ test('featured announcement does not inherit the light glass card surface', () =
   assert.match(release,/\.home-news-card\{\s*background:#123b30/);
   assert.match(release,/\.home-news-card h3\{color:#fffaf0\}/);
   assert.match(release,/\.home-news-card p\{color:#f2f4ed\}/);
-  assert.match(html,/portal\.css\?v=43/);
+  const styleVersion = html.match(/portal\.css\?v=(\d+)/)?.[1];
+  const scriptVersion = html.match(/portal\.js\?v=(\d+)/)?.[1];
+  assert.ok(styleVersion && Number(styleVersion) >= 43);
+  assert.equal(styleVersion,scriptVersion);
+  const current = css.slice(css.indexOf('/* V47'));
+  assert.match(current,/\.home-news-card\{background:#123b30/);
+  assert.match(current,/\.home-news-card h3\{color:#fffaf0\}/);
+  assert.match(current,/\.home-news-card p\{color:#f2f4ed\}/);
 });
 
 test('luminous glass preserves separate announcement contrast and print layout', () => {
- const css=fs.readFileSync('portal.css','utf8').split('/* Release 39:')[1];
+ const full=fs.readFileSync('portal.css','utf8');
+ const css=full.split('/* Release 39:')[1].split('/* Institutional membership certificate')[0];
  assert.match(css,/background-color:transparent;background-image:var\(--glass-surface\)/);
  assert.match(css,/backdrop-filter:blur\(12px\)/);
  assert.match(css,/\.home-news-card h3\{color:#fffaf0\}/);
  assert.match(css,/prefers-reduced-transparency/);
  assert.ok(!css.includes('.cert-prev'));
+ const certificate=full.split('/* Institutional membership certificate')[1];
+ assert.match(certificate,/@media print\{@page\{size:A4 portrait;margin:0\}#v-certificate \.cert-prev\{[^}]*width:190mm!important/);
+ assert.match(certificate,/\.membership-document\{box-shadow:none;break-inside:avoid/);
 });
 
 test('V41 design tokens and touch baseline are present', () => {
@@ -158,3 +169,48 @@ test('V41 design tokens and touch baseline are present', () => {
 });
 
 test('V43 motion respects reduced motion preferences',()=>{const css=fs.readFileSync('portal.css','utf8').split('/* V43:')[1];assert.match(css,/prefers-reduced-motion:no-preference/);assert.match(css,/prefers-reduced-motion:reduce/);assert.match(css,/animation:none!important/);});
+
+test('genealogy preserves all source nodes, spellings and parent hierarchy', () => {
+ const data=JSON.parse(fs.readFileSync('genealogy/gaza.json','utf8'));
+ const tree=fs.readFileSync('genealogy/index.html','utf8');
+ const nodes=data.nodes;
+ assert.equal(nodes.length,367);
+ assert.equal(data.personCount,366);
+ assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
+ const stack=[],rendered=[];
+ const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ for(const m of tree.matchAll(/<li\b[^>]*data-node="(\d+)"[^>]*>|<\/li>/g)){
+   if(!m[1]){assert.ok(stack.length);stack.pop();continue;}
+   const n=nodes[Number(m[1])];
+   assert.ok(n);
+   assert.equal(n.parent,stack.length?stack[stack.length-1]:null);
+   assert.ok(m[0].includes('data-name="'+escape(n.name)+'"'));
+   assert.ok(m[0].includes('data-generation="'+n.generation+'"'));
+   rendered.push(n.id);stack.push(n.id);
+ }
+ assert.equal(stack.length,0);
+ assert.deepEqual(rendered,nodes.map(n=>n.id));
+ assert.match(tree,/name="robots" content="noindex"/);
+ assert.doesNotMatch(tree,/href="https:\/\/(?:www\.)?howiyya\.com/);
+});
+test('genealogy controls, local links, public pages and published assets are present', () => {
+ const tree=fs.readFileSync('genealogy/index.html','utf8');
+ const treeJs=fs.readFileSync('genealogy/tree.js','utf8');
+ const explorer=fs.readFileSync('genealogy/explorer.js','utf8');
+ const build=fs.readFileSync('scripts/build-pages.sh','utf8');
+ const ids=Array.from(tree.matchAll(/\sid="([^"]+)"/g),x=>x[1]);
+ assert.equal(new Set(ids).size,ids.length);
+ for(const m of (treeJs+'\n'+explorer).matchAll(/by\("([^"]+)"\)/g))assert.ok(ids.includes(m[1]),m[1]);
+ assert.doesNotThrow(()=>new vm.Script(treeJs));
+ assert.doesNotThrow(()=>new vm.Script(explorer));
+ for(const name of ['index.html','gaza.json','tree.css','tree.js','explorer.js'])assert.ok(build.includes('genealogy/'+name));
+ for(const slug of ['about','history','membership']){
+  const page=fs.readFileSync(slug+'/index.html','utf8');
+  assert.match(page,/href="\.\.\/genealogy\/"/);
+  assert.match(page,/aria-current="page"/);
+  assert.match(page,/Content-Security-Policy/);
+ }
+ assert.match(html,/href="\.\/genealogy\/"/);
+ const manifest=JSON.parse(fs.readFileSync('manifest.webmanifest','utf8'));
+ assert.ok(manifest.shortcuts.some(x=>x.url==='./genealogy/'));
+});
