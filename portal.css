@@ -664,3 +664,28 @@ html{padding-block:0!important;scroll-padding-top:0}
 #v-certificate .md-foot{background:#07152840;color:#dcecff;border-top:1px solid #dcecff35}
 @media screen and (max-width:550px){#v-certificate .md-main,#v-certificate .md-head{padding:20px 16px}#v-certificate .md-auth{grid-template-columns:1fr 1fr}#v-certificate .md-sign{grid-column:1/-1}#v-certificate .md-fields{gap:6px}#v-certificate .md-fields>div{padding:8px}}
 @media print{#v-certificate .membership-document{border-radius:12px;box-shadow:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}#v-certificate .md-main{padding:18px 28px}#v-certificate .md-head{padding:18px 28px}#v-certificate .md-auth{grid-template-columns:1fr 1fr 1fr;padding:12px;margin:16px 0}#v-certificate .md-sign{grid-column:auto}#v-certificate .md-person{backdrop-filter:none}}
+
+/* V47 — additive refinement; existing emerald/gold identity and certificate print retained. */
+@media screen {
+ .heritage-quick{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:18px}
+ .heritage-quick .btn{justify-content:center;min-height:44px}
+ .heritage-links{margin-top:18px;align-items:center}
+ .heritage-links .btn{white-space:normal;justify-content:center}
+ #v-history .card h2,#v-archive .card h2,#v-contact .card h2{font-size:clamp(24px,3vw,32px);color:var(--gold-on-green);margin-block:4px 10px}
+ #v-tree .card>.row{margin-block:16px}
+ #v-tree .wrap>.card{margin-bottom:16px}
+ .contact-email{margin-block:14px;overflow-wrap:anywhere}
+ .contact-email a{text-decoration:underline;text-underline-offset:4px}
+ .portal-loading{padding:16px;color:var(--fg2);border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface)}
+ .home-news-card{background:#123b30;border-color:var(--glass-border)}
+ .home-news-card h3{color:#fffaf0}
+ .home-news-card p{color:#f2f4ed}
+ .view .btn[disabled],.view button:disabled{cursor:not-allowed;opacity:.55;transform:none}
+ @media(max-width:600px){
+  .heritage-quick{gap:8px}.heritage-quick .btn{flex:1 1 140px;padding-inline:10px}
+  .heritage-links .btn,#v-tree .card>.row .btn{flex:1 1 135px}
+  .footer-links{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:center}
+  .view .card{overflow-wrap:anywhere}
+ }
+ @media(prefers-reduced-transparency:reduce){.home-news-card{background:#123b30;backdrop-filter:none;-webkit-backdrop-filter:none}}
+}
