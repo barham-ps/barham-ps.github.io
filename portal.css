@@ -562,3 +562,32 @@ html{padding-block:0!important;scroll-padding-top:0}
  }
  @media(prefers-reduced-motion:reduce){.btn,a.card{transition:none;transform:none}}
 }
+
+/* V41: spacing, typography, touch and responsive performance baseline. */
+@media screen {
+ :root{--space-1:8px;--space-2:16px;--space-3:24px;--space-4:32px;--space-5:40px;--space-6:48px;--space-8:64px;--radius-card:16px;--radius-large:20px;--motion:180ms;--content-max:1360px}
+ html{direction:rtl}
+ body{font-size:16px;line-height:1.7}
+ .wrap{max-width:var(--content-max);padding-inline:max(var(--space-2),env(safe-area-inset-right,0px)) max(var(--space-2),env(safe-area-inset-left,0px))}
+ header.site{max-width:var(--content-max);border-radius:var(--radius-large)}
+ header.site .wrap{gap:var(--space-2);padding-block:var(--space-2)}
+ .sec{padding-block:var(--space-4)}
+ .grid,.two,.two-f,.row,.sec-head,.home-section-head,.home-services #features{gap:var(--space-2)}
+ .card,.home-news-card,.lux-news-card,.welcome,.prompt,.frame,.vres,.family-calendar,form.auth{border-radius:var(--radius-card)}
+ .card,.home-services #features .card{padding:var(--space-2)}
+ .home-services #features .card{gap:var(--space-1)}
+ .card p,.home-services #features .card p{font-size:16px;line-height:1.7}
+ .home-services #features .card h3{font-size:18px;line-height:1.7}
+ .home-services #features{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .btn,.btn.sm,.menu-btn,nav.main a,.mobile-dock a,.seg button,.hub-tabs button{min-height:44px}
+ .btn,.menu-btn,nav.main a,.seg button{transition:background-color var(--motion) ease,border-color var(--motion) ease,transform var(--motion) ease}
+ nav.main a{display:flex;align-items:center}
+ .menu-btn{min-width:44px}
+ input:not([type=checkbox]):not([type=radio]),select,textarea{min-height:44px;font-size:16px;line-height:1.7}
+ .ic svg,.mobile-dock svg,nav.main svg,.btn svg{flex-shrink:0;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+ .home-services #features .card{min-width:0;overflow-wrap:anywhere}
+ @media(min-width:701px){body{font-size:17px}.sec{padding-block:var(--space-8)}.card{padding:var(--space-3)}.home-services #features{grid-template-columns:repeat(4,minmax(0,1fr))}}
+ @media(max-width:360px){.home-services #features{grid-template-columns:minmax(0,1fr)}.home-services #features .card:first-child{grid-column:auto}}
+ @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.menu-btn,nav.main a,.seg button,a.card{transition:none;transform:none}}
+ @media(max-width:700px){.home-news-card,form.auth{backdrop-filter:none;-webkit-backdrop-filter:none}}
+}
