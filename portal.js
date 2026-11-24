@@ -617,6 +617,12 @@
       } else make('p', box, 'تعذر تحميل مولد QR؛ استخدم رابط التحقق.');
       var link = make('a', box, 'رابط التحقق من الشهادة');
       link.href = url;
+      var seal = make('div', box);
+      seal.setAttribute('aria-label', 'ختم اعتماد بوابة آل برهم');
+      seal.style.cssText = 'width:132px;height:132px;border:6px double #a47b29;border-radius:50%;margin:20px auto;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#785615;background:#fff9e8;font-weight:bold;text-align:center;box-sizing:border-box;print-color-adjust:exact';
+      make('span', seal, '✦ آل برهم ✦');
+      make('strong', seal, 'عضوية معتمدة');
+      make('small', seal, 'AL BARHAM');
       make('p', box, 'يُرجى مطابقة رقم العضوية بنتيجة التحقق.');
       printButton.hidden = false;
     } catch (e) {
@@ -628,24 +634,25 @@
   verifyBody.className = 'card';
   var tokenInput = make('input', verify);
   tokenInput.type = 'text';
-  tokenInput.placeholder = 'رمز التحقق';
+  tokenInput.placeholder = 'رقم العضوية أو رمز التحقق';
+  tokenInput.dir = 'ltr';
   action(verify, 'تحقق', () => verifyToken(tokenInput.value.trim()));
   async function verifyToken(token) {
     verifyBody.replaceChildren();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
-      make('p', verifyBody, 'أدخل رمز التحقق الصحيح.');
+    token = String(token || '').trim().replace(/[٠-٩]/g, c => String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g, c => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
+    const byNumber = /^AB-\d{4}-\d{6}$/i.test(token);
+    if (!byNumber && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      make('p', verifyBody, 'أدخل رقم العضوية بصيغة AB-2026-000001 أو رمز التحقق الصحيح.');
       return;
     }
     try {
-      let q = await client().rpc('family_verify_certificate', {
-        p_token: token
-      });
+      let q = byNumber ? await client().rpc('family_verify_membership_number', {p_number: token.toUpperCase()}) : await client().rpc('family_verify_certificate', {p_token: token.toLowerCase()});
       if (q.error) {
         make('p', verifyBody, 'تعذر التحقق الآن.');
         return;
       }
       if (!q.data.length) {
-        make('h2', verifyBody, 'لم تُعثر على شهادة بهذا الرمز');
+        make('h2', verifyBody, 'لم يتم العثور على عضوية بهذا الرقم أو الرمز');
         return;
       }
       let d = q.data[0];
