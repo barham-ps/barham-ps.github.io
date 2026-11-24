@@ -704,3 +704,64 @@ html{padding-block:0!important;scroll-padding-top:0}
  .request-history time{display:block;font-size:13px;color:var(--fg2);margin-block:6px}
  @media(max-width:500px){.request-identity{padding:12px}.request-identity dl{grid-template-columns:1fr}}
 }
+
+/* V49 — member and administration workspaces; preserve existing identity and certificate. */
+@media screen{
+ #v-account .wrap,#v-member-hub .wrap,#v-admin .wrap,#v-member-services-admin .wrap{max-width:1180px}
+ .dashboard-shell,.admin-members{min-width:0}
+ .dashboard-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--glass-border,var(--line));background:var(--surface);padding:clamp(16px,3vw,26px);border-radius:var(--radius-large,20px);margin-block:16px}
+ .dashboard-heading h2{font-size:clamp(23px,4vw,32px);color:var(--gold-on-green);margin-block:4px;overflow-wrap:anywhere}
+ .dashboard-heading p{color:var(--fg2);margin:0}
+ .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:12px;margin-block:16px}
+ .dashboard-tile{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:start;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--glass-border,var(--line));border-radius:var(--radius-card,16px);padding:16px;min-height:100px;text-decoration:none;cursor:pointer;min-width:0}
+ .dashboard-tile:hover,.dashboard-tile[aria-pressed=true]{border-color:var(--gold);background:var(--band)}
+ .dashboard-tile>span:last-child{min-width:0;flex:1}
+ .dashboard-tile strong,.dashboard-tile small{display:block;overflow-wrap:anywhere}
+ .dashboard-tile strong{font-size:16px;line-height:1.55;color:var(--gold-on-green)}
+ .dashboard-tile small{font-size:13px;color:var(--fg2);margin-top:5px;line-height:1.65}
+ .dashboard-icon{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:12px;background:#ffffff12;color:var(--gold-on-green)}
+ .dashboard-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-block:16px}
+ .dashboard-tabs .btn{min-height:44px;white-space:normal;font-size:14px;padding:8px 14px}
+ .dashboard-tabs .btn[aria-pressed=true]{background:linear-gradient(145deg,#f5e6b8,#d4af37);color:#03251c;border-color:#f5e6b8}
+ .dashboard-search,.dashboard-filter{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card,16px);padding:16px;margin-block:16px}
+ .dashboard-search .f,.dashboard-filter .f{margin-block:0 10px}
+ .dashboard-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));align-items:end;gap:12px}
+ .dashboard-filter>p{grid-column:1/-1;color:var(--fg2);font-size:13px;margin:0}
+ .dashboard-content>.card{margin-top:16px;min-width:0;scroll-margin-top:24px}
+ .dashboard-content>.card h2{font-size:clamp(21px,3vw,28px)}
+ .dashboard-overview h3{font-size:21px;color:var(--gold-on-green)}
+ .dashboard-records{display:grid;grid-template-columns:1fr;gap:10px}
+ .dashboard-record{margin-block:10px;padding:0!important;overflow:hidden}
+ .dashboard-record>summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;cursor:pointer;list-style:none;padding:16px;min-height:54px}
+ .dashboard-record>summary::-webkit-details-marker{display:none}
+ .dashboard-record>summary:before{content:'＋';color:var(--gold-on-green);font-weight:700}
+ .dashboard-record[open]>summary:before{content:'−'}
+ .dashboard-record>summary strong{flex:1 1 180px;color:var(--gold-on-green);overflow-wrap:anywhere}
+ .dashboard-record>summary small{color:var(--fg2)}
+ .dashboard-state{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--fg);white-space:normal}
+ .dashboard-record-body{padding:16px;border-top:1px solid var(--line)}
+ .dashboard-record-body form+form{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+ .dashboard-record-body input,.dashboard-record-body select,.dashboard-record-body textarea{width:100%;min-width:0}
+ .dashboard-subnav{margin-block:12px 20px}
+ .account-summary{margin-block:12px}.account-summary #member-email{overflow-wrap:anywhere;text-align:start}
+ .account-actions{margin-block:16px;flex-wrap:wrap}.account-actions .btn{justify-content:center}
+ #v-account #account-status{font-size:16px;color:var(--gold-on-green);font-weight:600;padding:12px 14px;border-inline-start:3px solid var(--gold);background:var(--surface);border-radius:6px}
+ #v-admin .family-admin-stats,#v-member-services-admin .family-admin-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-block:18px}
+ #v-admin .family-admin-stats .card,#v-member-services-admin .family-admin-stats .card{text-align:center;padding:12px 8px;min-width:0}
+ #v-admin .family-admin-stats strong,#v-member-services-admin .family-admin-stats strong{display:block;font-size:clamp(23px,4vw,34px);color:var(--gold-on-green)}
+ #v-admin .family-admin-stats p,#v-member-services-admin .family-admin-stats p{font-size:13px;line-height:1.5;margin:4px 0}
+ .public-cms{margin-top:18px}.public-cms article{grid-column:1/-1;min-width:0}.public-cms article p{line-height:1.9}.public-cms article img{display:block;margin:16px auto 0;max-height:680px;object-fit:contain;border-radius:12px}
+ .dashboard-shell [hidden],.admin-members[hidden],.admin-navigation[hidden],.account-quick[hidden]{display:none!important}
+ @media(max-width:600px){
+  .dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dashboard-tile{flex-direction:column;gap:8px;padding:12px;min-height:130px}
+  .dashboard-tile strong{font-size:15px}.dashboard-tile small{font-size:12px}
+  .dashboard-tabs .btn{flex:1 1 105px;padding-inline:6px}
+  .dashboard-heading{padding:14px}.dashboard-heading .btn{width:100%;justify-content:center}
+  .dashboard-filter{grid-template-columns:1fr;gap:4px}
+  .dashboard-record>summary,.dashboard-record-body{padding:12px}
+  .dashboard-record>summary strong{flex-basis:calc(100% - 30px)}
+  #v-admin .family-admin-stats,#v-member-services-admin .family-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ }
+ @media(max-width:340px){.dashboard-grid{grid-template-columns:1fr}}
+}
