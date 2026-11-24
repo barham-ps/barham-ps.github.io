@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /database/
+Disallow: /tests/
+Disallow: /scripts/
+Sitemap: https://barham-ps.github.io/sitemap.xml
