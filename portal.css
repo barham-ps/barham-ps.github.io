@@ -689,3 +689,18 @@ html{padding-block:0!important;scroll-padding-top:0}
  }
  @media(prefers-reduced-transparency:reduce){.home-news-card{background:#123b30;backdrop-filter:none;-webkit-backdrop-filter:none}}
 }
+
+/* V48: member request and sender information, using existing portal tokens. */
+@media screen{
+ .request-history,.request-admin-filters{margin-block:20px}
+ .request-history>.card{margin-top:12px}
+ .request-body{white-space:pre-wrap;overflow-wrap:anywhere;margin-block:12px}
+ .request-identity{margin-block:14px;padding:16px;border:1px solid var(--glass-border,var(--line));border-radius:var(--radius-card,16px);background:var(--surface)}
+ .request-identity h3{margin-top:0;font-size:18px;color:var(--gold-on-green)}
+ .request-identity dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:12px;margin:12px 0 0}
+ .request-identity dl>div{min-width:0;border-inline-start:2px solid var(--gold);padding-inline-start:10px}
+ .request-identity dt{color:var(--fg2);font-size:13px}
+ .request-identity dd{margin:4px 0 0;color:var(--fg);font-weight:600;overflow-wrap:anywhere;unicode-bidi:plaintext}
+ .request-history time{display:block;font-size:13px;color:var(--fg2);margin-block:6px}
+ @media(max-width:500px){.request-identity{padding:12px}.request-identity dl{grid-template-columns:1fr}}
+}
