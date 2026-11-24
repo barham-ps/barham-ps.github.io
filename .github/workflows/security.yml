@@ -1,0 +1,121 @@
+name: Portal security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '21 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate portal JavaScript and security policy
+        run: |
+          node --check portal.js
+          node --check sw.js
+          node --check captcha.js
+          node --check security-config.js
+          sh scripts/build-pages.sh
+          test -f dist/_headers && test -f dist/captcha.js
+          node --test tests/security.test.cjs
+          node -e "JSON.parse(require('fs').readFileSync('vercel.json'))"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text()
+          assert 'Content-Security-Policy' in html
+          assert "script-src 'self'" in html
+          assert "object-src 'none'" in html
+          assert all(not body.strip() for body in re.findall(r'<script\b[^>]*>(.*?)</script\s*>', html, re.I | re.S)), 'Unexpected inline JavaScript'
+          for p in [Path('index.html'), Path('portal.js'), Path('sw.js')]:
+              content = p.read_text()
+              assert not re.search(r'sb_secret_[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----', content), 'Potential secret in ' + str(p)
+          print('Portal security baseline passed')
+          PY
+  codeql:
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    timeout-minutes: 35
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
+        with:
+          category: /language:${{ matrix.language }}
+
+  dependency-review:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Audit the deployed SDK package dependency graph
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          cd "$work"
+          npm init -y >/dev/null
+          npm install --package-lock-only --ignore-scripts --no-audit --save-exact @supabase/supabase-js@2.119.2
+          npm audit --audit-level=high
+      - name: Verify pinned browser dependencies against SRI and npm distribution
+        if: always()
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          curl --fail --silent --show-error --location --max-time 45 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js' -o "$work/supabase.js"
+          curl --fail --silent --show-error --location --max-time 45 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js' -o "$work/qrcode.js"
+          test "$(openssl dgst -sha384 -binary "$work/supabase.js" | openssl base64 -A)" = 'A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ'
+          test "$(openssl dgst -sha384 -binary "$work/qrcode.js" | openssl base64 -A)" = '3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU'
+          node --check "$work/supabase.js"
+          node --check "$work/qrcode.js"
+          cd "$work"
+          package=$(npm pack --ignore-scripts --silent @supabase/supabase-js@2.119.2)
+          tar -xOf "$package" package/dist/umd/supabase.js > registry-sdk.js
+          cmp supabase.js registry-sdk.js
+          node <<'JS'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const sandbox = {console, URL, URLSearchParams, Headers, Request, Response,
+            AbortController, TextEncoder, TextDecoder, crypto: globalThis.crypto,
+            WebSocket: globalThis.WebSocket, setTimeout, clearTimeout, setInterval, clearInterval,
+            fetch: async () => { throw Error('Network disabled in SDK smoke test'); }};
+          sandbox.window = sandbox.self = sandbox;
+          vm.createContext(sandbox);
+          vm.runInContext(fs.readFileSync('supabase.js','utf8'), sandbox, {filename:'supabase.js',timeout:5000});
+          const sdk = sandbox.supabase;
+          if (typeof sdk?.createClient !== 'function') throw Error('Browser global missing');
+          const c = sdk.createClient('https://example.supabase.co','sb_publishable_test',
+            {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+          for (const k of ['getUser','getSession','signUp','signInWithPassword','resetPasswordForEmail','updateUser','signOut'])
+            if (typeof c.auth[k] !== 'function') throw Error(k);
+          if (typeof c.auth.mfa.getAuthenticatorAssuranceLevel !== 'function' ||
+              typeof c.from !== 'function' || typeof c.rpc !== 'function' ||
+              typeof c.storage.from !== 'function') throw Error('API mismatch');
+          console.log('Browser-global SDK smoke test passed');
+          JS
