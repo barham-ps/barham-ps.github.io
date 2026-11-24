@@ -506,3 +506,59 @@ html{padding-block:0!important;scroll-padding-top:0}
   .card:not([style*="background"]),form.auth,.empty,.welcome,.prompt,.frame,.vres,.note,.tablewrap,ol.steps li,.lux-news-card,.family-calendar,.scan-stat,.lux-members li,.news-edit-photo,header.site,.mobile-dock{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
  }
 }
+
+/* Emerald Gold Glass Design System 1.0 — screen only; preserve certificate print. */
+@media screen {
+ :root, :root[data-theme="dark"], :root[data-theme="light"] {
+  --bg:#03251C;--surface:#123d31;--band:#10382d;--fg:#FAFCFB;--fg2:#d4e5de;--line:#688a79;
+  --green:#064E3B;--green-deep:#03251C;--on-green:#FAFCFB;--on-green2:#d4e5de;
+  --gold:#D4AF37;--gold-ink:#F5E6B8;--gold-on-green:#F5E6B8;--ok:#a4e6b9;--warn:#ffd69b;--info:#b6dfff;
+  --glass-canvas:radial-gradient(ellipse at 12% 10%,#064E3B 0%,transparent 48%),radial-gradient(ellipse at 92% 36%,#81702b38 0%,transparent 42%),radial-gradient(ellipse at 15% 85%,#064E3B 0%,transparent 48%),#03251C;
+  --glass-surface:linear-gradient(145deg,rgba(255,255,255,.15),rgba(255,255,255,.08));
+  --glass-border:rgba(212,175,55,.48);--glass-field:#123d31;--glass-dark:var(--glass-surface);
+  --glass-shine:inset 0 1px 0 rgba(255,255,255,.25);--glass-shadow:0 8px 24px #00160f33;
+  color-scheme:dark;
+ }
+ body{background:var(--glass-canvas);color:var(--fg)}
+ .sec.alt,.authpage{background:transparent}
+ .card:not([style*="background"]),form.auth,.empty,.welcome,.prompt,.frame,.vres,.note,.tablewrap,ol.steps li,.lux-news-card,.family-calendar,.scan-stat,.lux-members li,.news-edit-photo,.home-news-card,.band-green,.authside,.family-footer,.lux-verse-box,.mcard,.photo-dialog,header.site,.mobile-dock{
+  background:var(--surface);border-color:var(--glass-border);box-shadow:var(--glass-shine),var(--glass-shadow);
+ }
+ @supports ((backdrop-filter:blur(16px)) or (-webkit-backdrop-filter:blur(16px))){
+  .card:not([style*="background"]),form.auth,.empty,.welcome,.prompt,.frame,.vres,.note,.tablewrap,ol.steps li,.lux-news-card,.family-calendar,.scan-stat,.lux-members li,.news-edit-photo,.home-news-card,.band-green,.authside,.family-footer,.lux-verse-box,.mcard{
+   background:var(--glass-surface);
+  }
+  header.site,.mobile-dock,.photo-dialog{background:rgba(3,37,28,.85);backdrop-filter:blur(24px) saturate(145%);-webkit-backdrop-filter:blur(24px) saturate(145%)}
+  .home-news-card,form.auth{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+ }
+ header.site{margin:8px auto;max-width:1280px;width:calc(100% - 24px);border:1px solid var(--glass-border);border-radius:18px}
+ header.site .brand b,header.site .brand-ar,.card h3,.home-services #features .card h3{color:var(--gold-on-green)}
+ .card p,.home-services #features .card p{color:var(--fg2)}
+ .ic,.home-services #features .card .ic{color:var(--gold-on-green);background:rgba(255,255,255,.10)}
+ .home-intro{border-block:1px solid var(--glass-border)}
+ .home-intro .wrap{padding-block:clamp(24px,5vw,54px)}
+ .home-intro h1{font-size:clamp(28px,5vw,48px)}
+ .home-intro h1 span{color:var(--gold-on-green)}
+ .btn-gold,.hub-tabs .btn[aria-pressed=true]{background:linear-gradient(145deg,#F5E6B8,#D4AF37 70%,#bd962b);color:#03251C;border-color:#F5E6B8}
+ .btn-dark,.btn-ghost,.btn-line,.hub-tabs .btn:not([aria-pressed=true]),.menu-btn{background:rgba(255,255,255,.10);color:var(--fg);border-color:var(--glass-border)}
+ .btn{min-height:44px;border-radius:12px;transition:transform 180ms ease,border-color 180ms ease}
+ .btn:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #F5E6B8;outline-offset:3px}
+ input:not([type=checkbox]):not([type=radio]),select,textarea{background:var(--glass-field);color:var(--fg);border-color:var(--line)}
+ input::placeholder,textarea::placeholder{color:#c1d4cb;opacity:1}
+ .mobile-dock a[aria-current=page],.mobile-dock a[aria-current=page] svg{color:#F5E6B8}
+ .mobile-dock a[aria-current=page]{background:#ffffff1a}
+ .home-services #features{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .home-services #features .card{padding:16px 10px;min-height:124px;border-radius:18px}
+ .home-services #features .card p{font-size:13px}
+ .home-services #features .card h3{font-size:16px}
+ .home-services #features .card:first-child{grid-column:span 2}
+ @media(min-width:701px){
+  .home-services #features{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .home-services #features .card:first-child{grid-row:span 2}
+ }
+ @media(max-width:700px){header.site{width:calc(100% - 16px);margin:6px auto}.home-services #features .card{min-height:110px}.home-services #features .card h3{font-size:15px}}
+ @media(prefers-reduced-transparency:reduce){
+  .card:not([style*="background"]),form.auth,.empty,.welcome,.prompt,.frame,.vres,.note,.tablewrap,ol.steps li,.lux-news-card,.family-calendar,.scan-stat,.lux-members li,.news-edit-photo,.home-news-card,.band-green,.authside,.family-footer,.lux-verse-box,.mcard,.photo-dialog,header.site,.mobile-dock{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+ }
+ @media(prefers-reduced-motion:reduce){.btn,a.card{transition:none;transform:none}}
+}
