@@ -1,0 +1,34 @@
+name: Upgrade validation (no deployment)
+on:
+  push:
+    branches: [professional-upgrade]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Syntax and regression tests
+        run: |
+          node --check portal.js
+          node --check sw.js
+          node --check captcha.js
+          node --check security-config.js
+          node --test tests/*.test.cjs
+      - name: Build and validate public assets
+        run: |
+          sh scripts/build-pages.sh
+          python3 - <<'PY'
+          import json, pathlib, xml.etree.ElementTree as ET
+          d = pathlib.Path('dist')
+          for p in ['index.html','about/index.html','history/index.html','membership/index.html','public.css','robots.txt','sitemap.xml','sw.js','_headers']:
+              assert (d/p).is_file(), p
+          json.loads((d/'manifest.webmanifest').read_text())
+          ET.parse(d/'sitemap.xml')
+          print('Build assets and metadata valid')
+          PY
