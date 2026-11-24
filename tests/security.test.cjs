@@ -214,3 +214,26 @@ test('genealogy controls, local links, public pages and published assets are pre
  const manifest=JSON.parse(fs.readFileSync('manifest.webmanifest','utf8'));
  assert.ok(manifest.shortcuts.some(x=>x.url==='./genealogy/'));
 });
+
+test('history does not duplicate genealogy call to action and sender details stay admin-only',()=>{
+ const history=html.match(/<section class="view" id="v-history"[\s\S]*?<\/section>/)[0];
+ assert.doesNotMatch(history,/href="\.\/genealogy\/"/);
+ const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
+ assert.match(tree,/href="\.\/genealogy\/"/);
+ const admin=js.slice(js.indexOf('async function loadServicesAdmin()'),js.indexOf("var heritage = newView"));
+ assert.match(admin,/rpc\('family_is_admin'\)/);
+ assert.match(admin,/rpc\('family_admin_request_senders',\{p_request_ids:rows\.map\(x=>x\.id\)\}\)/);
+ const sql=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
+ assert.match(sql,/if auth\.uid\(\) is null or not public\.family_is_admin\(\)/);
+ assert.match(sql,/revoke all on function public\.family_admin_request_senders\(uuid\[\]\) from public, anon, authenticated/);
+ assert.match(sql,/where r\.id=any\(p_request_ids\)/);
+});
+test('repeat request submissions are independent and new submissions do not reload the member hub',()=>{
+ const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('var searchAll = field(hubBody'));
+ assert.match(req,/\.insert\(\{user_id:uid,kind,title,body\}\)\.select/);
+ assert.match(req,/mine=\[created,\.\.\.mine\.filter/);
+ assert.match(req,/drawRequests\(\);rf\.reset\(\)/);
+ assert.match(req,/finally\{send\.disabled=false;\}/);
+ assert.match(req,/Daily request limit/);
+ assert.doesNotMatch(req,/loadHub\(\);/);
+});
