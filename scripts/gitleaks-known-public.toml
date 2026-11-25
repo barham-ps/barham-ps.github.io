@@ -4,9 +4,12 @@
 useDefault = true
 
 [[allowlists]]
-description = "Known Supabase publishable client key in historical portal.js only"
+description = "Known exact Supabase publishable client key in portal.js and public runtime.js"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['(^|/)portal\.js$']
+paths = ['(^|/)(portal|runtime)\.js
+regexTarget = "secret"
+regexes = ['^sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw$']
+]
 regexTarget = "secret"
 regexes = ['^sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw$']

@@ -9,15 +9,28 @@ const base='https://127.0.0.1:8765/';
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',ignoreHTTPSErrors:true});
   const page=await context.newPage();
-  let adminLoads=0;
+  let adminLoads=0, publicNewsRequests=0;
   // Local synthetic browser diagnostics only; never record remote URLs or credentials.
   page.on('pageerror',e=>console.error('Browser exception:',e.name,e.message.slice(0,200)));
   page.on('requestfailed',r=>{const u=new URL(r.url());if(u.hostname==='127.0.0.1')console.error('Local request failed:',u.protocol,u.pathname,r.failure()?.errorText);});
   await page.route('**/martyrs/admin.js*',r=>{adminLoads++;return r.abort();});
   await page.route('**/*.supabase.co/**',r=>r.abort());
+  await page.route('**/rest/v1/family_news?*',async r=>{
+   const req=r.request(),u=new URL(req.url());
+   if(u.searchParams.get('limit')==='1'){
+    publicNewsRequests++;
+    assert.equal(u.searchParams.get('published'),'eq.true');
+    assert.equal(req.method(),'GET');
+    assert.equal(req.headers().authorization,undefined);
+    return r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'apikey'},body:'[]'});
+   }
+   return r.abort();
+  });
   await page.addInitScript(()=>{try{if(localStorage.getItem('barham-low-data-v1')===null)localStorage.setItem('barham-low-data-v1','off');}catch{}});
   await page.goto(base,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>Boolean(window.familyRuntime)&&document.getElementById('bandwidth-toggle')?.disabled===false);
+  await page.getByText('لا أخبار منشورة حاليًا.',{exact:true}).waitFor({state:'visible'});
+  assert.equal(publicNewsRequests,1,'Initial public news uses a single anonymous request');
   await page.locator('#bandwidth-toggle').click();
   assert.equal(await page.locator('html').getAttribute('data-low-data'),'true');
   await page.reload({waitUntil:'domcontentloaded'});
