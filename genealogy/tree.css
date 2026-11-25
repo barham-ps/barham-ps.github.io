@@ -57,3 +57,11 @@
   .genealogy-page :is(.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.stats>div){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
  }
 }
+
+/* V7 — inherit semantic portal tokens; focused nodes keep the dark surface. */
+@media screen{
+ .genealogy-page :is(.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.explorer-switch) :is(h2,h3){color:var(--heading)}
+ .genealogy-page :is(.visual-card,.path-item,.view-tab,.result-nav button):focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}
+ :root[data-theme="light"] .genealogy-page :is(.visual-card,.path-item,.view-tab,.result-nav button){border-color:var(--control-edge)}
+ :root[data-theme="light"] .genealogy-page .visual-card.is-focused{border-color:var(--gold-on-green);color:var(--on-green)}
+}

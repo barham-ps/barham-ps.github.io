@@ -15,6 +15,15 @@ on:
       - 'tests/browser-smoke.cjs'
       - 'scripts/build-pages.sh'
       - '.github/workflows/browser-upgrade.yml'
+      - 'martyrs/**'
+  pull_request:
+    paths:
+      - 'portal.css'
+      - 'public.css'
+      - 'genealogy/**'
+      - 'martyrs/**'
+      - 'tests/browser-smoke.cjs'
+      - '.github/workflows/browser-upgrade.yml'
   workflow_dispatch:
 permissions:
   contents: read
