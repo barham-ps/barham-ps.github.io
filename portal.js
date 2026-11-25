@@ -50,10 +50,30 @@
       '</p></div>'
   }).join('');
 
-  var h = new Date().getHours(),
-    g = document.getElementById('greet');
-  g.textContent = (h >= 5 && h < 12 ? 'صباح الخير' : h >= 12 && h < 17 ? 'نهارك سعيد' : h >= 17 && h < 21 ?
-    'مساء الخير' : 'ليلتك سعيدة') + '، أهلًا بك في بيتنا';
+  // Palestinian civil time; only the greeting is displayed.
+  function familyGreeting(now) {
+    var hour = Number(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Gaza', hour: '2-digit', hourCycle: 'h23'
+    }).format(now));
+    return (hour >= 5 && hour < 12 ? 'صباح الخير' :
+      hour >= 12 && hour < 17 ? 'نهارك سعيد' : 'مساء الخير') + '، أهلًا بك في بيتنا';
+  }
+  function updateFamilyGreeting() {
+    var greet = document.getElementById('greet');
+    if (!greet) return;
+    try {
+      var message = familyGreeting(new Date());
+      if (greet.textContent !== message) greet.textContent = message;
+    } catch (error) {
+      greet.textContent = 'أهلًا بك في بيتنا';
+    }
+  }
+  updateFamilyGreeting();
+  window.setInterval(updateFamilyGreeting, 15000);
+  window.addEventListener('pageshow', updateFamilyGreeting);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) updateFamilyGreeting();
+  });
   var views = [].slice.call(document.querySelectorAll('.view'));
   var hdr = $('#hdr'),
     btn = $('#menuBtn');

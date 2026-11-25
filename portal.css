@@ -995,3 +995,46 @@ html{padding-block:0!important;scroll-padding-top:0}
 
 /* V70: verified account address is locked during recovery. */
 @media screen{#recovery-email-form input[readonly]{background:var(--band);border-color:var(--gold);cursor:default;opacity:1}#recovery-email-form input[readonly]:focus{outline:2px solid var(--gold)}}
+
+/* V72 — family visual hierarchy, restrained translucency, RTL and responsive layouts. */
+@media screen {
+  #v-home .home-intro{background:radial-gradient(ellipse at 12% 12%,#d6b77720,transparent 55%),linear-gradient(145deg,#09291f,#164638 64%,#0b3025)}
+  #v-home .home-intro>.wrap{padding-block:clamp(24px,4vw,56px)}
+  .family-welcome{padding:clamp(16px,3vw,32px);border:1px solid #c9b07180;border-radius:22px;background:#ffffff08;box-shadow:inset 0 1px 0 #ffffff13,0 16px 36px #00160f35}
+  #v-home .family-hero-copy .greet{display:table;max-width:100%;padding:4px 12px;border:1px solid #cbb47880;border-radius:100px;background:#001f1560;color:#fff0c8;font-size:14px;line-height:1.7}
+  #v-home .family-description{font-size:clamp(15px,1.8vw,17px);line-height:1.95;max-width:65ch;color:#e1eee6}
+  #v-home .visitor-entry a{background:#ffffff0c;border-radius:13px;box-shadow:inset 0 1px 0 #ffffff0c}
+  #v-home .visitor-entry a:hover{background:#ffffff18}
+  #v-home .home-news,#v-home .home-search-entry,#v-home .home-services,.family-transparency{max-width:1132px;margin-inline:auto;margin-block:clamp(18px,3vw,32px)}
+  #v-home .home-section-head,.family-section-heading{padding-block-end:10px;border-block-end:1px solid #c6ad704d;gap:10px}
+  .family-section-heading h2{font-size:clamp(23px,3vw,32px);line-height:1.5}
+  .family-trust-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .family-trust-card{display:flex;flex-direction:column;gap:8px;min-width:0;padding:clamp(15px,2.5vw,22px);border:1px solid var(--glass-border,var(--line));border-radius:16px;background:var(--surface);box-shadow:inset 0 1px 0 #ffffff12,0 8px 20px #00160f25;overflow-wrap:anywhere}
+  .family-trust-card h3{font-size:20px;color:var(--gold-on-green);line-height:1.5}
+  .family-trust-card p{font-size:14px;line-height:1.85;color:var(--fg2)}
+  .family-trust-card a{display:inline-flex;align-items:center;min-height:44px;margin-block-start:auto;color:var(--gold-on-green);font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+  .family-trust-card a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
+  #v-home .home-services #features .card,.family-utility-link{border-radius:16px;box-shadow:inset 0 1px 0 #ffffff12,0 6px 20px #00160f20}
+  #v-home .home-services #features .card h3{font-size:17px}
+  #v-home .home-services #features .card p{font-size:14px;line-height:1.8}
+  #v-home .home-services #features .card .more{margin-block-start:auto}
+  header.site nav.main a[aria-current=page]{background:#d4af3714;border-radius:8px 8px 0 0}
+  header.site nav.main a{min-height:44px;display:inline-flex;align-items:center}
+  .view:not(#v-home)>.phero{border-block-end:1px solid #bda36a80}
+  .view:not(#v-home)>.phero .wrap{padding-block:clamp(20px,4vw,42px)}
+  .view:not(#v-home)>.phero h1{line-height:1.5}
+  :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile{border-radius:16px;background:linear-gradient(145deg,#ffffff09,#ffffff00),var(--surface);box-shadow:inset 0 1px 0 #ffffff12,0 5px 16px #00160f26;overflow-wrap:anywhere}
+  :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile small{line-height:1.7}
+  :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
+  :is(#v-login,#v-register,#v-reset,#v-verify) input:not([type=checkbox]):not([type=radio]):not([type=hidden]){min-height:44px;font-size:16px}
+  footer.site .footer-links a{text-underline-offset:4px}
+  footer.site .footer-links a:hover{text-decoration:underline}
+}
+@media screen and (max-width:700px){
+  .family-welcome{padding:16px;border-radius:16px;gap:12px}
+  .family-trust-grid{grid-template-columns:1fr;gap:10px}
+  #v-home .family-hero-copy .greet{font-size:13px}
+  #v-home .home-services #features .card h3{font-size:16px}
+  #v-home .home-services #features .card p{font-size:13px}
+  .family-trust-card{padding:15px}
+}

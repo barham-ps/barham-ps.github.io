@@ -121,3 +121,25 @@ test('family foyer and member lounge preserve visitor and approved-member bounda
  assert.ok(js.includes("accountLinks.appendChild($('#logout'))"));
  assert.ok(css.includes('V68 — Family hospitality'));
 });
+
+test('Palestine greeting uses exactly three phrases and updates without exposing time',()=>{
+ const vm=require('node:vm'),js=read('portal.js');
+ const source=js.slice(js.indexOf('  function familyGreeting('),js.indexOf('  var views ='));
+ const greet={textContent:''};let interval,visibility,pageshow,hidden=false;
+ let now='2026-11-25T02:59:59Z';
+ class FakeDate extends Date{constructor(){super(now);}}
+ const doc={getElementById:id=>id==='greet'?greet:null,get hidden(){return hidden;},addEventListener:(name,fn)=>{if(name==='visibilitychange')visibility=fn;}};
+ vm.runInNewContext(source,{Date:FakeDate,Intl,document:doc,window:{setInterval:(fn,ms)=>{assert.equal(ms,15000);interval=fn;},addEventListener:(name,fn)=>{if(name==='pageshow')pageshow=fn;}}});
+ const suffix='، أهلًا بك في بيتنا';
+ assert.equal(greet.textContent,'مساء الخير'+suffix);
+ now='2026-11-25T03:00:00Z';interval();assert.equal(greet.textContent,'صباح الخير'+suffix);
+ now='2026-11-25T10:00:00Z';pageshow();assert.equal(greet.textContent,'نهارك سعيد'+suffix);
+ now='2026-11-25T15:00:00Z';hidden=true;visibility();assert.equal(greet.textContent,'نهارك سعيد'+suffix);
+ hidden=false;visibility();assert.equal(greet.textContent,'مساء الخير'+suffix);
+ now='2026-07-15T09:00:00Z';interval();assert.equal(greet.textContent,'نهارك سعيد'+suffix);
+ now='2026-07-15T14:00:00Z';interval();assert.equal(greet.textContent,'مساء الخير'+suffix);
+ const html=read('index.html'),hero=html.slice(html.indexOf('class="family-welcome"'),html.indexOf('class="visitor-title"'));
+ assert.match(hero,/غزة والضفة الغربية/);assert.doesNotMatch(hero,/بني سهيلة|خان يونس|<time\b/);
+ assert.match(hero,/جذورٌ تجمعنا، وعهدٌ نحمله إلى الأجيال\./);
+ assert.match(html,/id="family-transparency-title"/);
+});
