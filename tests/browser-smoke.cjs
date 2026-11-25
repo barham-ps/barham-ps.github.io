@@ -19,9 +19,13 @@ const base='http://127.0.0.1:8765/';
    assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history','./martyrs/']);
    assert.ok(await page.locator('.visitor-entry a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
    await visible('[data-family-theme]');
-   await page.evaluate(()=>{localStorage.setItem('barham-appearance-v1','dark');});await page.reload();await visible('[data-family-theme]');
+   await page.emulateMedia({colorScheme:'light'});
+   await page.evaluate(()=>{localStorage.removeItem('barham-appearance-v1');});await page.reload();await visible('[data-family-theme]');
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+   const glass=()=>page.locator('#features > a').first().evaluate(e=>({bg:getComputedStyle(e).backgroundColor,opacity:getComputedStyle(e).opacity}));
+   assert.deepEqual(await glass(),{bg:'rgba(18, 61, 49, 0.74)',opacity:'1'});
    await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
+   assert.deepEqual(await glass(),{bg:'rgba(255, 253, 248, 0.74)',opacity:'1'});
    await page.reload();await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
    if(width<=700){await visible('.mobile-dock');assert.equal(await page.locator('.mobile-dock a').count(),5);assert.equal(await page.locator('.mobile-dock a[aria-current=page]').getAttribute('href'),'#home');assert.equal(await page.locator('[data-dock-route=account]').getAttribute('href'),'#login');}
    await visible('.family-welcome');await visible('#family-primary-entry');await visible('#family-join-entry');

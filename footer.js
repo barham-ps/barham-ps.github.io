@@ -27,11 +27,10 @@
   if(!button)return;
   const root=document.documentElement;
   const key='barham-appearance-v1';
-  const media=window.matchMedia('(prefers-color-scheme: dark)');
   let choice=null;
   try{const saved=localStorage.getItem(key);if(saved==='light'||saved==='dark')choice=saved;}catch(_){}
   function apply(){
-    const theme=choice||(media.matches?'dark':'light');
+    const theme=choice||'dark'; // Original emerald appearance is the default.
     root.dataset.theme=theme;
     button.setAttribute('aria-pressed',String(theme==='dark'));
     const next=theme==='dark'?'نهاري':'ليلي';
@@ -47,8 +46,6 @@
     try{localStorage.setItem(key,choice);}catch(_){}
     apply();
   });
-  if(media.addEventListener)media.addEventListener('change',()=>{if(!choice)apply();});
-  else if(media.addListener)media.addListener(()=>{if(!choice)apply();});
   window.addEventListener('storage',event=>{
     if(event.key!==key&&event.key!==null)return;
     choice=event.newValue==='light'||event.newValue==='dark'?event.newValue:null;

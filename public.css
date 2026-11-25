@@ -65,3 +65,16 @@ a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
  .secondary-action{border-color:var(--page-line)}
  .public-card a:focus-visible{outline-color:var(--page-gold)}
 }
+
+/* V6 — consistent medium glass, with script-free device appearance. */
+@media screen{
+ :root{--public-glass:rgba(18,61,49,.74)}
+ @media(prefers-color-scheme:light){
+  :root{--public-glass:rgba(255,253,248,.74)}
+  body{background:radial-gradient(ellipse at 12% 8%,#dce9df,transparent 52%),radial-gradient(ellipse at 95% 55%,#ebdfbf,transparent 46%),var(--page-bg)}
+ }
+ @supports ((backdrop-filter:blur(10px)) or (-webkit-backdrop-filter:blur(10px))){
+  .public-card{background:var(--public-glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ }
+ @media(prefers-reduced-transparency:reduce){.public-card{background:var(--page-surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
+}

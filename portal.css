@@ -1111,3 +1111,47 @@ html{padding-block:0!important;scroll-padding-top:0}
  @media(max-width:360px){.family-theme-toggle{padding-inline:9px}.family-theme-toggle [data-theme-label]{display:none}.family-utility{grid-template-columns:1fr}}
  @media(prefers-reduced-motion:reduce){.family-theme-toggle,.btn,.mobile-dock a{transition:none;transform:none}}
 }
+
+/* V74 — medium glass, same visual weight in day and original emerald night.
+   Alpha affects backgrounds only; text, icons, controls and certificates stay opaque. */
+@media screen{
+ :root{
+  --glass-card:rgba(18,61,49,.74);
+  --glass-chrome:rgba(3,37,28,.76);
+  --glass-hero:rgba(16,56,45,.74);
+  --glass-blur:10px;
+  --glass-canvas:radial-gradient(ellipse at 12% 8%,#105b43 0%,transparent 50%),radial-gradient(ellipse at 95% 55%,#75612c3d,transparent 46%),#03251c;
+ }
+ :root[data-theme="dark"]{
+  --glass-canvas:radial-gradient(ellipse at 12% 8%,#105b43 0%,transparent 50%),radial-gradient(ellipse at 95% 55%,#75612c3d,transparent 46%),#03251c;
+ }
+ :root[data-theme="light"]{
+  --glass-card:rgba(255,253,248,.74);
+  --glass-chrome:rgba(255,253,248,.76);
+  --glass-canvas:radial-gradient(ellipse at 12% 8%,#dce9df 0%,transparent 52%),radial-gradient(ellipse at 95% 55%,#ebdfbf 0%,transparent 46%),#f7f5ed;
+ }
+ /* Solid fallbacks are also used on devices without backdrop-filter. */
+ :root :is(header.site,.mobile-dock){background:var(--surface)}
+ :root :is(.family-utility-link,.family-trust-card,.family-transparency>summary),:root #v-home .home-services #features .card,:root :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile{background:var(--surface)}
+ @supports ((backdrop-filter:blur(10px)) or (-webkit-backdrop-filter:blur(10px))){
+  :root :is(.card:not([style*="background"]),.family-utility-link,.family-trust-card,.family-transparency>summary,.welcome,.empty,.lux-news-card,.family-calendar,.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.stats>div),
+  :root #v-home .home-services #features .card,
+  :root :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile{
+   background:var(--glass-card);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));
+  }
+  :root[data-theme] :is(header.site,.mobile-dock){background:var(--glass-chrome);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur))}
+  :root #v-home .family-welcome{background:var(--glass-hero);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur))}
+  :root #v-home .visitor-entry a{background:rgba(20,66,50,.74)}
+ }
+ /* Featured news and private forms intentionally retain solid contrast. */
+ :root #v-home .home-news-card{background:#123b30}
+ :root :is(form.auth,.photo-dialog){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+ :root[data-theme="light"] :is(.band-green,.authside) :is(.btn-ghost,.btn-line){background:#164738;color:#fff5dc;border-color:#c8b279}
+ @media(prefers-reduced-transparency:reduce){
+  :root :is(.card:not([style*="background"]),.family-utility-link,.family-trust-card,.family-transparency>summary,.welcome,.empty,.lux-news-card,.family-calendar,.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.stats>div),
+  :root #v-home .home-services #features .card,
+  :root :is(#v-account,#v-member-hub,#v-admin,#v-member-services-admin) .dashboard-tile,
+  :root[data-theme] :is(header.site,.mobile-dock){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  :root #v-home .family-welcome,:root #v-home .visitor-entry a{background:#123b30;backdrop-filter:none;-webkit-backdrop-filter:none}
+ }
+}

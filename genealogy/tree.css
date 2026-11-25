@@ -47,3 +47,13 @@
  .genealogy-page .stats>div span{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
  .genealogy-page .view-tab{font-size:13px}
 }
+
+/* V6 — use the shared medium glass without affecting the tree's node contrast. */
+@media screen{
+ @supports ((backdrop-filter:blur(10px)) or (-webkit-backdrop-filter:blur(10px))){
+  .genealogy-page :is(.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.stats>div){background:var(--glass-card);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur))}
+ }
+ @media(prefers-reduced-transparency:reduce){
+  .genealogy-page :is(.tree-toolbar,.tree-panel,.visual-panel,.source-panel,.stats>div){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+ }
+}

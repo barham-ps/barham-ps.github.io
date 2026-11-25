@@ -54,7 +54,7 @@ test('public news starts without waiting for authentication and stale certificat
 test('visitor priorities are visible without authentication and print design remains separate',()=>{
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
  assert.match(h,/<nav class="visitor-entry"[\s\S]*?href="#news"[\s\S]*?href="\.\/genealogy\/"[\s\S]*?href="#history"/);
- assert.ok(tree.includes('portal.css?v=73')&&tree.includes('tree.css?v=5'));
+ assert.ok(tree.includes('portal.css?v=74')&&tree.includes('tree.css?v=6'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
 
@@ -152,4 +152,13 @@ test('V73 theme and compact navigation preserve routes and private controls',()=
  assert.match(html,/<details class="wrap family-transparency">/);
  assert.match(theme,/barham-appearance-v1/);
  assert.match(read('genealogy/index.html'),/data-family-theme/);assert.match(read('martyrs/index.html'),/data-family-theme/);
+});
+
+test('V74 moderate background glass and original default theme',()=>{
+ const css=read('portal.css'),footer=read('footer.js');
+ assert.match(footer,/const theme=choice\|\|'dark'/);
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.74\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.74\)/);
+ assert.match(css,/--glass-blur:10px/);
+ for(const path of ['portal.css','genealogy/tree.css','martyrs/memorial.css','public.css'])assert.match(read(path),/prefers-reduced-transparency:reduce/);
 });
