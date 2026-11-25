@@ -629,3 +629,16 @@ test('public homepage has no network controls or diagnostic result markup',()=>{
  assert.match(runtime,/document\.documentElement\.dataset\.lowData/);
  assert.doesNotMatch(runtime,/PerformanceObserver|local-diagnostics/);
 });
+
+
+test('royal home polish is screen-only and preserves public navigation and accessibility',()=>{
+ const css=fs.readFileSync('portal.css','utf8');
+ const royal=css.slice(css.indexOf('/* Royal public home typography'));
+ assert.match(royal,/@media screen/);assert.match(royal,/--royal-ar:'Amiri'/);
+ assert.match(royal,/prefers-reduced-motion:reduce/);assert.match(royal,/data-low-data=true/);
+ assert.doesNotMatch(royal,/grid-template|position:fixed|display:none|#v-certificate/);
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/if\(lowData\(\)\|\|navigator\.onLine===false/);
+ assert.match(runtime,/family=Amiri:wght@700&display=optional/);
+ assert.match(runtime,/window\.addEventListener\('load',loadRoyalHeadingFont/);
+});
