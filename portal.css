@@ -947,3 +947,9 @@ html{padding-block:0!important;scroll-padding-top:0}
  @media(max-width:700px){.soc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.soc-metric{padding:12px 9px}.soc-event{display:grid}.soc-command .row .btn{flex:1 1 145px;justify-content:center}}
  @media(max-width:340px){.soc-grid{grid-template-columns:1fr}}
 }
+
+/* Four public entry points including the memorial archive. */
+.visitor-entry{grid-template-columns:repeat(4,minmax(0,1fr));max-width:860px}
+.visitor-entry a{min-width:0;text-align:center;line-height:1.5}
+@media(max-width:640px){.visitor-entry{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:420px}.visitor-entry a{flex-direction:row;min-height:51px;font-size:13px;padding:8px 5px;gap:6px}}
+@media(max-width:340px){.visitor-entry a{font-size:11px;gap:4px}}
