@@ -286,7 +286,12 @@ test('simplified navigation uses one tree entry and preserves historical content
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
  const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
- assert.deepEqual(Array.from(features.matchAll(/\['([^']+)','[^']+','[^']+','[^']+'\]/g), m=>m[1]),['heritage','news','martyrs','community','membership']);
+ assert.deepEqual(Array.from(features.matchAll(/\['([^']+)','[^']+','[^']+','[^']+'\]/g), m=>m[1]),['heritage','community','membership']);
+ const visitor=html.match(/<nav class="visitor-entry"[\s\S]*?<\/nav>/)[0];
+ assert.match(visitor,/href="#news"/);
+ assert.match(visitor,/href="\.\/martyrs\/"/);
+ assert.match(js,/\['news', 'الأخبار', 'news', '#news'\]/);
+ assert.match(js,/\['martyrs', 'الشهداء', 'heart', '\.\/martyrs\/'\]/);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);
