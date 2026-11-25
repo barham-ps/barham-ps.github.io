@@ -7,9 +7,18 @@ const base='https://127.0.0.1:8765/';
  assert.ok(['chromium','firefox','webkit'].includes(type));
  const browser=await playwright[type].launch();
  try{
+  const staticContext=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:844},ignoreHTTPSErrors:true});
+  const staticPage=await staticContext.newPage();
+  await staticPage.goto(base,{waitUntil:'domcontentloaded'});
+  assert.equal(await staticPage.locator('#nav a').count(),7);
+  assert.equal(await staticPage.locator('.mobile-dock a').count(),5);
+  assert.ok(await staticPage.locator('#v-home h1').isVisible());
+  assert.equal(await staticPage.locator('#v-home h1').textContent(),'آل برهم • إرثٌ وانتماء');
+  await staticContext.close();
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',ignoreHTTPSErrors:true});
   const page=await context.newPage();
-  let adminLoads=0;
+  let adminLoads=0,fontLoads=0;
+  await page.route('https://fonts.googleapis.com/**',r=>{fontLoads++;return r.abort();});
   // Local synthetic browser diagnostics only; never record remote URLs or credentials.
   page.on('pageerror',e=>console.error('Browser exception:',e.name,e.message.slice(0,200)));
   page.on('requestfailed',r=>{const u=new URL(r.url());if(u.hostname==='127.0.0.1')console.error('Local request failed:',u.protocol,u.pathname,r.failure()?.errorText);});
@@ -23,6 +32,7 @@ const base='https://127.0.0.1:8765/';
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>Boolean(window.familyRuntime)&&document.getElementById('bandwidth-toggle')?.disabled===false);
   assert.equal(await page.locator('#bandwidth-toggle').getAttribute('aria-pressed'),'true');
+  assert.equal(fontLoads,0,'Initial home must not request remote fonts');
   await page.locator('#local-diagnostics').click();
   assert.match(await page.locator('#local-diagnostics-result').textContent(),/لا تُرسل/);
   await page.locator('#bandwidth-toggle').click();
