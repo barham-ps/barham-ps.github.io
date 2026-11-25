@@ -1253,3 +1253,33 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
  @media(prefers-reduced-transparency:reduce){:root #v-home .family-welcome{background:#123b30}:root #v-home .home-news-card{background:#123b30}:root[data-theme] :is(header.site,.mobile-dock){background:var(--surface)}}
  html[data-low-data=true] #v-home .family-welcome{background-color:#123b30;background-image:none}
 }
+
+/* Royal public home typography — visual layer only, no grid, navigation or print changes. */
+@media screen{
+ :root{--royal-ar:'Amiri','Noto Naskh Arabic','Traditional Arabic',Tahoma,Arial,sans-serif;--royal-ui:'Noto Sans Arabic',Tahoma,Arial,system-ui,sans-serif;--royal-ivory:#fff5df;--royal-gold:#f2d58e}
+ :root header.site:not(.tree-header) .brand .brand-wordmark .brand-ar,:root #v-home .family-hero-copy h1,:root #v-home .home-section-head h2,:root #v-home .home-news-card h3{font-family:var(--royal-ar);font-weight:700;letter-spacing:normal;word-spacing:normal}
+ :root[data-theme=dark] header.site:not(.tree-header) .brand .brand-wordmark .brand-ar{color:var(--royal-ivory)}
+ :root[data-theme=light] header.site:not(.tree-header) .brand .brand-wordmark .brand-ar{color:#164638}
+ :root #v-home .family-hero-copy h1,:root #v-home .home-news-card h3{color:var(--royal-ivory);text-shadow:0 1px 1px #071e1855}
+ :root #v-home .family-hero-copy h1 span,:root #v-home .family-kicker,:root #v-home .family-hero-copy .greet,:root #v-home .family-lead{color:var(--royal-gold)}
+ :root[data-theme=dark] #v-home .home-section-head :is(h2,.more){color:var(--royal-gold)}
+ :root[data-theme=light] #v-home .home-section-head h2{color:#164638}
+ :root #v-home :is(.family-description,.home-news-card p){font-family:var(--royal-ui);color:#f1f7f2;letter-spacing:normal;font-weight:400}
+ :root #v-home :is(.family-lead,.family-kicker,.greet,.news-date){font-family:var(--royal-ui);letter-spacing:normal}
+ :root #v-home .home-news-card .news-date{color:#e9d5a4}
+ :root #v-home .home-section-head .more{font-family:var(--royal-ui);font-weight:700;text-underline-offset:5px}
+ :root #v-home :is(.family-entry-actions,.home-news-card) .btn,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle),:root body>.mobile-dock a{font-family:var(--royal-ui);letter-spacing:normal;font-weight:700}
+ :root #v-home :is(.family-entry-actions,.home-news-card) .btn-gold{background:linear-gradient(135deg,#fff1c8,#e4c27a);color:#102e24;border-color:#e7cd91;box-shadow:inset 0 1px 0 #fff8df,0 2px 5px #00160f26}
+ :root #v-home .family-entry-actions .btn-ghost{background:#153f34;color:#fff5df;border-color:#d3b477;box-shadow:inset 0 1px 0 #ffffff12}
+ :root[data-theme=dark] header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle){color:#fff5df;border-color:#bea36b;background:#174437}
+ :root[data-theme=light] header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle){color:#164638;border-color:#758478;background:#fffdf8}
+ :root[data-theme=dark] body>.mobile-dock a{color:#e5f0e8}
+ :root[data-theme=dark] body>.mobile-dock a[aria-current=page]{color:var(--royal-gold)}
+ @media(prefers-reduced-motion:no-preference){
+  :root #v-home :is(.family-entry-actions,.home-news-card) .btn,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle),:root body>.mobile-dock a{transition:transform 140ms ease,background-color 160ms ease,border-color 160ms ease,color 160ms ease}
+  :root #v-home :is(.family-entry-actions,.home-news-card) .btn:active,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle):active,:root body>.mobile-dock a:active{transform:scale(.98)}
+  @media(hover:hover) and (pointer:fine){:root #v-home :is(.family-entry-actions,.home-news-card) .btn:hover,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle):hover{transform:translateY(-1px);border-color:#e7c985}}
+ }
+ @media(prefers-reduced-motion:reduce){:root #v-home :is(.family-entry-actions,.home-news-card) .btn,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle),:root body>.mobile-dock a{transition:none!important;animation:none!important;transform:none!important}}
+ html[data-low-data=true] #v-home :is(.family-entry-actions,.home-news-card) .btn,html[data-low-data=true] body>.mobile-dock a{transition:none!important;animation:none!important}
+}
