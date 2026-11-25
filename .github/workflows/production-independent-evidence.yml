@@ -48,7 +48,9 @@ jobs:
           PY
       - name: AXIOM - public response and excluded private files
         if: always()
-        run: python3 scripts/production_monitor.py --strict-headers > production-headers.json
+        run: |
+          set -o pipefail
+          python3 scripts/production_monitor.py --strict-headers | tee production-headers.json
       - name: QUANTUM - observe negotiated production TLS group
         if: always()
         run: |
