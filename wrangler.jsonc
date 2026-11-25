@@ -1,0 +1,7 @@
+{
+  "name": "barham-ps-github-io",
+  "compatibility_date": "2026-11-23",
+  "assets": {
+    "directory": "./dist"
+  }
+}
