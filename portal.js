@@ -32,15 +32,20 @@
       });
     }
   });
-  nav.innerHTML = NAV.map(function(n) {
-    return '<a href="' + (n[0]==='martyrs'?'./martyrs/':n[0]==='tree'?'./genealogy/':'#'+n[0]) + '" data-r="' + n[0] + '">' + n[1] + '</a>'
-  }).join('');
-
-
-  if ($('#services')) $('#services').innerHTML = SERV.map(function(s, i) {
-    return '<div class="card"><span class="chip c-ok">للأعضاء المعتمدين</span><h3>' + s[0] + '</h3><p>' + s[1] +
-      '</p></div>'
-  }).join('');
+  // Build dynamic labels using DOM APIs, never HTML parsing.
+  NAV.forEach(function(n) {
+    const link = make('a', nav, n[1]);
+    link.href = n[0]==='martyrs'?'./martyrs/':n[0]==='tree'?'./genealogy/':'#'+n[0];
+    link.dataset.r = n[0];
+  });
+  const servicesRoot = $('#services');
+  if (servicesRoot) SERV.forEach(function(s) {
+    const card = make('div', servicesRoot);
+    card.className = 'card';
+    make('span', card, 'للأعضاء المعتمدين').className = 'chip c-ok';
+    make('h3', card, s[0]);
+    make('p', card, s[1]);
+  });
 
   // Palestinian civil time; only the greeting is displayed.
   function familyGreeting(now) {
@@ -1166,9 +1171,22 @@
     'المناسبات والتهاني':'occasions','المناسبات':'occasions',
     'الطلبات والمساهمات والشكاوى':'requests','الطلبات':'requests'
   };
+  function appendPortalIcon(parent, name, size) {
+    // Only local SVG symbol names are permitted. No interpolated markup.
+    if (typeof name !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(name)) return;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns,'svg');
+    svg.setAttribute('width',String(size));
+    svg.setAttribute('height',String(size));
+    svg.setAttribute('aria-hidden','true');
+    const use = document.createElementNS(ns,'use');
+    use.setAttribute('href','#i-'+name);
+    svg.appendChild(use);
+    parent.appendChild(svg);
+  }
   function dashboardIcon(parent,name){
     const icon=make('span',parent);icon.className='dashboard-icon';
-    icon.innerHTML='<svg width="24" height="24" aria-hidden="true"><use href="#i-'+name+'"/></svg>';
+    appendPortalIcon(icon,name,24);
   }
   function dashboardLink(parent,href,title,description,icon){
     const link=make('a',parent);link.className='dashboard-tile';link.href=href;
@@ -1898,7 +1916,7 @@
       l.href = '#' + x[0];
       var ic = make('div', l);
       ic.className = 'ic';
-      ic.innerHTML = '<svg width="26" height="26" aria-hidden="true"><use href="#i-' + x[2] + '"/></svg>';
+      appendPortalIcon(ic,x[2],26);
       make('h3', l, x[1]);
       make('p', l, x[3]);
     });
@@ -2713,6 +2731,9 @@
       const [verifiedUser,assurance] = await Promise.all([client().auth.getUser(),client().auth.mfa.getAuthenticatorAssuranceLevel()]);
       if (location.hash !== requestedHash) return;
       if (verifiedUser.error || !verifiedUser.data.user || verifiedUser.data.user.id !== session.data.session.user.id) throw Error('Session verification failed');
+      const identity = verifiedUser.data.user;
+      if (!identity.email_confirmed_at || identity.is_anonymous === true || identity.deleted_at ||
+          (identity.banned_until && Date.parse(identity.banned_until)>Date.now())) throw Error('Session identity not eligible');
       var level = ok(assurance);
       if (location.hash !== requestedHash) return;
       if (level.nextLevel === 'aal2' && level.currentLevel !== 'aal2') {
@@ -3307,7 +3328,7 @@
     var l = make('a', dock);
     l.href = x[3];
     l.dataset.dockRoute = x[0];
-    l.innerHTML = '<svg width="22" height="22" aria-hidden="true"><use href="#i-' + x[2] + '"/></svg>';
+    appendPortalIcon(l,x[2],22);
     make('span', l, x[1]);
   });
   document.body.appendChild(dock);

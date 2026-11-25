@@ -485,3 +485,21 @@ test('account email recovery fails closed when session identity cannot be confir
  assert.match(js,/await assertRecoveryOwner\(\)/);
  assert.match(js,/user\.id!==recoveryAccount\.id/);
 });
+
+
+test('dynamic navigation and icon rendering never parse interpolated HTML',()=>{
+  assert.doesNotMatch(js,/nav\.innerHTML|\$\('#services'\)\.innerHTML|\.innerHTML\s*=\s*['"]<svg/);
+  const source=js.slice(js.indexOf('  function appendPortalIcon('),js.indexOf('  function dashboardIcon('));
+  function node(tag){return {tag,attrs:{},children:[],setAttribute(k,v){this.attrs[k]=v},appendChild(n){this.children.push(n)}}}
+  const render=vm.runInNewContext(source+';appendPortalIcon',{document:{createElementNS:(_,tag)=>node(tag)}});
+  const root=node('div');
+  render(root,'home',24);
+  assert.equal(root.children[0].children[0].attrs.href,'#i-home');
+  render(root,'bad"><script>',24);
+  render(root,'https://evil.invalid',24);
+  assert.equal(root.children.length,1);
+});
+test('private views reject unconfirmed, anonymous, deleted and currently banned identities',()=>{
+  const guard=js.slice(js.indexOf('async function guardPrivate'),js.indexOf('async function loadMfa'));
+  for(const field of ['email_confirmed_at','is_anonymous','deleted_at','banned_until']) assert.ok(guard.includes(field));
+});
