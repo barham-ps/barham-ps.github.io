@@ -415,17 +415,42 @@
 
   var cms = make('div', admin); cms.className='card'; cms.hidden=true;
   var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
+  let publicCMSEpoch=0;
   async function renderPublicCMS(){
-    const requested=location.hash.slice(1);
-    for(const [key,label] of Object.entries(sectionsCMS)){
-      if(key!==requested)continue;
-      const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host) continue;
-      let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
-      const q=await client().from('family_public_content').select('id,title,body,image_path,created_at').eq('section',key).eq('published',true).order('created_at',{ascending:false});
-      if(q.error){if(!panel.childElementCount){const note=make('p',panel,'تعذر تحميل المحتوى المنشور.');note.className='portal-loading';action(panel,'إعادة المحاولة',()=>{panel.replaceChildren();renderPublicCMS().catch(()=>{});});}continue;}panel.replaceChildren();
-      for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
-        if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
-      }
+    const key=location.hash.slice(1);
+    if(!Object.prototype.hasOwnProperty.call(sectionsCMS,key))return;
+    const host=document.querySelector('#v-'+key+' .sec .wrap');if(!host)return;
+    const epoch=++publicCMSEpoch;
+    const current=()=>epoch===publicCMSEpoch&&location.hash==='#'+key;
+    let panel=host.querySelector('.public-cms');if(!panel){panel=make('div',host);panel.className='public-cms grid';}
+    const q=await client().from('family_public_content').select('id,title,body,image_path,created_at').eq('section',key).eq('published',true).order('created_at',{ascending:false});
+    if(!current())return;
+    if(q.error){if(!panel.childElementCount){const note=make('p',panel,'تعذر تحميل المحتوى المنشور.');note.className='portal-loading';action(panel,'إعادة المحاولة',()=>{panel.replaceChildren();renderPublicCMS().catch(()=>{});});}return;}
+    panel.replaceChildren();
+    const images=new Map();
+    for(const item of q.data){
+      const card=make('article',panel);card.className='card';make('h3',card,item.title);
+      const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';
+      if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
+      if(item.image_path){const entries=images.get(item.image_path)||[];entries.push({card,title:item.title});images.set(item.image_path,entries);}
+    }
+    // Render text first. Sign only published image paths, in bounded batches; retain existing Storage access checks and expiry.
+    const paths=[...images.keys()];
+    for(let offset=0;offset<paths.length;offset+=50){
+      if(!current())return;
+      const batch=paths.slice(offset,offset+50);
+      try{
+        const signed=await client().storage.from('family-public-content').createSignedUrls(batch,300);
+        if(!current())return;
+        if(signed.error)continue;
+        for(const entry of signed.data||[]){
+          if(entry.error||!entry.signedUrl||!batch.includes(entry.path))continue;
+          for(const {card,title} of images.get(entry.path)||[]){
+            if(!card.isConnected)continue;
+            const im=make('img',card);im.alt=title;im.loading='lazy';im.decoding='async';im.style.maxWidth='100%';im.src=entry.signedUrl;
+          }
+        }
+      }catch(_){if(!current())return;}
     }
   }
   async function loadPublicCMS(){
@@ -466,7 +491,7 @@
     }
     if(cmsRecords.length){const filter=make('div',cms);cms.insertBefore(filter,cmsRecords[0].el);attachSearch(filter,'بحث في المحتوى المحفوظ',cmsRecords);}
   }
-  renderPublicCMS().catch(()=>{});
+  // Initial public CMS rendering is handled by extraRoute after route initialization.
 
   function switchAdminPanel(key){
     activeAdminPanel=key;
