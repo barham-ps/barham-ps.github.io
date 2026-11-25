@@ -51,12 +51,20 @@
     const pending=fetch(endpoint,{method:'POST',headers:{...publicHeaders(),'Content-Type':'application/json'},body:JSON.stringify({expiresIn:900,paths}),credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal}).then(async response=>{
       if(!response.ok)return null;
       const data=await response.json();if(!Array.isArray(data))return null;
-      return paths.map(path=>{
+      const signed=paths.map(path=>{
         const item=data.find(x=>x?.path===path);if(typeof item?.signedURL!=='string')return null;
         if(!item.signedURL.startsWith('/object/sign/family-news/'))return null;
         const url=new URL('/storage/v1'+item.signedURL,endpoint.origin);
         return url.origin===endpoint.origin&&url.pathname.startsWith('/storage/v1/object/sign/family-news/')&&url.searchParams.has('token')?url.href:null;
       });
+      // Warm only the first authorized published cover, before the portal SDK finishes.
+      // Match the eventual image request mode; do not cache manually or preload on data saver.
+      if(signed[0]&&!lowData()&&(location.hash===''||location.hash==='#home')){
+        const hint=document.createElement('link');hint.rel='preload';hint.as='image';hint.href=signed[0];hint.fetchPriority='high';hint.referrerPolicy='no-referrer';document.head.append(hint);
+        hint.addEventListener('load',()=>hint.remove(),{once:true});hint.addEventListener('error',()=>hint.remove(),{once:true});
+        setTimeout(()=>hint.remove(),15000);
+      }
+      return signed;
     }).catch(()=>null).finally(()=>clearTimeout(timer));
     initialCover={paths,pending,until:Date.now()+60000};
   }

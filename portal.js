@@ -2060,6 +2060,7 @@
       im.loading = priority ? 'eager' : 'lazy';
       im.fetchPriority = priority ? 'high' : 'low';
       im.decoding = 'async';
+      im.referrerPolicy = 'no-referrer';
       a.disabled = true;
       a.onclick = () => {
         var valid = urls.filter(Boolean);

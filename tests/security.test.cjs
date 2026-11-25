@@ -638,3 +638,11 @@ test('early cover signing is scoped to published news and falls back to the auth
  assert.match(runtime,/if\(lowData\(\)\|\|!row/);
  assert.match(js,/signed&&signed\.every\(Boolean\)\?signed:photoURLs\(paths\)/);
 });
+
+
+test('first authorized news cover is preloaded only on home with data saver off',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/signed\[0\]&&!lowData\(\)&&\(location.hash===''\|\|location.hash==='#home'\)/);
+ assert.match(runtime,/hint.rel='preload';hint.as='image';hint.href=signed\[0\];hint.fetchPriority='high';hint.referrerPolicy='no-referrer'/);
+ assert.match(js,/im.referrerPolicy = 'no-referrer'/);
+});
