@@ -38,7 +38,7 @@
   window.addEventListener('offline',update);
   try { if(connection && typeof connection.addEventListener==='function') connection.addEventListener('change',update); } catch {}
   // Public anonymous read only. RLS still applies; do not persist, cache, or forward auth tokens.
-  let initialNews=null,initialCover=null;
+  let initialNews=null,initialCover=null,initialTeaser=null,initialConsumed=false;
   const publicHeaders=()=>({apikey:'sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',Accept:'application/json'});
   // Start signing the published cover immediately after the public row arrives.
   // The existing storage RLS authorizes this read; no session, cache or secret key.
@@ -86,8 +86,54 @@
       return rows;
     }).catch(()=>null).finally(()=>clearTimeout(timeout));
   }
-  function takeInitialNews(){const pending=initialNews;initialNews=null;return pending;}
-  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false,takeInitialNews,takeInitialCover});
+  // Render the real, published homepage card as soon as its anonymous query returns.
+  // The portal adopts these same nodes, rather than repainting the LCP image after SDK startup.
+  function paintInitialTeaser(row){
+    if(initialConsumed||initialTeaser||lowData()||navigator.onLine===false||
+      (location.hash!==''&&location.hash!=='#home')||!row||!/^[0-9a-f-]{36}$/i.test(row.id))return;
+    const target=document.getElementById('home-latest-news');
+    if(!target){
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>paintInitialTeaser(row),{once:true});
+      return;
+    }
+    const allowed=new Set([...(Array.isArray(row.image_paths)?row.image_paths:[]),row.image_path]);
+    const paths=(Array.isArray(row.cover_paths)?row.cover_paths:[]).filter(p=>typeof p==='string'&&allowed.has(p)).slice(0,3);
+    const cover=initialCover;
+    if(!paths.length||!cover||JSON.stringify(cover.paths)!==JSON.stringify(paths))return;
+    const make=(tag,parent,text)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;parent.appendChild(el);return el;};
+    const card=document.createElement('article');card.className='home-news-card';
+    const labels={news:'خبر عائلي',occasion:'مناسبة',announcement:'إعلان عائلي'};
+    make('span',card,Object.hasOwn(labels,row.category)?labels[row.category]:'آخر الأخبار').className='home-news-label';
+    make('h3',card,row.title);
+    const date=new Date(row.created_at);
+    let displayDate='غير متاح';
+    if(row.created_at&&Number.isFinite(date.getTime()))try{displayDate=new Intl.DateTimeFormat('ar-PS',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Gaza'}).format(date)+' — توقيت غزة';}catch{}
+    make('time',card,displayDate).className='news-date';
+    const gallery=make('div',card);gallery.className='news-gallery news-cover';gallery.dataset.count=String(paths.length);
+    const items=paths.map((path,i)=>{
+      const a=make('button',gallery);a.type='button';a.className='news-gallery-item';a.disabled=true;
+      a.setAttribute('aria-label','عرض الصورة '+(i+1));
+      const im=make('img',a);im.alt=row.title+' — صورة '+(i+1);im.loading=i===0?'eager':'lazy';im.fetchPriority=i===0?'high':'low';im.decoding='async';im.referrerPolicy='no-referrer';
+      return {a,im};
+    });
+    if(paths.length>1)make('p',card,'اسحب لمشاهدة الصور • '+paths.length+' صور').className='gallery-hint';
+    const excerpt=row.body.split('\n').filter(x=>x.trim()&&!x.startsWith('بسم')&&!x.startsWith('﴿'))[0]||row.body;
+    const summary=make('p',card,excerpt.slice(0,260));
+    const read=make('a',card,'قراءة الخبر');read.href='#news/'+row.id;read.className='btn btn-gold';
+    target.replaceChildren(card);
+    initialTeaser={row,card,gallery,items,summary,paths};
+    cover.pending.then(signed=>{
+      if(!signed||!card.isConnected||gallery.hidden||lowData()||(location.hash!==''&&location.hash!=='#home'))return;
+      items.forEach(({im},i)=>{if(signed[i]&&im.isConnected&&im.src!==signed[i])im.src=signed[i];});
+    });
+  }
+  function takeInitialTeaser(row){
+    const teaser=initialTeaser;initialTeaser=null;
+    return teaser&&teaser.row===row&&teaser.card.isConnected?teaser:null;
+  }
+  initialNews?.then(rows=>{if(rows?.length)paintInitialTeaser(rows[0]);}).catch(()=>{});
+  function takeInitialNews(){initialConsumed=true;const pending=initialNews;initialNews=null;return pending;}
+  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false,takeInitialNews,takeInitialCover,takeInitialTeaser});
   // Load decorative fonts only for other routes. Home keeps stable system font metrics.
   function routeFonts(){
     const isHome=location.hash===''||location.hash==='#home';

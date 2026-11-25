@@ -649,3 +649,17 @@ test('first authorized news cover is preloaded only on home with data saver off'
  assert.match(runtime,/hint.rel='preload';hint.as='image';hint.href=signed\[0\];hint.fetchPriority='high';hint.referrerPolicy='no-referrer'/);
  assert.match(js,/im.referrerPolicy = 'no-referrer'/);
 });
+
+
+test('published home teaser adopts early image nodes without a duplicate repaint',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/function paintInitialTeaser\(row\)/);
+ assert.match(runtime,/initialConsumed\|\|initialTeaser\|\|lowData\(\)/);
+ assert.match(runtime,/target\.replaceChildren\(card\)/);
+ assert.match(runtime,/teaser\.row===row&&teaser\.card\.isConnected/);
+ assert.match(js,/if\(!prepared\)target\.replaceChildren\(\)/);
+ assert.match(js,/prepared\?\.items\[i\]\?\.im \|\| make\('img', a\)/);
+ assert.match(js,/if\(im\.src!==urls\[i\]\)/);
+ const early=runtime.slice(runtime.indexOf('function paintInitialTeaser('),runtime.indexOf('function takeInitialTeaser('));
+ assert.doesNotMatch(early,/innerHTML|insertAdjacentHTML|localStorage/);
+});

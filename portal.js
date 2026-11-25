@@ -2040,20 +2040,20 @@
     window.addEventListener('hashchange', cleanup, {once:true});
   }
 
-  function newsGallery(parent, paths, title, cover) {
+  function newsGallery(parent, paths, title, cover, prepared=null) {
     if (!paths.length) return;
-    var g = make('div', parent);
+    var g = prepared?.gallery || make('div', parent);
     g.className = 'news-gallery' + (cover ? ' news-cover' : '');
     g.dataset.count = String(paths.length);
     var urls = [];
     const reduced=window.familyRuntime?.lowData()===true || navigator.onLine===false;
     if(reduced)g.hidden=true;
     var items = paths.map((path, i) => {
-      var a = make('button', g);
+      var a = prepared?.items[i]?.a || make('button', g);
       a.type = 'button';
       a.className = 'news-gallery-item';
       a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
-      var im = make('img', a);
+      var im = prepared?.items[i]?.im || make('img', a);
       im.alt = title + ' — صورة ' + (i + 1);
       // The first home cover is a measured LCP candidate; other photos remain lazy.
       const priority = parent.classList.contains('home-news-card') && i === 0;
@@ -2071,7 +2071,7 @@
         im
       };
     });
-    if (cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
+    if (!prepared && cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
       'gallery-hint';
     const load = async () => {
       const early=parent.classList.contains('home-news-card')?window.familyRuntime?.takeInitialCover(paths):null;
@@ -2086,7 +2086,7 @@
         im
       }, i) => {
         if (urls[i] && im.isConnected) {
-          im.src = urls[i];
+          if(im.src!==urls[i])im.src = urls[i];
           a.disabled = false;
         } else a.remove();
       });
@@ -2097,6 +2097,7 @@
     });
     if(reduced){
       const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
+      if(prepared)parent.insertBefore(reveal,prepared.summary);
       reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();loadImages();};
     }else nearViewport(g, loadImages, parent.classList.contains('home-news-card') && g.getBoundingClientRect().top <= window.innerHeight + 250);
   }
@@ -2129,7 +2130,8 @@
         }).limit(isHome ? 1 : 50)));
       }
       if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
-      target.replaceChildren();
+      const prepared=isHome&&rows.length?window.familyRuntime?.takeInitialTeaser(rows[0]):null;
+      if(!prepared)target.replaceChildren();
       if (!rows.length) {
         make('p', target, selected ? 'الخبر غير متاح.' : 'لا أخبار منشورة حاليًا.');
         if (selected) {
@@ -2139,6 +2141,7 @@
         return;
       }
       if (isHome) {
+        if(prepared){newsGallery(prepared.card,prepared.paths,rows[0].title,true,prepared);return;}
         var latest = rows[0],
           teaser = make('article', home);
         teaser.className = 'home-news-card';
