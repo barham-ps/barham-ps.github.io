@@ -1,0 +1,72 @@
+name: Independent production security evidence
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * *'
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build and compare independent release
+        run: |
+          sh scripts/build-pages.sh
+          mv dist "$RUNNER_TEMP/first"
+          sh scripts/build-pages.sh
+          diff -qr "$RUNNER_TEMP/first" dist
+      - name: PRISM ATLAS ETERNITY - deployed asset integrity
+        id: assets
+        run: |
+          python3 - <<'PY'
+          import hashlib, pathlib, time, json, http.client, ssl
+          root=pathlib.Path('dist')
+          files=[p for p in root.rglob('*') if p.is_file() and p.suffix in ('.js','.css','.json','.webp','.png','.svg','.webmanifest')]
+          assert files
+          for attempt in range(6):
+              results=[]
+              for p in files:
+                  c=http.client.HTTPSConnection('barham-ps.github.io',timeout=15,context=ssl.create_default_context())
+                  try:
+                      c.request('GET','/'+p.relative_to(root).as_posix(),headers={'Accept-Encoding':'identity','Cache-Control':'no-cache'})
+                      r=c.getresponse()
+                      expected=p.read_bytes()
+                      body=r.read(len(expected)+1)
+                      results.append({'asset':str(p.relative_to(root)),'match':r.status==200 and hashlib.sha256(body).digest()==hashlib.sha256(expected).digest()})
+                  finally:
+                      c.close()
+              if all(x['match'] for x in results): break
+              if attempt<5: time.sleep(20)
+          pathlib.Path('production-assets.json').write_text(json.dumps(results,indent=2))
+          assert all(x['match'] for x in results), 'Production asset mismatch'
+          PY
+      - name: AXIOM - public response and excluded private files
+        if: always()
+        run: python3 scripts/production_monitor.py --strict-headers > production-headers.json
+      - name: QUANTUM - observe negotiated production TLS group
+        if: always()
+        run: |
+          timeout 25 openssl s_client -connect barham-ps.github.io:443 -servername barham-ps.github.io -verify_hostname barham-ps.github.io -verify_return_error </dev/null > production-tls.txt 2>&1
+          grep -Ei 'peer temporary key|server temp key|negotiated TLS1.3 group|protocol|verify return code' production-tls.txt || true
+          echo 'PQC not certified by this observation' >> "$GITHUB_STEP_SUMMARY"
+      - name: Record remaining evidence boundaries
+        if: always()
+        run: |
+          echo 'Commit: ${GITHUB_SHA}' >> "$GITHUB_STEP_SUMMARY"
+          echo 'NEURAL, HORIZON, VAULT, SINGULARITY and COSMIC CORE runtime efficacy not established by public asset checks.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'DDoS, bots, rate limits, FIDO2, database RLS and immutable backups require authorized provider or isolated account evidence.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: production-independent-evidence
+          path: |
+            production-assets.json
+            production-headers.json
+            production-tls.txt
+          retention-days: 30
