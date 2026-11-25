@@ -1,0 +1,71 @@
+name: AEGIS Nemesis
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '43 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  mutation-defense:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test publication defenses against isolated synthetic mutations
+        run: |
+          sh scripts/build-pages.sh
+          python3 - <<'PY'
+          import hashlib
+          import shutil
+          import tempfile
+          from pathlib import Path
+          from scripts.validate_public_build import validate
+          source = Path('dist')
+          validate(source)
+          baseline = {p.relative_to(source): hashlib.sha256(p.read_bytes()).digest()
+                      for p in source.rglob('*') if p.is_file()}
+          def integrity(root):
+              validate(root)
+              actual = {p.relative_to(root): hashlib.sha256(p.read_bytes()).digest()
+                        for p in root.rglob('*') if p.is_file()}
+              if actual != baseline:
+                  raise ValueError('Synthetic integrity mismatch')
+          def add(root, name):
+              p = root / name
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text('synthetic fixture only')
+          def corrupt(root):
+              with (root / 'portal.js').open('ab') as f:
+                  f.write(b'\n/* synthetic mutation */\n')
+          cases = {
+              'unexpected environment file': lambda p: add(p, '.env'),
+              'unexpected repository metadata': lambda p: add(p, '.git/config'),
+              'unexpected nested backup': lambda p: add(p, 'genealogy/backup.sql'),
+              'unexpected workflow': lambda p: add(p, '.github/workflows/test.yml'),
+              'missing required asset': lambda p: (p / 'portal.js').unlink(),
+              'symlink to allowed asset': lambda p: (p / 'alias.js').symlink_to(p / 'portal.js'),
+              'modified allowed asset': corrupt,
+          }
+          with tempfile.TemporaryDirectory() as tmp:
+              root = Path(tmp) / 'fixture'
+              shutil.copytree(source, root)
+              integrity(root)
+              for name, mutate in cases.items():
+                  shutil.rmtree(root)
+                  shutil.copytree(source, root)
+                  mutate(root)
+                  try:
+                      integrity(root)
+                  except ValueError:
+                      print('Rejected:', name)
+                  else:
+                      raise SystemExit('Defense failed: ' + name)
+          integrity(source)
+          print('All seven synthetic mutations rejected; original build unchanged')
+          PY
