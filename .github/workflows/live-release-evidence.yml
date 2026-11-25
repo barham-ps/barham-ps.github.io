@@ -1,0 +1,31 @@
+name: Read-only live release evidence
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/release_verify.py'
+      - '.github/workflows/live-release-evidence.yml'
+permissions:
+  contents: read
+jobs:
+  verify-baseline:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+      - name: Verify current production baseline
+        run: python3 scripts/release_verify.py --source-dir baseline
+      - name: Read public health and response headers
+        if: always()
+        run: python3 scripts/production_monitor.py
+      - name: Read public compression evidence
+        if: always()
+        run: python3 scripts/edge_probe.py --host barham-ps.github.io

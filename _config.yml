@@ -8,6 +8,7 @@ exclude:
   - dist
   - node_modules
   - vendor
+  - PRIVACY-RESILIENCE.md
   - RECOVERY.md
   - SECURITY.md
   - UPGRADE-REVIEW.md
