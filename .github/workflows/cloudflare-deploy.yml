@@ -1,0 +1,63 @@
+name: Deploy Cloudflare static portal
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cloudflare-deploy.yml'
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-portal-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build allowlisted static assets
+        run: sh scripts/build-pages.sh
+      - name: Deploy to existing Cloudflare Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -eu
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare deployment credentials are not configured in GitHub Actions."
+            exit 1
+          fi
+          npx --yes wrangler@4.50.0 deploy
+      - name: Verify all six live security controls
+        run: |
+          python3 - <<'PY'
+          import urllib.request, re, time
+          url = "https://barham-ps-github-io.m0had-b0rh0m.workers.dev/"
+          for attempt in range(5):
+              try:
+                  with urllib.request.urlopen(url, timeout=20) as response:
+                      h = response.headers
+                      csp = h.get("Content-Security-Policy", "")
+                      hsts = re.search(r"max-age\s*=\s*(\d+)", h.get("Strict-Transport-Security", ""), re.I)
+                      policy = h.get("Permissions-Policy", "")
+                      checks = {
+                          "CSP": "default-src" in csp and "object-src 'none'" in csp,
+                          "Clickjacking": "frame-ancestors 'none'" in csp and h.get("X-Frame-Options", "").lower() == "deny",
+                          "HSTS": bool(hsts and int(hsts.group(1)) >= 31536000),
+                          "MIME": h.get("X-Content-Type-Options", "").lower() == "nosniff",
+                          "Referrer": h.get("Referrer-Policy", "").lower() == "no-referrer",
+                          "Permissions": all(re.search(r"(?:^|,)\s*" + f + r"\s*=\s*\(\s*\)\s*(?:,|$)", policy) for f in ("camera", "microphone", "geolocation")),
+                      }
+                      for key, passed in checks.items():
+                          print(key, "PASS" if passed else "FAIL")
+                      if all(checks.values()):
+                          break
+              except Exception as exc:
+                  print(type(exc).__name__, str(exc))
+              if attempt == 4:
+                  raise SystemExit("Live security verification failed")
+              time.sleep(15)
+          PY
