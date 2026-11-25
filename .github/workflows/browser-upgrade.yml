@@ -6,6 +6,7 @@ on:
       - 'index.html'
       - 'portal.css'
       - 'portal.js'
+      - 'footer.js'
       - 'public.css'
       - 'about/**'
       - 'history/**'

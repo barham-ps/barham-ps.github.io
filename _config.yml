@@ -12,3 +12,5 @@ exclude:
   - SECURITY.md
   - UPGRADE-REVIEW.md
   - vercel.json
+  - OPERATIONS.md
+  - backups

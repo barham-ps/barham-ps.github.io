@@ -22,6 +22,8 @@ jobs:
       - name: Validate portal JavaScript and security policy
         run: |
           node --check portal.js
+          node --check footer.js
+          bash tests/backup-smoke.sh
           node --check sw.js
           node --check captcha.js
           node --check security-config.js

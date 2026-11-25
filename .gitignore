@@ -1,1 +1,11 @@
 /dist/
+
+# Keep recovery material and credentials outside this public repository.
+.env
+.env.*
+*.dump
+*.backup
+*.sql.gz
+*.gpg
+*.pgpass
+backups/

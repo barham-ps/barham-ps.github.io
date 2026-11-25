@@ -1,5 +1,7 @@
 """Read-only synthetic checks of the public portal. No accounts, cookies or visitor data."""
+import argparse
 import datetime
+import re
 import http.client
 import json
 import ssl
@@ -14,9 +16,9 @@ PAGES = {"/": "آل برهم", "/about/": "عن البوابة", "/history/": "�
          "/martyrs/Barham_Martyrs_Register.html": 'name="robots" content="noindex, follow"'}
 MAX_BYTES = 400_000
 
-def get(path):
+def get(path, host=HOST):
     context = ssl.create_default_context()
-    conn = http.client.HTTPSConnection(HOST, timeout=20, context=context)
+    conn = http.client.HTTPSConnection(host, timeout=20, context=context)
     try:
         started = time.monotonic()
         conn.connect()
@@ -41,17 +43,23 @@ def headers_missing(headers):
     ] if not good]
 
 def main():
+    parser = argparse.ArgumentParser(description='Public portal health check; only check hosts you manage.')
+    parser.add_argument('--host', default=HOST, help='Published portal hostname, no scheme or path')
+    parser.add_argument('--strict-headers', action='store_true', help='Require all expected security headers on a staging or edge host')
+    args = parser.parse_args()
+    if not re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?', args.host) or '.' not in args.host:
+        parser.error('Supply a DNS hostname only')
     failures, warnings, results = [], [], []
     for path, marker in PAGES.items():
         try:
-            status, headers, body, elapsed, cert = get(path)
+            status, headers, body, elapsed, cert = get(path, args.host)
             good = status == 200 and marker in body
             results.append({"path": path, "status": status, "milliseconds": elapsed, "expected_content": good})
             if not good:
                 failures.append(path + ": unexpected public response")
             if path == "/":
                 for name in headers_missing(headers):
-                    warnings.append("Hosting header not verified: " + name)
+                    (failures if args.strict_headers else warnings).append("Hosting header not verified: " + name)
                 if "Content-Security-Policy" not in body:
                     failures.append("Homepage CSP meta policy missing")
                 expires = ssl.cert_time_to_seconds(cert["notAfter"])
@@ -59,6 +67,14 @@ def main():
                 if days < 14:
                     failures.append("TLS certificate expiry below 14 days")
                 results.append({"tls_certificate_days_remaining": days})
+        except Exception as exc:
+            failures.append(path + ": " + type(exc).__name__)
+    for path in ["/database/verify_access.sql", "/scripts/production_monitor.py", "/tests/security.test.cjs", "/supabase/functions/scan-request-attachment/index.ts"]:
+        try:
+            status, _, _, elapsed, _ = get(path, args.host)
+            results.append({"path": path, "status": status, "milliseconds": elapsed, "excluded": status == 404})
+            if status != 404:
+                failures.append(path + ": development asset must not be published")
         except Exception as exc:
             failures.append(path + ": " + type(exc).__name__)
     print(json.dumps({"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),

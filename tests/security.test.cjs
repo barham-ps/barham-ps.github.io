@@ -120,11 +120,12 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="footer-signature"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
-  assert.equal(scripts.length,5);
+  assert.equal(scripts.length,6);
   assert.ok(scripts.every(x => x[0].includes('defer')));
   assert.ok(scripts[0][1].includes('supabase'));
   assert.ok(scripts[3][1].includes('martyrs/admin.js'));
-  assert.ok(scripts[4][1].includes('portal.js'));
+  assert.ok(scripts[4][1].includes('footer.js'));
+  assert.ok(scripts[5][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);
   assert.match(css,/prefers-reduced-motion/);
@@ -387,7 +388,8 @@ test('download PDF is a byte-correct local file and retry links are revoked',asy
 });
 
 test('footer automatically changes month and year at Gaza calendar boundaries',()=>{
- const source=js.slice(js.indexOf('function footerDateParts('),js.indexOf('function updateFooterDate('));
+ const footer=fs.readFileSync('footer.js','utf8');
+ const source=footer.slice(footer.indexOf('function footerDateParts('),footer.indexOf('function updateFooterDate('));
  const parts=vm.runInNewContext(source+';footerDateParts');
  const before=parts(new Date('2026-12-31T21:59:59Z'));
  const after=parts(new Date('2026-12-31T22:00:00Z'));
@@ -396,7 +398,7 @@ test('footer automatically changes month and year at Gaza calendar boundaries',(
  assert.equal(parts(new Date('2027-01-31T22:00:00Z')).month,'February');
  assert.equal((html.match(/data-footer-year/g)||[]).length,2);
  assert.match(html,/<time id="footer-month" datetime="\d{4}-\d{2}">/);
- assert.match(js,/setInterval\(updateFooterDate,30000\)/);
+ assert.match(footer,/setInterval\(updateFooterDate,30000\)/);
  assert.match(js,/visibilitychange/);
 });
 
