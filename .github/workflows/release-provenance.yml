@@ -23,6 +23,10 @@ jobs:
           node --test tests/security.test.cjs tests/upgrade.test.cjs
           python3 scripts/validate_public_build.py dist
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf "$RUNNER_TEMP/portal.tar" -C dist .
+          mv dist "$RUNNER_TEMP/first-dist"
+          sh scripts/build-pages.sh
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf "$RUNNER_TEMP/portal-second.tar" -C dist .
+          cmp "$RUNNER_TEMP/portal.tar" "$RUNNER_TEMP/portal-second.tar"
           sha256sum "$RUNNER_TEMP/portal.tar"
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
