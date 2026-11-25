@@ -2664,12 +2664,75 @@
   secLink.href = '#security';
   secLink.hidden=true;
   secLink.className = 'btn btn-dark';
+  let securityEpoch=0,securityTimer=null;
+  function stopSecurityRefresh(){if(securityTimer!==null){clearInterval(securityTimer);securityTimer=null;}}
+  window.addEventListener('hashchange',()=>{if(location.hash!=='#security'){securityEpoch++;stopSecurityRefresh();}});
+  function securityCount(value){return Number.isFinite(Number(value))&&Number(value)>=0?new Intl.NumberFormat('ar').format(Number(value)):'—';}
+  function renderSecurityDashboard(target,d){
+    target.replaceChildren();
+    const stamp=make('p',target,'آخر قراءة من الخادم: '+formatPortalTime(d.generated_at));stamp.className='soc-stamp';
+    const grid=make('div',target);grid.className='soc-grid';
+    const last=d.latest_scan,checks=Array.isArray(last?.checks)?last.checks:[];
+    const failed=checks.filter(x=>x.state==='fail').length,warn=checks.filter(x=>x.state==='warn').length;
+    const cards=[
+      ['جلسة الإدارة',d.current_aal==='aal2'&&d.mfa_enabled?'AAL2':'غير مؤكد','التحقق الثنائي',d.current_aal==='aal2'&&d.mfa_enabled?'pass':'warn'],
+      ['عمليات مدققة · ٧ أيام',securityCount(d.events_7d),'تعديلات مسجلة بالخادم','neutral'],
+      ['أحداث المصادقة · ٧ أيام',d.auth_latest_at?securityCount(d.auth_events_7d):'لا بيانات','سجل Auth المتاح',d.auth_latest_at?'neutral':'warn'],
+      ['آخر فحص',checks.length?securityCount(failed)+' خلل':'لم يُفحص',checks.length?securityCount(warn)+' تنبيه':'لا نتيجة لهذا المسؤول',checks.length?(failed?'fail':warn?'warn':'pass'):'warn']
+    ];
+    for(const [title,value,detail,state] of cards){const c=make('div',grid);c.className='soc-metric '+state;make('small',c,title);make('strong',c,value);make('span',c,detail);}
+    const alerts=make('div',target);alerts.className='soc-alerts';
+    if(!d.auth_latest_at)make('p',alerts,'لا توجد سجلات مصادقة متاحة في قاعدة البيانات؛ لا يعني ذلك أن محاولات الدخول معدومة.');
+    if(!checks.length)make('p',alerts,'شغّل فحص الحماية للحصول على نتائج موثقة.');
+    for(const x of checks.filter(x=>x.state==='fail'||x.state==='warn')){const row=make('p',alerts,(scanNames[x.id]?.[0]||x.id)+' — '+(x.state==='fail'?'خلل':'تنبيه'));row.className=x.state;}
+    const daily=Array.isArray(d.daily_activity)?d.daily_activity:[];
+    const chart=make('div',target);chart.className='soc-chart';
+    make('h3',chart,'نشاط آخر سبعة أيام · توقيت غزة');
+    make('p',chart,'العمليات المدققة — أحداث المصادقة المسجلة');
+    const max=Math.max(1,...daily.flatMap(x=>[Number(x.operations)||0,Number(x.auth_events)||0]));
+    for(const x of daily){const row=make('div',chart);row.className='soc-chart-row';const day=make('span',row,String(x.day).slice(5));day.dir='ltr';
+      const group=make('div',row);group.className='soc-bars';
+      for(const [kind,n] of [['operations',x.operations],['auth',x.auth_events]]){const line=make('div',group);line.className='soc-bar-line';const bar=make('div',line);bar.className='soc-bar '+kind;bar.style.width=Math.min(100,Math.max(0,(Number(n)||0)/max*100))+'%';make('span',line,securityCount(n));}
+    }
+    if(!daily.length)make('p',chart,'لا بيانات متاحة.');
+    const auth=make('div',target);auth.className='soc-detail';
+    make('h3',auth,'تصنيف أحداث المصادقة');
+    const authNames={login:'دخول',logout:'خروج',signup:'تسجيل',user_signedup:'تسجيل مستخدم',user_updated:'تحديث حساب',user_deleted:'حذف حساب',password_recovery_requested:'استعادة كلمة المرور',token_refreshed:'تجديد الجلسة',token_revoked:'إلغاء رمز',mfa_factor_enrolled:'إضافة عامل تحقق',mfa_factor_unenrolled:'إزالة عامل تحقق',mfa_challenge_verified:'تحقق ثنائي',user_recovery_requested:'استعادة الحساب',user_confirmation_requested:'تأكيد الحساب',user_invited:'دعوة مستخدم',other:'أخرى'};
+    for(const x of d.auth_actions||[]){const row=make('div',auth);row.className='scan-result';make('span',row,authNames[x.action]||'أخرى');make('strong',row,securityCount(x.total));}
+    if(!(d.auth_actions||[]).length)make('p',auth,'لا أحداث متاحة في الفترة؛ افحص إعداد سجل Auth عند المزود.');
+    const files=make('div',target);files.className='soc-detail';make('h3',files,'مراقبة عزل المرفقات');
+    const states={clean:'اجتاز الفحص',pending:'قيد الفحص',awaiting_scanner:'بانتظار محرك الفحص',infected:'مصاب',rejected:'مرفوض',error:'تعذر الفحص',not_requested:'غير مطلوب'};
+    for(const x of d.attachments||[]){const row=make('div',files);row.className='scan-result';make('span',row,states[x.state]||'حالة أخرى');make('strong',row,securityCount(x.total));}
+    if(!(d.attachments||[]).length)make('p',files,'لا مرفقات مطلوبة مسجلة.');
+  }
   async function loadSecurity() {
+    stopSecurityRefresh();
+    const epoch=++securityEpoch,actor=recoveredSession?.user.id;
+    const current=()=>epoch===securityEpoch&&location.hash==='#security'&&recoveredSession?.user.id===actor;
     secBody.replaceChildren();
     make('p', secBody, 'جارٍ تحميل سجل الحماية…');
     try {
       var d = ok(await client().rpc('family_security_summary'));
+      if(!current())return;
       secBody.replaceChildren();
+      const command=section(secBody,'لوحة العمليات الأمنية');
+      command.classList.add('soc-command');
+      make('p',command,'مراقبة إدارية من سجلات الخادم، دون تعقب الزوار أو عرض عناوين IP أو رموز الجلسات. لا تُعد إحصاءات السجل كشفًا لكل الهجمات.');
+      const commandActions=make('div',command);commandActions.className='row';
+      const updateMsg=make('p',command);updateMsg.setAttribute('role','status');
+      const dashboard=make('div',command);
+      renderSecurityDashboard(dashboard,d);
+      let refreshing=false;
+      async function refreshDashboard(){
+        if(refreshing||!current()||document.hidden)return;
+        refreshing=true;
+        try{const updated=ok(await client().rpc('family_security_summary'));if(!current())return;renderSecurityDashboard(dashboard,updated);drawEvents(updated.recent_events);updateMsg.textContent='تم تحديث مؤشرات الخادم.';}
+        catch(_){if(current())updateMsg.textContent='تعذر تحديث المؤشرات؛ آخر قراءة معروضة قديمة.';}
+        finally{refreshing=false;}
+      }
+      action(commandActions,'تحديث المؤشرات',refreshDashboard).className='btn btn-gold';
+      const jump=action(commandActions,'إجراء فحص الحماية',()=>secBody.querySelector('.security-scan')?.scrollIntoView({block:'start'}));jump.className='btn btn-ghost';
+      make('small',command,'تحديث تلقائي كل ٦٠ ثانية أثناء عرض اللوحة فقط.');
       var overview = section(secBody, 'حالة الحماية');
       make('p', overview, 'التحقق الثنائي: ' + (d.mfa_enabled ? 'مفعّل' : 'يحتاج إلى تفعيل'));
       make('p', overview, 'مستوى التحقق الحالي: ' + (d.current_aal === 'aal2' ? 'AAL2 — تحقق ثنائي مؤكد' : 'غير مؤكد'));
@@ -2723,16 +2786,25 @@
           UPDATE: 'تعديل',
           DELETE: 'حذف'
         };
-      if (!d.recent_events.length) make('p', log, 'لا عمليات مسجلة بعد.');
-      for (const e of d.recent_events) {
-        make('p', log, (names[e.resource] || e.resource) + ' • ' + (ops[e.action] || e.action) + ' • ' + new Date(e
-          .occurred_at).toLocaleString('ar'));
+      const filter=make('input',log);filter.type='search';filter.placeholder='بحث في نوع العملية أو المورد';filter.setAttribute('aria-label','بحث في سجل العمليات');filter.maxLength=100;
+      const events=make('div',log);events.className='soc-timeline';
+      let recentEvents=[];
+      function drawEvents(rows){
+        if(Array.isArray(rows))recentEvents=rows;
+        events.replaceChildren();
+        const term=filter.value.trim().toLowerCase();
+        const matches=recentEvents.filter(e=>[names[e.resource]||e.resource,ops[e.action]||e.action,e.action,e.resource].join(' ').toLowerCase().includes(term));
+        make('p',events,'عرض '+securityCount(matches.length)+' من آخر '+securityCount(recentEvents.length)+' عملية مسجلة.');
+        for(const e of matches){const row=make('div',events);row.className='soc-event';make('strong',row,(names[e.resource]||e.resource)+' — '+(ops[e.action]||e.action));const t=make('time',row,formatPortalTime(e.occurred_at));t.dateTime=e.occurred_at;}
       }
+      filter.addEventListener('input',()=>drawEvents());drawEvents(d.recent_events);
       var reviews = section(secBody, 'قرارات العضوية الأخيرة');
       for (const e of d.recent_reviews) make('p', reviews, statusLabels[e.action] || e.action);
       await mountSecurityScanner(secBody);
+      if(current())securityTimer=setInterval(refreshDashboard,60000);
     } catch (e) {
-      secBody.replaceChildren();
+      if(!current())return;
+      stopSecurityRefresh();secBody.replaceChildren();
       make('p', secBody, 'تعذر الوصول إلى مركز الحماية. هذه الخدمة للإدارة المعتمدة فقط.');
     }
   }
@@ -2855,7 +2927,7 @@
 
   async function mountSecurityScanner(parent) {
     var scanner = section(parent, 'فحص الحماية المباشر');
-    parent.prepend(scanner);
+    const command=parent.querySelector('.soc-command');if(command)command.after(scanner);else parent.prepend(scanner);
     scanner.classList.add('security-scan');
     make('p', scanner,
       'افحص إعدادات الحماية الحقيقية في قاعدة البيانات دون مغادرة الموقع. لا يغيّر الفحص بيانات الأعضاء.');
@@ -3100,6 +3172,7 @@
     recoveredSession = null;
 
   function clearPrivate() {
+    securityEpoch++;stopSecurityRefresh();
     hubNavigate=null;activeHubGroup='overview';activeServicePanel='requests';memberQuick.hidden=true;
     hubBody.replaceChildren();
     cms.replaceChildren();cms.hidden=true;

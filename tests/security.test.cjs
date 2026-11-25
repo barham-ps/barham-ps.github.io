@@ -398,3 +398,14 @@ test('footer automatically changes month and year at Gaza calendar boundaries',(
  assert.match(js,/setInterval\(updateFooterDate,30000\)/);
  assert.match(js,/visibilitychange/);
 });
+
+test('security operations center uses admin-only aggregate records and scoped refresh',()=>{
+ const sql=fs.readFileSync('database/security_observability.sql','utf8');
+ assert.match(sql,/auth\.uid\(\) IS NULL OR NOT public\.family_is_admin\(\)/i);
+ assert.match(sql,/REVOKE EXECUTE ON FUNCTION public\.family_security_summary\(\) FROM PUBLIC,anon/i);
+ assert.doesNotMatch(sql,/ip_address|resource_id|actor_id AS/i);
+ assert.match(js,/function renderSecurityDashboard/);
+ assert.match(js,/if\(refreshing\|\|!current\(\)\|\|document\.hidden\)return/);
+ assert.match(js,/setInterval\(refreshDashboard,60000\)/);
+ assert.match(js,/securityEpoch\+\+;stopSecurityRefresh\(\);/);
+});

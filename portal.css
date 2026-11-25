@@ -925,3 +925,25 @@ html{padding-block:0!important;scroll-padding-top:0}
  #v-certificate .md-sign{grid-column:auto}
  #v-certificate .md-fields{grid-template-columns:1fr}
 }
+
+/* V60: operations center — factual server-side indicators, responsive RTL. */
+@media screen{
+ #v-security .wrap{max-width:1180px}
+ #v-security .soc-command{padding:clamp(16px,3vw,28px);border:1px solid #ad985d;background:linear-gradient(145deg,#153e32,#0c2c24);border-radius:20px}
+ .soc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+ .soc-metric{display:grid;gap:8px;padding:16px 12px;border:1px solid #688a79;border-radius:14px;background:#10382d;min-width:0}
+ .soc-metric strong{font-size:clamp(19px,3vw,29px);color:#f5e6b8;overflow-wrap:anywhere}.soc-metric small,.soc-metric span{color:#d4e5de;font-size:13px;line-height:1.6}
+ .soc-metric.pass{border-inline-start:4px solid #a4e6b9}.soc-metric.warn{border-inline-start:4px solid #ffd69b}.soc-metric.fail{border-inline-start:4px solid #ffb4ae}
+ .soc-alerts p{padding:10px 12px;border-inline-start:3px solid #ffd69b;background:#ffffff09;border-radius:6px;margin:8px 0}
+ .soc-alerts p.fail{border-color:#ffb4ae;color:#ffb4ae}
+ .soc-chart,.soc-detail{border-top:1px solid #688a79;padding-top:14px;margin-top:18px}
+ .soc-chart-row{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;margin:9px 0;font-size:13px}
+ .soc-bars{display:grid;gap:4px}.soc-bar-line{display:flex;align-items:center;gap:7px;min-width:0}.soc-bar{height:10px;border-radius:4px;max-width:calc(100% - 36px)}
+ .soc-bar.operations{background:#d4af37}.soc-bar.auth{background:#8bc9e5}
+ .soc-stamp{color:#d4e5de}.soc-timeline{margin-top:10px}
+ .soc-event{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+ .soc-event time{font-size:13px;color:var(--fg2)}
+ #v-security input[type=search]{width:100%;min-height:44px;font-size:16px}
+ @media(max-width:700px){.soc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.soc-metric{padding:12px 9px}.soc-event{display:grid}.soc-command .row .btn{flex:1 1 145px;justify-content:center}}
+ @media(max-width:340px){.soc-grid{grid-template-columns:1fr}}
+}
