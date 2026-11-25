@@ -35,7 +35,7 @@ jobs:
           PY
       - name: Check executable assets and security regressions
         run: |
-          find dist -type f -name '*.js' -exec node --check {} \;
+          find dist -type f -name '*.js' -exec sh -c 'for f do node --check "$f" || exit 1; done' sh {} +
           node --test tests/security.test.cjs tests/upgrade.test.cjs
       - name: Verify no untracked files enter public build
         run: |
