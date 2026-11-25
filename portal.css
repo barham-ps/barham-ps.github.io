@@ -1228,3 +1228,17 @@ html{padding-block:0!important;scroll-padding-top:0}
 
 /* Stable slots prevent loading/error transitions and connection text from moving the footer. */
 .network-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}.network-tools #bandwidth-toggle{grid-row:1;grid-column:1}.network-tools #local-diagnostics{grid-row:1;grid-column:2}.network-tools #network-status{grid-row:2;grid-column:1/-1;min-block-size:1.7em;line-height:1.7}.network-tools button{min-width:0;min-height:48px;white-space:normal}.home-news-card{animation:none}#v-home .family-welcome{animation:none}
+
+/* V83 critical rendering: stable navigation is present in HTML before deferred JS. */
+@media screen{
+ :root[data-home-route=true]{--body:Tahoma,Arial,system-ui,sans-serif;--display:Tahoma,Arial,system-ui,sans-serif}
+ :root[data-home-route=true] :is(#v-home,header.site .brand){animation:none!important;transform:none!important}
+ :root[data-home-route=true] #v-home .family-welcome{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+ header.site .family-theme-toggle[hidden]{display:inline-flex!important;visibility:hidden;pointer-events:none}
+ #v-home .family-hero-copy .greet{min-block-size:1.7em;line-height:1.7}
+ #v-home .family-entry-actions{min-block-size:48px}
+ #home-latest-news{min-block-size:160px}
+ #home-latest-news .home-news-card{contain:layout paint}
+ #home-latest-news .home-news-card .news-gallery-item img{display:block;width:100%;aspect-ratio:16/10;height:auto;object-fit:contain;background:var(--band)}
+ @supports(content-visibility:auto){.compact-footer{content-visibility:auto;contain-intrinsic-size:auto 145px}}
+}

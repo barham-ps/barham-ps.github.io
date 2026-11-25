@@ -1,16 +1,6 @@
 (function() {
   document.documentElement.setAttribute('dir', 'rtl');
   document.documentElement.setAttribute('lang', 'ar');
-  var NAV = [
-    ['home', 'الرئيسية'],
-    ['news', 'الأخبار'],
-    ['tree', 'شجرة العائلة'],
-    ['martyrs', 'الشهداء'],
-    ['heritage', 'العائلة والتراث'],
-    ['community', 'المجتمع العائلي'],
-    ['membership', 'العضوية والتحقق']
-  ];
-
   var SERV = [
     ['الهوية والملف', 'البطاقة الرقمية والشهادة والملف الشخصي.'],
     ['العائلة والكفاءات', 'سجل القرابات ودليل المهن الاختياري.'],
@@ -31,12 +21,6 @@
         block: 'start'
       });
     }
-  });
-  // Build dynamic labels using DOM APIs, never HTML parsing.
-  NAV.forEach(function(n) {
-    const link = make('a', nav, n[1]);
-    link.href = n[0]==='martyrs'?'./martyrs/':n[0]==='tree'?'./genealogy/':'#'+n[0];
-    link.dataset.r = n[0];
   });
   const servicesRoot = $('#services');
   if (servicesRoot) SERV.forEach(function(s) {
@@ -81,6 +65,7 @@
     if (r.startsWith('verify/')) r = 'verify';
     if (r.startsWith('news/')) r = 'news';
     var el = document.getElementById('v-' + r) || document.getElementById('v-notfound');
+    document.documentElement.dataset.homeRoute=String(r==='home');
     views.forEach(function(v) {
       v.hidden = v !== el
     });
@@ -2093,7 +2078,8 @@
       a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
       var im = make('img', a);
       im.alt = title + ' — صورة ' + (i + 1);
-      const priority = parent.classList.contains('home-news-card') && i === 0;
+      // The main hero is the high-priority content; below-the-fold news images are lazy.
+      const priority = false;
       im.loading = priority ? 'eager' : 'lazy';
       im.fetchPriority = priority ? 'high' : 'low';
       im.decoding = 'async';
@@ -2129,7 +2115,7 @@
     if(reduced){
       const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
       reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
-    }else nearViewport(g, load, parent.classList.contains('home-news-card'));
+    }else nearViewport(g, load);
   }
 
   async function loadPublicNews() {
@@ -3316,23 +3302,7 @@
     return cleanImage(file, 10485760);
   }
 
-  var dock = document.createElement('nav');
-  dock.className = 'mobile-dock';
-  dock.setAttribute('aria-label', 'التنقل السريع');
-  [
-    ['home', 'الرئيسية', 'home', '#home'],
-    ['news', 'الأخبار', 'news', '#news'],
-    ['tree', 'الشجرة', 'network', './genealogy/'],
-    ['martyrs', 'الشهداء', 'heart', './martyrs/'],
-    ['account', 'دخول', 'user', '#login']
-  ].forEach(x => {
-    var l = make('a', dock);
-    l.href = x[3];
-    l.dataset.dockRoute = x[0];
-    appendPortalIcon(l,x[2],22);
-    make('span', l, x[1]);
-  });
-  document.body.appendChild(dock);
+  const dock=document.querySelector('.mobile-dock');
   const dockAccount = dock.querySelector('[data-dock-route="account"]');
 
   function markDock() {
