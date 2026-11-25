@@ -11,10 +11,13 @@ const base='http://127.0.0.1:8765/';
    const open=async path=>{await page.goto(base+path,{waitUntil:'domcontentloaded'});};
    const visible=async selector=>page.locator(selector).waitFor({state:'visible',timeout:15000});
    const noOverflow=async label=>assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' horizontal overflow at '+width);
-   for(const route of ['home','history','archive','tree','contact','privacy','login','register','membership','heritage','community']){
+   for(const route of ['home','history','archive','tree','contact','privacy','login','register','membership','heritage','community','search']){
     await open('#'+route);await visible('#v-'+route);
     await noOverflow(route);
    }
+   await open('#home');await visible('#features');assert.equal(await page.locator('#features > a').count(),4);
+   await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
+   await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
    for(const slug of ['about','history','membership']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
