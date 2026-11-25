@@ -474,3 +474,11 @@ test('recovery restricts requests to the confirmed account, rejects mismatched i
  assert.match(js,/recoveryAccount\?recoveryAccount\.email:resetInput\.value\.trim\(\)/);
  assert.match(js,/email_confirmed_at/);
 });
+
+
+test('account email recovery fails closed when session identity cannot be confirmed',()=>{
+ assert.match(js,/recoveryIdentityPending\|\|!recoveryIdentityReady/);
+ assert.match(js,/sendCode\.disabled=haveCode\.disabled=!recoveryIdentityReady/);
+ assert.match(js,/await assertRecoveryOwner\(\)/);
+ assert.match(js,/user\.id!==recoveryAccount\.id/);
+});

@@ -1030,7 +1030,7 @@
       if(result.error||!result.data?.user?.email)throw Error();
       if(recoveryBusy)throw Error();
       if(!result.data.user.email_confirmed_at)throw Error();
-      discardRecovery();bindRecoveryAccount(result.data.user);
+      discardRecovery();bindRecoveryAccount(result.data.user);recoveryIdentityReady=true;
       setRecoveryStep(1,'أرسل رمز التحقق إلى بريد حسابك لتغيير كلمة المرور.');
       location.hash='reset';
     }catch{message.textContent='تعذر التحقق من الحساب. حاول مرة أخرى.';}finally{button.disabled=false;}
@@ -2534,7 +2534,7 @@
     resetInput = field(resetForm, 'البريد الإلكتروني المسجل في العضوية', 'email', 'email', 254);
   resetForm.id='recovery-email-form';resetInput.required=true;resetInput.autocomplete='email';resetInput.dir='ltr';
   const sendCode=make('button',resetForm,'إرسال رمز الاستعادة');sendCode.type='submit';sendCode.className='btn btn-gold';
-  const haveCode=action(resetForm,'لدي رمز بالفعل',()=>{if(recoveryBusy||recoveryIdentityPending||!resetInput.reportValidity())return;startCode();});
+  const haveCode=action(resetForm,'لدي رمز بالفعل',()=>{if(recoveryBusy||recoveryIdentityPending||!recoveryIdentityReady||!resetInput.reportValidity())return;startCode();});
   haveCode.className='btn btn-ghost';
   var codeForm=make('form',resetBox);codeForm.id='recovery-code-form';
   const codeEmail=make('p',codeForm);codeEmail.className='recovery-email-label';
@@ -2554,15 +2554,21 @@
   const help=make('p',resetBox,'لم تصلك الرسالة؟ افحص البريد غير المرغوب فيه. لا تشارك رمزك مع أي شخص.');
   help.className='recovery-hint';
   let recoveryClient=null, recoveryFlow=null, recoveryStep=1, recoveryEmail='', recoveryBusy=false, recoveryLinkMode=false, recoverySentAt=0, recoveryAccount=null;
-  let recoveryEpoch=0, recoveryIdentityPending=false;
+  let recoveryEpoch=0, recoveryIdentityPending=false, recoveryIdentityReady=false;
   function bindRecoveryAccount(account){
     recoveryAccount=account?{id:account.id,email:account.email}:null;
     resetInput.readOnly=Boolean(recoveryAccount);
     if(recoveryAccount)resetInput.value=recoveryAccount.email;
     recoveryFlow?.bindAccount(recoveryAccount);
   }
+  async function assertRecoveryOwner(){
+    if(!recoveryAccount)return;
+    const result=await client().auth.getUser();
+    const user=result.data?.user;
+    if(result.error||!user?.email_confirmed_at||user.id!==recoveryAccount.id||String(user.email).toLowerCase()!==String(recoveryAccount.email).toLowerCase())throw Error('تغيرت جلسة العضوية. أعد فتح صفحة الاستعادة.');
+  }
   function selectedRecoveryEmail(){
-    if(recoveryIdentityPending)throw Error('جارٍ التحقق من حساب العضوية. حاول مجددًا.');
+    if(recoveryIdentityPending||!recoveryIdentityReady)throw Error('يلزم التحقق من جلسة الحساب أولًا. أعد فتح الصفحة.');
     return recoveryAccount?recoveryAccount.email:resetInput.value.trim();
   }
   function discardRecovery(){
@@ -2577,7 +2583,7 @@
     recoveryStep=step;resetForm.hidden=step!==1;codeForm.hidden=step!==2;changeForm.hidden=step!==3;doneLink.hidden=step!==4;
     [...resetSteps.children].forEach((li,i)=>{if(i===step-1)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');});
     if(message)resetMsg.textContent=message;
-    if(step===1&&location.hash==='#reset')window.familyCaptcha.prepare(resetForm).catch(()=>{});
+    if(step===1){sendCode.disabled=haveCode.disabled=!recoveryIdentityReady;if(location.hash==='#reset')window.familyCaptcha.prepare(resetForm).catch(()=>{});}
   }
   function startCode(){
     recoveryEmail=selectedRecoveryEmail();codeEmail.textContent='البريد: '+recoveryEmail;codeInput.value='';
@@ -2595,6 +2601,7 @@
     if(Date.now()-recoverySentAt<60000)throw Error('انتظر دقيقة قبل طلب رسالة جديدة.');
     const targetEmail=selectedRecoveryEmail(),version=recoveryEpoch;
     try{
+      await assertRecoveryOwner();
       await otpFlow().request(targetEmail,{redirectTo:location.origin+location.pathname+'?page=reset',captchaToken:await window.familyCaptcha.token(resetForm)});
       if(version!==recoveryEpoch||location.hash!=='#reset')return;
       recoverySentAt=Date.now();recoveryLinkMode=false;resetInput.value=targetEmail;startCode();
@@ -2602,12 +2609,14 @@
   });
   bindRecovery(codeForm,verifyCode,async()=>{
     const version=recoveryEpoch;
+    await assertRecoveryOwner();
     await otpFlow().verify(recoveryEmail,codeInput.value);
     if(version!==recoveryEpoch||location.hash!=='#reset')return;
     codeForm.reset();recoveryLinkMode=false;setRecoveryStep(3,'تم التحقق من الرمز. اختر كلمة مرور جديدة.');newPass.focus();
   });
   bindRecovery(changeForm,savePass,async()=>{
     if(recoveryStep!==3||!recoveryFlow)throw Error('تحقق من البريد أولًا.');
+    await assertRecoveryOwner();
     const uid=await recoveryFlow.save(newPass.value,confirmPass.value);
     changeForm.reset();
     const auth=recoveryLinkMode?client().auth:otpAuth();
@@ -2630,7 +2639,7 @@
   async function showReset() {
     if(recoveryStep!==1||recoveryIdentityPending)return;
     const version=recoveryEpoch;
-    recoveryIdentityPending=true;sendCode.disabled=haveCode.disabled=true;
+    recoveryIdentityPending=true;recoveryIdentityReady=false;sendCode.disabled=haveCode.disabled=true;
     try{
       if(!window.supabase)throw Error();
       const session=await client().auth.getSession();
@@ -2646,13 +2655,14 @@
         bindRecoveryAccount(null);
         resetMsg.textContent='أدخل البريد الإلكتروني المسجل في حساب عضويتك.';
       }
+      recoveryIdentityReady=true;
     }catch{if(version===recoveryEpoch){resetMsg.textContent='تعذر التحقق من جلسة الحساب. أعد فتح الصفحة وحاول مجددًا.';return;}}
-    finally{recoveryIdentityPending=false;if(version===recoveryEpoch&&location.hash==='#reset'&&recoveryStep===1){sendCode.disabled=haveCode.disabled=false;}}
+    finally{recoveryIdentityPending=false;if(version===recoveryEpoch&&location.hash==='#reset'&&recoveryStep===1){sendCode.disabled=haveCode.disabled=!recoveryIdentityReady;}}
   }
   window.addEventListener('hashchange',()=>{
     if(location.hash==='#reset')return;
     if(recoveryBusy)return;
-    discardRecovery();bindRecoveryAccount(null);resetInput.value='';setRecoveryStep(1,'أدخل بريد حسابك لاستعادة كلمة المرور.');
+    recoveryIdentityReady=false;discardRecovery();bindRecoveryAccount(null);resetInput.value='';setRecoveryStep(1,'أدخل بريد حسابك لاستعادة كلمة المرور.');
   });
   var forgot = make('a', $('#logForm'), 'نسيت كلمة المرور؟');
   forgot.href = '#reset';
