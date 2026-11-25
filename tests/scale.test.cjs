@@ -6,7 +6,7 @@ test('public CMS bounds reads, preserves published filtering and batches signed 
  const js=fs.readFileSync('portal.js','utf8');
  const source=js.slice(js.indexOf('  const publicCMSPageSize='),js.indexOf('  // Load the administrative editor only after'));
  const calls=[],ranges=[],signed=[];
- function node(){return {children:[],appendChild(n){this.children.push(n)},insertBefore(n,b){this.children.splice(this.children.indexOf(b),0,n)},replaceChildren(){this.children=[]},setAttribute(){},style:{}}}
+ function node(){return {children:[],appendChild(n){this.children.push(n)},insertBefore(n,b){const previous=this.children.indexOf(n);if(previous!==-1)this.children.splice(previous,1);const target=this.children.indexOf(b);if(target===-1)throw Error('Reference node not found');this.children.splice(target,0,n)},replaceChildren(){this.children=[]},setAttribute(){},style:{}}}
  const panel=node(),host={querySelector:()=>panel};
  const make=(tag,p,t)=>{const n=node();n.tag=tag;n.textContent=t;p.appendChild(n);return n};
  const action=(p,t,fn)=>{const n=make('button',p,t);n.onclick=fn;return n};
