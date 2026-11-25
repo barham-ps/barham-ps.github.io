@@ -55,7 +55,7 @@ test('visitor priorities are visible without authentication and print design rem
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
  assert.doesNotMatch(h,/<nav class="visitor-entry"|id="features"/);
  assert.match(h,/<nav class="home-fallback"[\s\S]*?href="\.\/genealogy\/"/);
- assert.match(read('portal.js'),/\['tree', 'شجرة العائلة'\]/);
+ assert.match(h,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
  assert.ok(tree.includes('portal.css?v=75')&&tree.includes('tree.css?v=7'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
@@ -156,11 +156,11 @@ test('V73 theme and compact navigation preserve routes and private controls',()=
  assert.match(read('genealogy/index.html'),/data-family-theme/);assert.match(read('martyrs/index.html'),/data-family-theme/);
 });
 
-test('V74 moderate background glass and original default theme',()=>{
+test('V83 moderate background glass and original default theme',()=>{
  const css=read('portal.css'),footer=read('footer.js');
  assert.match(footer,/const theme=choice\|\|'dark'/);
- assert.match(css,/--glass-card:rgba\(18,61,49,\.74\)/);
- assert.match(css,/--glass-card:rgba\(255,253,248,\.74\)/);
- assert.match(css,/--glass-blur:10px/);
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.82\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
+ assert.match(css,/--glass-blur:8px/);
  for(const path of ['portal.css','genealogy/tree.css','martyrs/memorial.css','public.css'])assert.match(read(path),/prefers-reduced-transparency:reduce/);
 });

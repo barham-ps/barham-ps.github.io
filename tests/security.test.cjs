@@ -122,11 +122,12 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,6);
   assert.ok(scripts.every(x => x[0].includes('defer')));
-  assert.ok(scripts[0][1].includes('supabase'));
-  assert.ok(scripts[3][1].includes('runtime.js'));
+  assert.ok(scripts[0][1].includes('runtime.js'));
+  assert.ok(scripts[1][1].includes('footer.js'));
+  assert.ok(scripts[2][1].includes('supabase'));
   assert.ok(!scripts.some(x=>x[1].includes('martyrs/admin.js')));
   assert.match(js,/await import\('\.\/martyrs\/admin\.js\?v=3'\)/);
-  assert.ok(scripts[4][1].includes('footer.js'));
+  assert.ok(scripts[4][1].includes('captcha.js'));
   assert.ok(scripts[5][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);
@@ -288,10 +289,10 @@ test('simplified navigation uses one tree entry and preserves historical content
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
  assert.doesNotMatch(html, /id="features"|<nav class="visitor-entry"/);
- assert.match(js,/\['tree', 'شجرة العائلة'\]/);
+ assert.match(html,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
  assert.match(html,/class="footer-links" aria-label="روابط البوابة المساندة"/);
- assert.match(js,/\['news', 'الأخبار', 'news', '#news'\]/);
- assert.match(js,/\['martyrs', 'الشهداء', 'heart', '\.\/martyrs\/'\]/);
+ assert.match(html,/<a href="#news" data-dock-route="news">[\s\S]*?<span>الأخبار<\/span><\/a>/);
+ assert.match(html,/<a href="\.\/martyrs\/" data-dock-route="martyrs">[\s\S]*?<span>الشهداء<\/span><\/a>/);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);
@@ -584,4 +585,25 @@ test('edge CSP and permission policy are ready for the selected CAPTCHA and pass
  assert.match(configText,/targetRules = \["generic-api-key"\]/);
  assert.match(configText,/condition = "AND"/);
  assert.match(configText,/regexes = \['\^sb_publishable_[A-Za-z0-9_-]+\$'\]/);
+});
+
+
+test('home navigation is rendered without third-party scripts or render-blocking fonts',()=>{
+ const head=html.slice(0,html.indexOf('</head>'));
+ assert.doesNotMatch(head,/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com/);
+ assert.equal((html.match(/data-dock-route="/g)||[]).length,5);
+ assert.equal((html.match(/data-r="/g)||[]).length,7);
+ assert.ok(js.includes("const dock=document.querySelector('.mobile-dock')"));
+ assert.match(fs.readFileSync('runtime.js','utf8'),/if\(isHome\|\|lowData\(\)/);
+});
+
+
+test('balanced glass changes only surface alpha and preserves accessible fallbacks',()=>{
+ const css=fs.readFileSync('portal.css','utf8');
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.82\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
+ assert.match(css,/--glass-chrome:rgba\(3,37,28,\.86\)/);
+ assert.match(css,/--glass-chrome:rgba\(255,253,248,\.86\)/);
+ assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
 });
