@@ -10,4 +10,10 @@ SELECT NOT public.family_is_admin() AS forged_aal2_denied,
  (SELECT count(*) FROM public.family_member_notices)=0 AS notices_denied,
  (SELECT count(*) FROM public.family_member_content)=0 AS member_content_denied,
  (SELECT count(*) FROM public.family_profiles)=0 AS profiles_denied;
+DO $$
+BEGIN
+ IF public.family_is_admin() OR EXISTS(SELECT 1 FROM public.member_applications) OR EXISTS(SELECT 1 FROM public.family_lineage) OR EXISTS(SELECT 1 FROM public.family_member_requests) OR EXISTS(SELECT 1 FROM public.family_member_notices) OR EXISTS(SELECT 1 FROM public.family_member_content) OR EXISTS(SELECT 1 FROM public.family_profiles) THEN
+   RAISE EXCEPTION 'Synthetic identity isolation regression failed';
+ END IF;
+END $$;
 ROLLBACK;
