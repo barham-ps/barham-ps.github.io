@@ -1,0 +1,21 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+test('public archive renders all text before signing unique image paths in bounded batches',async()=>{
+ const js=fs.readFileSync('portal.js','utf8');
+ const start=js.indexOf('  let publicCMSEpoch=0;'),end=js.indexOf('  async function loadPublicCMS(){',start);
+ assert.ok(start>=0&&end>start);
+ const element=()=>({children:[],style:{},isConnected:true,get childElementCount(){return this.children.length},replaceChildren(){this.children=[]},querySelector(){return this.children.find(x=>x.className==='public-cms grid')||null}});
+ const host=element(),location={hash:'#archive'},batches=[];
+ const rows=Array.from({length:101},(_,i)=>({title:'Record '+i,body:'Text '+i,image_path:'image-'+(i%100)+'.webp'}));
+ const query={select(){return this},eq(){return this},order(){return Promise.resolve({data:rows})}};
+ const client=()=>({from:()=>query,storage:{from(bucket){assert.equal(bucket,'family-public-content');return {async createSignedUrls(paths,ttl){assert.equal(ttl,300);assert.equal(host.children[0].children.length,101);batches.push(paths);return {data:paths.map(path=>({path,signedUrl:'https://example.test/'+path}))}}}}}});
+ const make=(tag,parent,text)=>{const e=Object.assign(element(),{tag,text});parent.children.push(e);return e};
+ const ctx={location,document:{querySelector:()=>host},sectionsCMS:{archive:'Archive'},client,make,formatPortalTime:String};
+ vm.createContext(ctx);vm.runInContext(js.slice(start,end),ctx);
+ await vm.runInContext('renderPublicCMS()',ctx);
+ assert.deepEqual(batches.map(x=>x.length),[50,50]);
+ assert.equal(new Set(batches.flat()).size,100);
+ assert.equal(host.children[0].children.filter(x=>x.children.some(y=>y.tag==='img')).length,101);
+});
