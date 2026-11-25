@@ -772,46 +772,100 @@
     return new Blob(parts,{type:'application/pdf'});
   }
   function certificatePdf(box){
+    // A4 export of the same glass membership-document design (portal.css).
     const c=document.createElement('canvas');c.width=1240;c.height=1754;
     const ctx=c.getContext('2d');if(!ctx)throw Error('Canvas unavailable');
-    const W=c.width,center=W/2;
-    ctx.fillStyle='#fffdf7';ctx.fillRect(0,0,W,c.height);
-    ctx.strokeStyle='#b69a55';ctx.lineWidth=5;ctx.strokeRect(28,28,W-56,c.height-56);
-    ctx.fillStyle='#123b30';ctx.fillRect(45,45,W-90,230);
-    function text(value,y,size=32,color='#123b30',bold=false,x=center,max=1080,dir='rtl'){
-      ctx.direction=dir;ctx.textAlign='center';ctx.fillStyle=color;ctx.font=(bold?'bold ':'')+size+'px Arial, sans-serif';ctx.fillText(String(value||''),x,y,max);
+    const W=c.width,H=c.height,center=W/2,white='#f4f8ff',muted='#d0e0ef',blue='#bcd9ef';
+    const bodyFont=getComputedStyle(box).fontFamily,displayFont=getComputedStyle(box.querySelector('.md-name')).fontFamily;
+    const read=selector=>box.querySelector(selector)?.textContent.trim()||'';
+    function round(x,y,w,h,r,fill,stroke,line=2){
+      ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke();}
     }
+    function text(value,x,y,size=32,color=white,bold=false,align='right',dir='rtl',max=1080,font=bodyFont){
+      ctx.direction=dir;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillStyle=color;
+      ctx.font=(bold?'700 ':'400 ')+size+'px '+font;ctx.fillText(String(value||''),x,y,max);
+    }
+    function wrapped(value,x,y,size,max,lineHeight,limit,color=muted,bold=false,align='right',dir='rtl'){
+      ctx.font=(bold?'700 ':'400 ')+size+'px '+bodyFont;
+      const words=String(value||'').split(/\s+/),lines=[];let line='';
+      for(const word of words){const next=line?line+' '+word:word;if(line&&ctx.measureText(next).width>max){lines.push(line);line=word;}else line=next;}
+      if(line)lines.push(line);
+      if(lines.length>limit){lines[limit-1]=lines.slice(limit-1).join(' ');lines.length=limit;}
+      lines.forEach((l,i)=>text(l,x,y+i*lineHeight,size,color,bold,align,dir,max));
+    }
+    function glow(x,y,rx,ry,color,stop){
+      ctx.save();ctx.translate(x,y);ctx.scale(rx,ry);
+      const g=ctx.createRadialGradient(0,0,0,0,0,1);g.addColorStop(0,color);g.addColorStop(stop,'transparent');g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fillRect(-2,-2,4,4);ctx.restore();
+    }
+    ctx.fillStyle='#101e35';ctx.fillRect(0,0,W,H);
+    round(22,22,W-44,H-44,34);ctx.save();ctx.clip();
+    const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#101e35');bg.addColorStop(.65,'#263d54');bg.addColorStop(1,'#18283d');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    glow(W*.90,H*.80,W*1.30,H*.82,'#655477',.68);
+    glow(W*.12,H*.08,W*1.20,H*.70,'#426d83',.65);
+    ctx.fillStyle='#dcecff0b';ctx.fillRect(22,22,W-44,196);
+    ctx.strokeStyle='#dcecff35';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(22,218);ctx.lineTo(W-22,218);ctx.stroke();
     const logo=box.querySelector('.md-head img');
-    if(logo&&logo.complete&&logo.naturalWidth){ctx.drawImage(logo,570,60,100,100);}
-    text('البوابة العائلية لآل برهم',205,47,'#fff',true);
-    text('AL BARHAM / MEMBERSHIP OFFICE',249,25,'#e5cb8e',false,center,1080,'ltr');
-    text('شهادة اعتماد العضوية',365,63,'#123b30',true);
-    text('OFFICIAL PORTAL MEMBERSHIP',418,29,'#98783a',true,center,1080,'ltr');
-    text('بناءً على مراجعة طلب الانتساب واعتماده، تُمنح هذه الشهادة إلى',495,33);
-    ctx.fillStyle='#edf2ed';ctx.fillRect(95,535,1050,180);
-    text('الاسم الكامل للعضو',590,28);
-    text(box.querySelector('.md-name').textContent,655,55,'#123b30',true);
-    text('عضو معتمد في البوابة العائلية الرقمية',700,25);
+    if(!logo||!logo.complete||!logo.naturalWidth)throw Error('Certificate logo not ready');
+    const ratio=Math.min(138/logo.naturalWidth,138/logo.naturalHeight);
+    const lw=logo.naturalWidth*ratio,lh=logo.naturalHeight*ratio;ctx.drawImage(logo,145-lw/2,120-lh/2,lw,lh);
+    text(read('.md-head small'),1150,76,22,blue,false,'right','ltr',910,'Arial');
+    text(read('.md-head h3'),1150,139,46,white,true,'right','rtl',910,displayFont);
+    text(read('.md-head p'),1150,181,25,muted,false,'right','rtl',910);
+    text(read('.md-kicker'),1150,263,20,blue,false,'right','ltr',1060,'Arial');
+    text(read('.md-main h1'),1150,332,65,white,true,'right','rtl',1060,displayFont);
+    text(read('.md-en'),1150,374,28,blue,false,'right','ltr',1060,'Arial');
+    wrapped(read('.md-intro'),1150,434,32,1060,44,2);
+    const person=ctx.createLinearGradient(80,500,1160,690);person.addColorStop(0,'#e1f1ff24');person.addColorStop(1,'#e1f1ff09');
+    round(80,505,1080,200,24,person,'#d6eaff55',3);
+    text(read('.md-person small'),1125,552,27,muted);
+    text(read('.md-name'),1125,626,62,white,true,'right','rtl',1010,displayFont);
+    text(read('.md-person span'),1125,677,29,muted,false,'right','rtl',1010);
     Array.from(box.querySelectorAll('.md-fields > div')).forEach((field,i)=>{
-      const x=i%2===0?870:370,y=785+Math.floor(i/2)*105;
-      text(field.querySelector('small').textContent,y,24,'#98783a',true,x,470);
-      text(field.querySelector('strong').textContent,y+43,31,'#123b30',true,x,470,i===0?'ltr':'rtl');
+      const x=i%2===0?630:80,y=730+Math.floor(i/2)*115;
+      round(x,y,530,102,17,'#dcecff0d','#dcecff28',2);
+      text(field.querySelector('small').textContent,x+505,y+33,24,muted,false,'right','rtl',480);
+      wrapped(field.querySelector('strong').textContent,x+505,y+70,30,480,29,2,white,true,'right',i===0?'ltr':'rtl');
     });
-    text('نطاق الاعتماد',1128,34,'#123b30',true);
-    text('اعتماد صاحب الشهادة للاستفادة من خدمات العضوية',1177,30);
-    text('والمشاركة في أنشطة المنصة وفق سياساتها المعمول بها.',1217,30);
-    text('إدارة آل برهم',1330,43,'#123b30',true,850,470);
-    text('اعتماد مؤسسي إلكتروني',1375,25,'#98783a',false,850,470);
-    const qr=box.querySelector('.md-qr canvas');
-    if(qr&&qr.width){ctx.fillStyle='#fff';ctx.fillRect(240,1250,240,240);ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,252,1262,216,216);ctx.imageSmoothingEnabled=true;}
+    ctx.fillStyle='#a8c9e4';ctx.fillRect(1154,1085,4,110);
+    text(read('.md-statement strong'),1134,1119,32,white,true);
+    wrapped(read('.md-statement p'),1134,1161,27,1025,36,2);
+    round(80,1220,1080,264,24,'#c7dfff0b','#c7dfff30',2);
+    const signX=975;
+    text(read('.md-signature'),signX,1323,46,'#e0edff',true,'center','rtl',300,displayFont);
+    ctx.strokeStyle='#b9d6ed66';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(830,1342);ctx.lineTo(1120,1342);ctx.stroke();
+    text(read('.md-sign strong'),signX,1376,26,white,true,'center','rtl',300);
+    text(read('.md-sign small'),signX,1413,23,muted,false,'center','rtl',300);
+    ctx.save();ctx.translate(center,1351);ctx.rotate(-9*Math.PI/180);
+    const sealFill=ctx.createRadialGradient(0,0,0,0,0,107);sealFill.addColorStop(0,'#c6e3ff20');sealFill.addColorStop(1,'#c6e3ff06');
+    ctx.beginPath();ctx.arc(0,0,105,0,Math.PI*2);ctx.fillStyle=sealFill;ctx.fill();ctx.strokeStyle='#c2d9ee';ctx.lineWidth=3;ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,92,0,Math.PI*2);ctx.setLineDash([5,5]);ctx.strokeStyle='#c2d9eea0';ctx.stroke();ctx.setLineDash([]);
+    text('AL BARHAM · PORTAL',0,-52,15,blue,false,'center','ltr',166,'Arial');
+    text('♔',0,-12,36,blue,false,'center','ltr',160,'Arial');
+    text(read('.md-seal strong'),0,24,34,white,true,'center','rtl',160,displayFont);
+    text(read('.md-seal small'),0,51,18,blue,false,'center','rtl',160);
+    text('VERIFIED',0,76,15,blue,true,'center','ltr',160,'Arial');ctx.restore();
     const verify=box.querySelector('.md-qr a');
-    text('رابط التحقق الإلكتروني',1515,26,'#123b30',true);
-    text(verify.href,1555,22,'#123b30',false,center,1100,'ltr');
-    text(box.querySelector('.certificate-copy-time').textContent,1607,23,'#123b30');
-    text('شهادة عضوية خاصة بالبوابة؛ ليست وثيقة حكومية أو إثبات نسب.',1650,25);
-    ctx.fillStyle='#123b30';ctx.fillRect(45,1675,W-90,34);
-    text('آل برهم | أصالة الجذور وعهد الأجيال',1700,23,'#fff');
-    return jpegPdf(canvasBytes(c,'image/jpeg',0.95),c.width,c.height);
+    if(!verify||!window.QRCode)throw Error('Certificate QR not ready');
+    const qrNode=document.createElement('div');
+    new QRCode(qrNode,{text:verify.href,width:196,height:196,correctLevel:QRCode.CorrectLevel.M});
+    const qr=qrNode.querySelector('canvas');
+    if(!qr||!qr.width)throw Error('Certificate QR unavailable');
+    round(153,1238,232,232,9,'#ffffff');ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,171,1256,196,196);ctx.imageSmoothingEnabled=true;
+    text('رابط التحقق الإلكتروني',center,1522,27,white,true,'center');
+    text(verify.href,center,1558,22,blue,false,'center','ltr',1080,'Arial');
+    text(read('.certificate-copy-time'),center,1598,23,muted,false,'center','rtl',1080);
+    wrapped(read('.md-note'),center,1636,22,1080,28,2,'#c6d8e9',false,'center');
+    ctx.fillStyle='#07152840';ctx.fillRect(22,1687,W-44,45);
+    ctx.strokeStyle='#dcecff35';ctx.beginPath();ctx.moveTo(22,1687);ctx.lineTo(W-22,1687);ctx.stroke();
+    text(read('.md-foot span'),1150,1717,22,'#dcecff',false,'right','rtl',740);
+    text('barham-ps.github.io',90,1717,20,'#dcecff',false,'left','ltr',350,'Arial');
+    ctx.restore();
+    round(22,22,W-44,H-44,34,null,'#a9c7df80',2);
+    round(38,38,W-76,H-76,23,null,'#d9eaff35',2);
+    return jpegPdf(canvasBytes(c,'image/jpeg',0.96),W,H);
   }
   var cert = newView('certificate', 'شهادة العضوية الرقمية'),
     certBody = make('div', cert);
@@ -819,14 +873,21 @@
   var certControls = make('div', cert);
   certControls.className = 'row';
   var printButton = action(certControls, 'طباعة / حفظ PDF', () => {const stamp=certBody.querySelector('.certificate-copy-time');if(stamp)stamp.textContent='تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date());window.print();});
-  var downloadCertificate=action(certControls,'تنزيل الشهادة PDF',()=>{
+  var downloadCertificate=action(certControls,'تنزيل الشهادة PDF',async()=>{
     const box=certBody.querySelector('.membership-document');
     if(!box||location.hash!=='#certificate'||!recoveredSession)return;
+    const sessionId=recoveredSession.user.id;
+    if(downloadCertificate.disabled)return;
+    downloadCertificate.disabled=true;
     try{
+      const logo=box.querySelector('.md-head img');
+      const ready=Promise.all([ensureQR(),document.fonts?.ready,logo?.decode?.()]);
+      let timer;try{await Promise.race([ready,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Assets timed out')),10000);})]);}finally{clearTimeout(timer);}
+      if(!box.isConnected||location.hash!=='#certificate'||recoveredSession?.user.id!==sessionId)return;
       box.querySelector('.certificate-copy-time').textContent='تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date());
       const number=box.querySelector('.md-fields strong').textContent;
       saveDownload(certificatePdf(box),'albarham-certificate-'+number+'.pdf',certControls);
-    }catch(e){alert('تعذر إنشاء ملف PDF. أعد المحاولة أو استخدم الطباعة.');}
+    }catch(e){alert('تعذر إنشاء ملف PDF أو تحميل عناصر الشهادة. أعد المحاولة أو استخدم الطباعة.');}finally{downloadCertificate.disabled=false;}
   });
   printButton.textContent='طباعة الشهادة';
   printButton.hidden = downloadCertificate.hidden = true;
