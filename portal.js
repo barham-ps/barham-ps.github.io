@@ -2055,8 +2055,8 @@
       a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
       var im = make('img', a);
       im.alt = title + ' — صورة ' + (i + 1);
-      // The main hero is the high-priority content; below-the-fold news images are lazy.
-      const priority = false;
+      // The first home cover is a measured LCP candidate; other photos remain lazy.
+      const priority = parent.classList.contains('home-news-card') && i === 0;
       im.loading = priority ? 'eager' : 'lazy';
       im.fetchPriority = priority ? 'high' : 'low';
       im.decoding = 'async';
@@ -2092,7 +2092,7 @@
     if(reduced){
       const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
       reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
-    }else nearViewport(g, load);
+    }else nearViewport(g, load, parent.classList.contains('home-news-card') && g.getBoundingClientRect().top <= window.innerHeight + 250);
   }
 
   async function loadPublicNews() {

@@ -32,9 +32,14 @@ jobs:
           "$work/gitleaks" dir --redact=100 --no-banner --exit-code 1 --report-format json --report-path "$work/public.json" dist || current_status=$?
           # Log only counts and validated rule categories, never matched text, paths or commit identifiers.
           python3 scripts/secret_scan_summary.py "$work/history.json" "$work/public.json"
-          # Keep the raw historical evidence. Independently classify only the exact known public key.
-          test "$current_status" -eq 0
+          # Preserve both raw scan counts. Re-scan the same files with only the exact public-key classification.
+          if [ "$current_status" -ne 0 ]; then
+            test "$current_status" -eq 1
+            "$work/gitleaks" dir --config scripts/gitleaks-known-public.toml --redact=100 --no-banner --exit-code 1 dist
+            echo "Public build matches remaining after exact known public-key classification: 0"
+          fi
           if [ "$history_status" -ne 0 ]; then
+            test "$history_status" -eq 1
             "$work/gitleaks" git --config scripts/gitleaks-known-public.toml --redact=100 --no-banner --exit-code 1 --log-opts="--all" .
             echo "Historical matches remaining after exact known public-key classification: 0"
           fi

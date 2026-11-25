@@ -1240,7 +1240,7 @@ html{padding-block:0!important;scroll-padding-top:0}
  #home-latest-news{min-block-size:160px}
  #home-latest-news .home-news-card{contain:layout paint}
  #home-latest-news .home-news-card .news-gallery-item img{display:block;width:100%;aspect-ratio:16/10;height:auto;object-fit:contain;background:var(--band)}
- @supports(content-visibility:auto){.compact-footer{content-visibility:auto;contain-intrinsic-size:auto 145px}}
+ /* Footer uses normal layout: an estimated intrinsic height was a measured CLS source. */
 }
 
 /* V83 balanced glass: background alpha only, no layout, typography or certificate changes. */

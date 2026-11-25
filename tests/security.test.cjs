@@ -558,7 +558,7 @@ test('secret diagnostics separate history and deployed files without hiding scan
  assert.match(workflow,/git --redact=100/);
  assert.match(workflow,/dir --redact=100/);
  assert.match(workflow,/secret_scan_summary\.py/);
- assert.match(workflow,/test "\$current_status" -eq 0/); assert.match(workflow,/--config scripts\/gitleaks-known-public\.toml/);
+ assert.match(workflow,/test "\$current_status" -eq 1/); assert.match(workflow,/dir --config scripts\/gitleaks-known-public\.toml/); assert.match(workflow,/git --config scripts\/gitleaks-known-public\.toml/);
  assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
 });
 
