@@ -50,3 +50,10 @@ test('public news starts without waiting for authentication and stale certificat
  assert.ok(js.includes('if(!current())return;'));
  assert.ok(js.includes("verifyBody.setAttribute('aria-live','polite')"));
 });
+
+test('visitor priorities are visible without authentication and print design remains separate',()=>{
+ const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
+ assert.match(h,/<nav class="visitor-entry"[\s\S]*?href="#news"[\s\S]*?href="\.\/genealogy\/"[\s\S]*?href="#history"/);
+ assert.ok(tree.includes('portal.css?v=59')&&tree.includes('tree.css?v=5'));
+ assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
+});

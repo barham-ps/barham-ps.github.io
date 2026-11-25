@@ -863,3 +863,65 @@ html{padding-block:0!important;scroll-padding-top:0}
 /* V57: Keep keyboard focus and anchor navigation clear of sticky chrome. */
 @media screen{html{scroll-padding-top:110px;scroll-padding-bottom:88px}.footer-links a{min-height:44px;display:inline-flex;align-items:center;justify-content:center}#v-certificate .md-fields strong{overflow-wrap:anywhere}#v-certificate .md-auth>*{min-width:0}}
 @media screen and (max-width:700px){html{scroll-padding-top:112px}#v-certificate .md-qr a{overflow-wrap:anywhere}}
+
+/* V59 — public-first experience and consistent internal design. Screen only: preserve print. */
+@media screen{
+ .home-intro .wrap{padding-block:clamp(20px,4vw,40px)}
+ .visitor-entry{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:670px;margin:20px auto 0}
+ .visitor-entry a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:10px 8px;background:#123b30;color:#f5e6b8;border:1px solid #bda166;border-radius:12px;text-decoration:none;font-size:15px;font-weight:700;min-width:0}
+ .visitor-entry a:first-child{background:#f5e6b8;color:#123b30}
+ .visitor-entry a:hover,.visitor-entry a:focus-visible{border-color:#fff1c9;box-shadow:0 0 0 2px #f5e6b833}
+ .visitor-entry svg{flex:none}
+ .home-intro .visitor-caption{font-size:13px;color:#d4e5de;margin-top:10px}
+ .home-section-head{flex-wrap:wrap;align-items:center}.home-section-head .more{min-height:44px;display:inline-flex;align-items:center}
+ .home-services #features .card{text-align:start;align-items:flex-start;justify-content:flex-start;padding:18px}
+ .home-services #features .card .more{margin-block-start:auto}
+ .home-news-card,.lux-news-card{max-width:100%;min-width:0}
+ .home-news-card p,.lux-news-card p,.public-cms article p{font-size:clamp(15px,2vw,17px);line-height:1.85;overflow-wrap:anywhere}
+ .home-news-card .news-date,.lux-news-card .news-date{text-align:start;font-size:13px!important;opacity:1}
+ .home-news-card h3,.lux-news-card .lux-title{line-height:1.55;overflow-wrap:anywhere}
+ .lux-news-card .news-gallery,.home-news-card .news-gallery{margin-block:12px 18px}
+ #v-news .wrap,#v-history .sec .wrap{max-width:1000px}
+ .public-cms .portal-loading{grid-column:1/-1}
+ .dashboard-heading,.dashboard-tile,.dashboard-record-body,.dashboard-filter{min-width:0}
+ .dashboard-grid .dashboard-tile{align-items:flex-start;text-align:start}
+ .dashboard-grid .dashboard-icon{background:#f5e6b815;border:1px solid #d4af3740}
+ .dashboard-content input,.dashboard-content select,.dashboard-content textarea,.dashboard-filter input,.dashboard-filter select{min-width:0;max-width:100%}
+ .dashboard-record>summary:focus-visible,.dashboard-tile:focus-visible,.visitor-entry a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
+ #v-verify .wrap{max-width:800px}
+ .verify-form{border:1px solid var(--glass-border,var(--line));border-radius:var(--radius-card,16px);background:var(--surface);padding:clamp(16px,4vw,28px);margin-bottom:14px}
+ .verify-form h2{font-size:clamp(22px,4vw,28px);color:var(--gold-on-green);margin:0 0 8px}
+ .verify-form p{font-size:15px;line-height:1.8;color:var(--fg2)}
+ .verify-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:14px;align-items:stretch}
+ .verify-row input{width:100%;min-width:0;min-height:48px;text-align:start;font-size:16px;padding:10px 12px}
+ .verify-row .btn{min-height:48px;padding-inline:24px}
+ .verify-result{min-height:76px;overflow-wrap:anywhere}
+ .verify-result .verify-valid{color:var(--ok)}.verify-result .verify-invalid{color:var(--warn)}
+ .verify-result[aria-busy=true]{border-color:var(--gold)}
+ #v-certificate .md-main .md-name{line-height:1.5}
+ #v-certificate .md-foot{align-items:center}
+ #v-certificate .md-auth{min-width:0}
+}
+@media screen and (max-width:700px){
+ .visitor-entry{gap:6px;margin-top:14px}
+ .visitor-entry a{flex-direction:column;gap:4px;min-height:64px;font-size:12px;line-height:1.4;text-align:center;padding:7px 4px}
+ .visitor-entry svg{width:20px;height:20px}
+ .home-intro .visitor-caption{font-size:12px}
+ .home-services #features .card{padding:12px;min-height:122px}
+ .home-services #features .card h3{font-size:16px;line-height:1.5}
+ .home-services #features .card p{font-size:13px;line-height:1.65}
+ .dashboard-grid .dashboard-tile{padding:12px;gap:9px}
+ .dashboard-grid .dashboard-tile small{font-size:13px;line-height:1.65}
+ .dashboard-grid .dashboard-tile strong{font-size:15px}
+ .dashboard-tabs{gap:6px}.dashboard-tabs .btn{flex:1 1 135px;justify-content:center}
+ #v-account .wrap>h1,#v-admin .wrap>h1,#v-member-hub .wrap>h1,#v-member-services-admin .wrap>h1,#v-certificate .wrap>h1,#v-verify .wrap>h1{font-size:clamp(24px,6vw,32px);padding:16px;margin-bottom:16px}
+}
+@media screen and (max-width:360px){
+ .visitor-entry a{font-size:11px}
+ .dashboard-grid,.dashboard-overview .dashboard-grid{grid-template-columns:1fr}
+ .dashboard-grid .dashboard-tile{flex-direction:row;min-height:88px}
+ .verify-row{grid-template-columns:1fr}
+ #v-certificate .md-auth{grid-template-columns:1fr}
+ #v-certificate .md-sign{grid-column:auto}
+ #v-certificate .md-fields{grid-template-columns:1fr}
+}

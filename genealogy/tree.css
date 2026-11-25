@@ -29,3 +29,21 @@
  .genealogy-page #focus-title:focus{outline:2px solid var(--gold);outline-offset:5px}
  @media(max-width:420px){.genealogy-page .visual-actions{width:100%}.genealogy-page .visual-actions .btn{flex:1 1 125px;white-space:normal;font-size:13px;padding:8px}.genealogy-page .ancestor-path{padding:8px;gap:5px}}
 }
+
+/* V5: accessible genealogy layout on narrow screens. */
+@media screen{
+ .genealogy-page .tree-toolbar input,.genealogy-page .tree-toolbar select{min-height:46px;width:100%;min-width:0;font-size:16px}
+ .genealogy-page .tree-actions{gap:8px}
+ .genealogy-page .visual-panel,.genealogy-page .tree-toolbar,.genealogy-page .tree-panel{min-width:0}
+ .genealogy-page .tree-hero h1{font-size:clamp(30px,6vw,54px);line-height:1.4}
+ .genealogy-page .hint{line-height:1.8}
+ .genealogy-page .result-nav button{min-height:44px}
+ .genealogy-page .visual-card:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+}
+@media screen and (max-width:420px){
+ .genealogy-page .tree-actions .btn{flex:1 1 118px;justify-content:center;white-space:normal}
+ .genealogy-page .tree-header .wrap{gap:8px;flex-wrap:wrap}
+ .genealogy-page .tree-header .btn{font-size:12px;white-space:normal}
+ .genealogy-page .stats>div span{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+ .genealogy-page .view-tab{font-size:13px}
+}

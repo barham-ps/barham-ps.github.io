@@ -448,11 +448,13 @@
   var cms = make('div', admin); cms.className='card'; cms.hidden=true;
   var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
   async function renderPublicCMS(){
+    const requested=location.hash.slice(1);
     for(const [key,label] of Object.entries(sectionsCMS)){
+      if(key!==requested)continue;
       const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host) continue;
       let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
-      const q=await client().from('family_public_content').select('*').eq('section',key).eq('published',true).order('created_at',{ascending:false});
-      if(q.error) continue; panel.replaceChildren();
+      const q=await client().from('family_public_content').select('id,title,body,image_path,created_at').eq('section',key).eq('published',true).order('created_at',{ascending:false});
+      if(q.error){if(!panel.childElementCount){const note=make('p',panel,'تعذر تحميل المحتوى المنشور.');note.className='portal-loading';action(panel,'إعادة المحاولة',()=>{panel.replaceChildren();renderPublicCMS().catch(()=>{});});}continue;}panel.replaceChildren();
       for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
         if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
       }
@@ -958,15 +960,20 @@
   }
   var verify = newView('verify', 'التحقق من العضوية'),
     verifyBody = make('div', verify);
-  verifyBody.className = 'card';
-  var tokenInput = make('input', verify);
+  verifyBody.className = 'card verify-result';
+  const verifyForm=make('div',verify);verifyForm.className='verify-form';
+  verify.insertBefore(verifyForm,verifyBody);
+  make('h2',verifyForm,'تحقق من صحة العضوية');
+  make('p',verifyForm,'أدخل رقم العضوية أو رمز التحقق الموجود على الشهادة. هذه الخدمة متاحة للجميع دون حساب.');
+  const verifyRow=make('div',verifyForm);verifyRow.className='verify-row';
+  var tokenInput = make('input', verifyRow);
   tokenInput.type = 'text';
   tokenInput.placeholder = 'رقم العضوية أو رمز التحقق';
   tokenInput.dir = 'ltr';
   tokenInput.maxLength=80;tokenInput.autocomplete='off';tokenInput.setAttribute('aria-label','رقم العضوية أو رمز التحقق');
   verifyBody.setAttribute('aria-live','polite');
   let verificationEpoch=0;
-  const verifyButton=action(verify, 'تحقق', () => verifyToken(tokenInput.value.trim()));
+  const verifyButton=action(verifyRow, 'تحقق', () => verifyToken(tokenInput.value.trim()));
   tokenInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();verifyToken(tokenInput.value.trim());}});
   window.addEventListener('hashchange',()=>{verificationEpoch++;verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;});
   async function verifyToken(token) {
@@ -994,7 +1001,7 @@
         return;
       }
       let d = q.data[0];
-      make('h2', verifyBody, d.valid ? 'عضوية سارية ومعتمدة' : 'عضوية غير سارية');
+      make('h2', verifyBody, d.valid ? 'عضوية سارية ومعتمدة' : 'عضوية غير سارية').className=d.valid?'verify-valid':'verify-invalid';
       make('p', verifyBody, 'رقم العضوية: ' + d.membership_number);
       make('p', verifyBody, 'تاريخ الإصدار: ' + formatPortalTime(d.issued_at));
     } catch (e) {

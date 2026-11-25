@@ -24,3 +24,17 @@ footer{border-block-start:1px solid #a99049;border-block-end:0;color:var(--page-
 a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
 @media(max-width:500px){.public-actions a{flex:1 1 150px}main{padding:20px 12px}header{padding-inline:12px}nav{gap:6px 12px}}
 @media print{body,.public-card{background:white;color:black;box-shadow:none}.public-card h1,.public-card h2,.public-card p,.public-card li,.public-kicker{color:black}header,footer,nav,.public-actions{display:none}}
+
+/* V3: shared visitor layout, aligned with the portal's emerald/gold design. */
+@media screen{
+ body{display:flex;flex-direction:column}
+ main{width:100%;flex:1;max-width:900px}
+ .public-card{background:linear-gradient(150deg,#174638,#123d31 70%);border-color:#9f8a52;box-shadow:0 16px 42px #00160f40;overflow-wrap:anywhere}
+ .public-card p,.public-card li{line-height:1.85}
+ .public-card nav{border-top:1px solid #688a79;padding-top:16px;gap:8px 18px}
+ .public-card nav a[aria-current=page]{color:#fff1c9}
+ .public-actions a:hover{border-color:#fff1c9}
+ header a,footer a{min-height:44px;display:inline-flex;align-items:center}
+ footer{font-size:14px}
+}
+@media screen and (max-width:500px){.public-card{padding:20px 16px}.public-card h2{font-size:21px}.public-card nav a{font-size:14px}.public-actions a{flex:1 1 135px}.public-card nav{gap:6px 14px}}
