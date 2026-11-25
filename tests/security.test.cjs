@@ -230,7 +230,7 @@ test('history does not duplicate genealogy call to action and sender details sta
 });
 test('repeat request submissions are independent and new submissions do not reload the member hub',()=>{
  const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app);',js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')")));
- assert.match(req,/\.insert\(\{user_id:uid,kind,title,body\}\)\.select/);
+ assert.match(req,/\.insert\(\{user_id:uid,kind,title,body,attachment_requested:!!file\}\)\.select/);
  assert.match(req,/mine=\[created,\.\.\.mine\.filter/);
  assert.match(req,/drawRequests\(\);rf\.reset\(\)/);
  assert.match(req,/finally\{send\.disabled=false;\}/);
@@ -298,4 +298,20 @@ test('public search excludes private member data and admin CSV contains aggregat
  assert.match(report,/members\.filter\(m=>m\.status===key\)\.length/);
  assert.doesNotMatch(report,/\.full_name|\.email|\.phone|\.whatsapp/);
  assert.match(js,/p\.checked = item \? item\.published : false/);
+});
+
+test('request attachments are private, immutable and tied to a saved request',()=>{
+ const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
+ assert.match(sql,/'family-request-files','family-request-files',false,10485760/);
+ assert.match(sql,/r\.user_id=\(select auth\.uid\(\)\) and r\.status='pending' and r\.attachment_requested/);
+ assert.match(sql,/storage\.objects\.name=r\.user_id::text\|\|'\/'\|\|r\.id::text/);
+ assert.match(sql,/r\.user_id=\(select auth\.uid\(\)\) or \(select public\.family_is_admin\(\)\)/);
+ assert.doesNotMatch(sql,/for update to authenticated/i);
+ const helpers=js.slice(js.indexOf("const requestFilesBucket="),js.indexOf('async function loadHub'));
+ assert.match(helpers,/upsert:false/);
+ assert.match(helpers,/\.download\(uid\+'\/'\+row\.id\)/);
+ assert.doesNotMatch(helpers,/getPublicUrl|createSignedUrl/);
+ const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app);'));
+ assert.ok(req.indexOf('const created=ok(await client()')<req.indexOf('await uploadRequestFile(created,uid,file)'));
+ assert.match(req,/دون إعادة إرسال الطلب/);
 });
