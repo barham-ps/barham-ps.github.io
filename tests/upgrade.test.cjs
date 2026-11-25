@@ -55,7 +55,7 @@ test('visitor priorities are visible without authentication and print design rem
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
  assert.doesNotMatch(h,/<nav class="visitor-entry"|id="features"/);
  assert.match(h,/<nav class="home-fallback"[\s\S]*?href="\.\/genealogy\/"/);
- assert.match(read('portal.js'),/\['tree', 'شجرة العائلة'\]/);
+ assert.match(h,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
  assert.ok(tree.includes('portal.css?v=75')&&tree.includes('tree.css?v=7'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });

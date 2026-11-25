@@ -289,10 +289,10 @@ test('simplified navigation uses one tree entry and preserves historical content
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
  assert.doesNotMatch(html, /id="features"|<nav class="visitor-entry"/);
- assert.match(js,/\['tree', 'شجرة العائلة'\]/);
+ assert.match(html,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
  assert.match(html,/class="footer-links" aria-label="روابط البوابة المساندة"/);
- assert.match(js,/\['news', 'الأخبار', 'news', '#news'\]/);
- assert.match(js,/\['martyrs', 'الشهداء', 'heart', '\.\/martyrs\/'\]/);
+ assert.match(html,/<a href="#news" data-dock-route="news">[\s\S]*?<span>الأخبار<\/span><\/a>/);
+ assert.match(html,/<a href="\.\/martyrs\/" data-dock-route="martyrs">[\s\S]*?<span>الشهداء<\/span><\/a>/);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);
@@ -595,4 +595,15 @@ test('home navigation is rendered without third-party scripts or render-blocking
  assert.equal((html.match(/data-r="/g)||[]).length,7);
  assert.ok(js.includes("const dock=document.querySelector('.mobile-dock')"));
  assert.match(fs.readFileSync('runtime.js','utf8'),/if\(isHome\|\|lowData\(\)/);
+});
+
+
+test('balanced glass changes only surface alpha and preserves accessible fallbacks',()=>{
+ const css=fs.readFileSync('portal.css','utf8');
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.82\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
+ assert.match(css,/--glass-chrome:rgba\(3,37,28,\.86\)/);
+ assert.match(css,/--glass-chrome:rgba\(255,253,248,\.86\)/);
+ assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
 });
