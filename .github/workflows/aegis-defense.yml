@@ -1,0 +1,89 @@
+name: AEGIS defense matrix
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '51 5 * * 1'
+permissions:
+  contents: read
+jobs:
+  defense:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Hydra - multiple security controls
+        id: hydra
+        run: |
+          sh scripts/build-pages.sh
+          python3 scripts/validate_public_build.py dist
+          node --test tests/security.test.cjs tests/upgrade.test.cjs
+      - name: Cerberus - synthetic database role isolation
+        id: cerberus
+        if: always()
+        run: bash tests/restore-drill.sh
+      - name: Spectre - security configuration drift
+        id: spectre
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          h = Path('_headers').read_text()
+          for rule in ("frame-ancestors 'none'", "object-src 'none'", "X-Frame-Options: DENY", "X-Content-Type-Options: nosniff", "Referrer-Policy: no-referrer"):
+              assert rule in h, rule
+          assert re.search(r'Strict-Transport-Security: max-age=31536000\b', h)
+          csp = next(x for x in h.splitlines() if 'Content-Security-Policy:' in x)
+          scripts = next(x for x in csp.split(';') if 'script-src ' in x)
+          assert 'unsafe-inline' not in scripts and 'unsafe-eval' not in scripts
+          PY
+      - name: Phoenix - encryption and recovery tooling
+        id: phoenix
+        if: always()
+        run: |
+          bash -n scripts/backup-encrypt.sh scripts/backup-object-lock.sh
+          bash tests/backup-smoke.sh
+      - name: Nexus - external dependency integrity
+        id: nexus
+        if: always()
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          curl --fail --silent --show-error --max-time 45 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js' -o "$work/sdk.js"
+          curl --fail --silent --show-error --max-time 45 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js' -o "$work/qr.js"
+          test "$(openssl dgst -sha384 -binary "$work/sdk.js" | openssl base64 -A)" = 'A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ'
+          test "$(openssl dgst -sha384 -binary "$work/qr.js" | openssl base64 -A)" = '3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU'
+      - name: Chronos - security change history
+        id: chronos
+        if: always()
+        run: |
+          git log -20 --format='%h %cs' -- _headers database scripts/backup-encrypt.sh .github/workflows > "$RUNNER_TEMP/aegis-history.txt"
+          cat "$RUNNER_TEMP/aegis-history.txt"
+      - name: Oracle - aggregate evidence
+        if: always()
+        env:
+          HYDRA: ${{ steps.hydra.outcome }}
+          CERBERUS: ${{ steps.cerberus.outcome }}
+          SPECTRE: ${{ steps.spectre.outcome }}
+          PHOENIX: ${{ steps.phoenix.outcome }}
+          NEXUS: ${{ steps.nexus.outcome }}
+          CHRONOS: ${{ steps.chronos.outcome }}
+        run: |
+          python3 - <<'PY'
+          import os
+          names = ('HYDRA','CERBERUS','SPECTRE','PHOENIX','NEXUS','CHRONOS')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('## AEGIS evidence matrix\n\n| Module | Outcome |\n|---|---|\n')
+              for name in names:
+                  f.write(f'| {name} | {os.environ[name]} |\n')
+              f.write('\nSynthetic checks only; production authorization, WAF and backup retention remain separately unverified.\n')
+          if any(os.environ[n] != 'success' for n in names):
+              raise SystemExit('AEGIS evidence incomplete or failed')
+          PY
