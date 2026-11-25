@@ -1,0 +1,14 @@
+# GitHub Pages builds the public site with Jekyll.
+# Development files remain in Git; they are not part of the website.
+exclude:
+  - database
+  - scripts
+  - tests
+  - supabase
+  - dist
+  - node_modules
+  - vendor
+  - RECOVERY.md
+  - SECURITY.md
+  - UPGRADE-REVIEW.md
+  - vercel.json

@@ -63,7 +63,12 @@ test('memorial section is linked and included in the deployable build',()=>{
  const assets=['index.html','memorial.css','memorial.js','admin.js','Barham_Martyrs_Register.html'];
  const html=read('index.html'), memorial=read('martyrs/index.html');
  assert.ok(html.includes('href="./martyrs/"'));
- assert.ok(memorial.includes('href="./Barham_Martyrs_Register.html"'));
+ assert.ok(!memorial.includes('href="./Barham_Martyrs_Register.html"'), 'Legacy archive must not be linked publicly');
+ const retired=read('martyrs/Barham_Martyrs_Register.html');
+ assert.ok(retired.includes('name="robots" content="noindex, follow"'));
+ assert.ok(retired.includes('href="./"'));
+ assert.doesNotMatch(retired, /<script\b|<table\b|<iframe\b/i);
+ assert.ok(retired.length<2200, 'Legacy URL must contain only a short retirement notice');
  assert.ok(memorial.includes('./memorial.css')&&memorial.includes('./memorial.js'));
  require('node:child_process').execFileSync('sh',['scripts/build-pages.sh']);
  for(const asset of assets)assert.deepEqual(fs.readFileSync('dist/martyrs/'+asset),fs.readFileSync('martyrs/'+asset),asset);
@@ -71,4 +76,33 @@ test('memorial section is linked and included in the deployable build',()=>{
 
 test('memorial photo storage is private and limited to 30 slots per record',()=>{const sql=read('database/family_martyrs.sql');assert.match(sql,/position between 1 and 30/);assert.match(sql,/unique\(martyr_id,position\)/);assert.match(sql,/family_martyr_photos enable row level security/);assert.match(sql,/'family-martyr-photos','family-martyr-photos',false,5242880/);assert.match(sql,/p\.published and m\.published/);assert.ok(read('portal.js').includes('window.mountMemorialAdmin(cms,client)'));assert.ok(read('martyrs/memorial.js').includes('createSignedUrls'));require('node:child_process').execFileSync(process.execPath,['--check','martyrs/admin.js']);require('node:child_process').execFileSync(process.execPath,['--check','martyrs/memorial.js']);});
 
-test('launch routes memorial admin through session and MFA guard and exposes public navigation',()=>{const js=read('portal.js'),html=read('martyrs/index.html'),editor=read('martyrs/admin.js');assert.ok(js.includes("if (nh === '#martyrs-admin') guardPrivate(loadMemorialEditor)"));assert.ok(js.includes("'news-admin', 'martyrs-admin', 'mfa'"));assert.ok(js.includes("'#news-admin', '#martyrs-admin', '#certificate'"));assert.ok(js.includes('memorialEditorBody.replaceChildren();memorialEditorEpoch++'));assert.ok(html.includes('href="../#martyrs-admin"'));assert.ok(html.includes('id="memorial-search"'));assert.ok(editor.includes('autoOpen=false'));assert.ok(editor.includes('changed.length!==pending.length'));assert.ok(js.includes('if(uploaded&&!saved)'));});
+test('launch routes memorial admin through session and MFA guard and exposes public navigation',()=>{const js=read('portal.js'),html=read('martyrs/index.html'),editor=read('martyrs/admin.js');assert.ok(js.includes("if (nh === '#martyrs-admin') guardPrivate(loadMemorialEditor)"));assert.ok(js.includes("'news-admin', 'martyrs-admin', 'mfa'"));assert.ok(js.includes("'#news-admin', '#martyrs-admin', '#certificate'"));assert.ok(js.includes('memorialEditorBody.replaceChildren();memorialEditorEpoch++'));assert.ok(!html.includes('href="../#martyrs-admin"'));
+ assert.match(html, /id="memorial-admin-actions" hidden/);
+ const publicJs=read('martyrs/memorial.js');
+ assert.ok(publicJs.includes("auth.rpc('family_is_admin')"));
+ assert.ok(publicJs.indexOf('result.data!==true')<publicJs.indexOf("link.href='../#martyrs-admin'"));
+ assert.ok(publicJs.includes('if(token!==revision||result.error||result.data!==true)return;'));assert.ok(html.includes('id="memorial-search"'));assert.ok(editor.includes('autoOpen=false'));assert.ok(editor.includes('changed.length!==pending.length'));assert.ok(js.includes('if(uploaded&&!saved)'));});
+
+
+test('public SEO inventory and asset links remain valid',()=>{
+ const origin='https://barham-ps.github.io';
+ const sitemap=read('sitemap.xml');
+ const urls=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m=>m[1]);
+ assert.equal(urls.length,new Set(urls).size);
+ assert.deepEqual(urls.map(x=>new URL(x).pathname).sort(),['/','/about/','/en/','/en/history/','/en/membership/','/history/','/membership/'].sort());
+ for(const url of urls){
+  const u=new URL(url);assert.equal(u.origin,origin);assert.equal(u.hash,'');
+  const path=u.pathname.slice(1)+'index.html';const h=read(path);
+  assert.ok(h.includes('rel="canonical" href="'+url+'"'),path);
+  assert.ok(h.includes('name="robots" content="index, follow"'),path);
+  assert.match(h,/<title>[^<]+<\/title>/);assert.match(h,/<meta name="description" content="[^"]+"/);
+  for(const match of h.matchAll(/<(?:a|link|script|img)\b[^>]*?\b(?:href|src)="([^"]+)"/gi)){
+   const target=new URL(match[1],url);if(target.origin!==origin||match[1].startsWith('#'))continue;
+   const file=decodeURIComponent(target.pathname.slice(1));
+   assert.ok(fs.existsSync(file.endsWith('/')||!file?file+'index.html':file),path+' -> '+target.pathname);
+  }
+ }
+ assert.match(read('robots.txt'),/Sitemap: https:\/\/barham-ps\.github\.io\/sitemap\.xml/);
+ assert.ok(!sitemap.includes('/genealogy/')&&!sitemap.includes('Barham_Martyrs_Register.html'));
+ const config=read('_config.yml');for(const dir of ['database','scripts','tests','supabase'])assert.ok(config.includes('  - '+dir+'\n'),dir);
+});

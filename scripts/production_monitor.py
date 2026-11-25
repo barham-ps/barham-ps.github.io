@@ -9,7 +9,9 @@ import time
 HOST = "barham-ps.github.io"
 PAGES = {"/": "آل برهم", "/about/": "عن البوابة", "/history/": "تاريخ العائلة",
          "/genealogy/": "شجرة العائلة", "/martyrs/": "شهداء آل برهم", "/en/": "Barham", "/robots.txt": "Sitemap:",
-         "/sitemap.xml": "<urlset"}
+         "/sitemap.xml": "<urlset", "/membership/": "العضوية الإلكترونية",
+         "/en/history/": "Barham", "/en/membership/": "Barham",
+         "/martyrs/Barham_Martyrs_Register.html": 'name="robots" content="noindex, follow"'}
 MAX_BYTES = 400_000
 
 def get(path):

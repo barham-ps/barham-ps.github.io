@@ -3,4 +3,5 @@ Allow: /
 Disallow: /database/
 Disallow: /tests/
 Disallow: /scripts/
+Disallow: /supabase/
 Sitemap: https://barham-ps.github.io/sitemap.xml
