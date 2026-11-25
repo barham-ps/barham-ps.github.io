@@ -26,6 +26,25 @@ const base='http://127.0.0.1:8765/';
    assert.deepEqual(await glass(),{bg:'rgba(18, 61, 49, 0.74)',opacity:'1'});
    await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
    assert.deepEqual(await glass(),{bg:'rgba(255, 253, 248, 0.74)',opacity:'1'});
+
+   // V75 regression: computed text colors on actual account markup (no login or data access).
+   const rgb=(hex)=>hex.match(/../g).map(x=>parseInt(x,16));
+   const lum=(v)=>v.map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);
+   const ratio=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+   const checkPalette=async(theme)=>{
+    await page.evaluate(t=>document.documentElement.setAttribute('data-theme',t),theme);
+    const light=theme==='light', gold=light?'138, 100, 28':'232, 203, 121';
+    const expected='rgb('+gold+')';
+    for(const selector of ['#account-status','.dashboard-tile strong','.dashboard-icon']){
+     const e=page.locator('#v-account '+selector.replace(/^#v-account /,'')).first();
+     assert.ok(await e.count(),selector);
+     assert.equal(await e.evaluate(el=>getComputedStyle(el).color),expected,theme+' '+selector);
+    }
+    for(const bg of (light?['FFFDF8','EDF2EC','F5EFDF','E9F1E9']:['123D31','105B43','164638'])){
+     assert.ok(ratio(rgb(light?'8A641C':'E8CB79'),rgb(bg))>=4.5,theme+' '+bg);
+    }
+   };
+   await checkPalette('dark');await checkPalette('light');
    await page.reload();await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
    if(width<=700){await visible('.mobile-dock');assert.equal(await page.locator('.mobile-dock a').count(),5);assert.equal(await page.locator('.mobile-dock a[aria-current=page]').getAttribute('href'),'#home');assert.equal(await page.locator('[data-dock-route=account]').getAttribute('href'),'#login');}
    await visible('.family-welcome');await visible('#family-primary-entry');await visible('#family-join-entry');
