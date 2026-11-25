@@ -14,6 +14,7 @@ exclude:
   - vercel.json
   - OPERATIONS.md
   - backups
+  - isms
 
 # Publish the RFC 9116 vulnerability disclosure contact.
 include:

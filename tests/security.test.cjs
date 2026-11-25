@@ -541,3 +541,11 @@ test('advanced scans are scoped, pinned and do not require service keys',()=>{
  assert.match(score,/ossf\/scorecard-action@[a-f0-9]{40}/);
  assert.match(score,/publish_results: false/);
 });
+
+test('ISO readiness is clearly distinct from accredited certification',()=>{
+ const p=fs.readFileSync('trust/index.html','utf8');
+ assert.match(p,/قيد الإعداد — غير معتمد/);
+ assert.match(p,/لا توجد شهادة رسمية أو رقم اعتماد/);
+ assert.match(fs.readFileSync('_config.yml','utf8'),/\n\s*- isms\n/);
+ assert.doesNotMatch(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp[^\n]+isms\//);
+});
