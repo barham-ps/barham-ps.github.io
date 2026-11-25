@@ -620,3 +620,12 @@ test('main meta CSP and hosting CSP agree and navigation is not cached by config
  assert.equal(csp,meta+"; frame-ancestors 'none'");
  for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
 });
+
+
+test('public homepage has no network controls or diagnostic result markup',()=>{
+ assert.doesNotMatch(html,/id="(?:bandwidth-toggle|local-diagnostics|local-diagnostics-result|network-status)"/);
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/connection\?\.saveData/);
+ assert.match(runtime,/document\.documentElement\.dataset\.lowData/);
+ assert.doesNotMatch(runtime,/PerformanceObserver|local-diagnostics/);
+});
