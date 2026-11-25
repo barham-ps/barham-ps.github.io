@@ -18,6 +18,12 @@ const base='http://127.0.0.1:8765/';
    await open('#home');await visible('#features');assert.deepEqual(await page.locator('#features > a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#heritage','#news','./martyrs/','#community','#membership']);
    assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history','./martyrs/']);
    assert.ok(await page.locator('.visitor-entry a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
+   await visible('.family-welcome');await visible('#family-primary-entry');await visible('#family-join-entry');
+   assert.equal(await page.locator('#family-primary-entry').getAttribute('href'),'#login');
+   assert.equal(await page.locator('#family-join-entry').getAttribute('href'),'#register');
+   assert.equal(await page.locator('.family-utility-link[href="#verify"]').count(),1);
+   await page.locator('#family-join-entry').click();await visible('.family-join-steps');assert.equal(await page.locator('.family-join-steps li').count(),3);await noOverflow('registration steps');
+   await open('#home');await page.locator('#family-primary-entry').click();await visible('#logForm');await visible('.family-auth-help');await noOverflow('login foyer');
    await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
    await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
    for(const slug of ['about','history','membership','en','en/history','en/membership']){

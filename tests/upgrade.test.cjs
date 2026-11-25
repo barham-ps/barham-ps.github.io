@@ -106,3 +106,18 @@ test('public SEO inventory and asset links remain valid',()=>{
  assert.ok(!sitemap.includes('/genealogy/')&&!sitemap.includes('Barham_Martyrs_Register.html'));
  const config=read('_config.yml');for(const dir of ['database','scripts','tests','supabase'])assert.ok(config.includes('  - '+dir+'\n'),dir);
 });
+
+
+test('family foyer and member lounge preserve visitor and approved-member boundaries',()=>{
+ const h=read('index.html'),js=read('portal.js'),css=read('portal.css');
+ assert.match(h, /id="family-primary-entry" href="#login"/);
+ assert.match(h, /id="family-join-entry" href="#register"/);
+ assert.match(h, /class="family-utility-link" href="#verify"/);
+ assert.ok(h.includes('family-join-steps'));
+ assert.ok(js.includes("primaryEntry.href=session?'#account':'#login'"));
+ assert.ok(js.includes('if(joinEntry)joinEntry.hidden=!!session'));
+ assert.ok(js.includes("memberQuick.hidden = q.data?.status !== 'approved'"));
+ assert.ok(js.includes("delete $('#account-status').dataset.state"));
+ assert.ok(js.includes("accountLinks.appendChild($('#logout'))"));
+ assert.ok(css.includes('V68 — Family hospitality'));
+});

@@ -183,6 +183,7 @@
       $('#account-status').textContent = 'تعذر قراءة حالة الطلب.';
       return;
     }
+    $('#account-status').dataset.state = q.data?.status || 'incomplete';
     $('#account-status').textContent = q.data ? 'حالة العضوية: ' + (statusLabels[q.data.status] || 'قيد المراجعة') +
       (q.data.membership_number ? ' | رقم العضوية: ' + q.data.membership_number : '') :
       'أكمل طلب عضويتك بعد تأكيد البريد.';
@@ -1000,7 +1001,7 @@
   var memberBox = make('div', panel.querySelector('.wrap'));
   memberBox.className = 'card account-summary';
   memberBox.innerHTML =
-    '<h2 id="member-welcome">حساب العضو</h2><p id="member-email" dir="ltr"></p><p>رقم العضوية: <strong id="member-number">—</strong></p><p>يظل تسجيل دخولك محفوظًا على هذا المتصفح حتى تسجيل الخروج أو انتهاء صلاحية الجلسة.</p>';
+    '<div class="member-identity"><img src="./barham-emblem.webp" alt="" width="64" height="64" decoding="async"><div><span class="member-kicker">مجلس آل برهم الرقمي</span><h2 id="member-welcome">حساب العضو</h2><p id="member-email" dir="ltr"></p></div></div><div class="member-number-panel"><span>رقم العضوية</span><strong id="member-number">—</strong></div><p class="member-device-note">على الأجهزة المشتركة، سجّل خروجك بعد الانتهاء حفاظًا على خصوصيتك.</p>';
   panel.querySelector('.wrap').insertBefore(memberBox, $('#account-status'));
   var accountLinks = make('div', panel.querySelector('.wrap'));
   accountLinks.className = 'row account-actions';
@@ -1018,7 +1019,7 @@
   pwBox.className = 'card';
   pwBox.innerHTML =
     '<summary>إعدادات وأمان الحساب</summary><form id="change-password"><label class="f">كلمة مرور جديدة<input type="password" minlength="15" maxlength="128" autocomplete="new-password" required></label><button class="btn btn-dark" type="submit">تغيير كلمة المرور</button><p role="status"></p></form>';
-  pwBox.appendChild($('#logout'));
+  accountLinks.appendChild($('#logout'));
   $('#logout').className='btn btn-ghost';
   $('#change-password').onsubmit = async function(e) {
     e.preventDefault();
@@ -1084,8 +1085,9 @@
   hubLink.hidden = true;
   var memberQuick = make('div',panel.querySelector('.wrap'));
   memberQuick.className='dashboard-grid account-quick';memberQuick.hidden=true;
+  make('h2',memberQuick,'خدماتك الأقرب إليك').className='member-quick-heading';
   panel.querySelector('.wrap').insertBefore(memberQuick,pwBox);
-  for(const [key,title,description,icon] of [['requests','إرسال طلب أو مساهمة','الشكاوى والمقترحات والمعلومات العائلية','heart'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','file'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['identity','بطاقتي الرقمية','عرض بطاقة العضوية والشهادة','shield'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
+  for(const [key,title,description,icon] of [['identity','بطاقتي وشهادتي','عرض الهوية العائلية ووثيقة العضوية','shield'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','bell'],['requests','طلباتي ومساهماتي','متابعة الطلبات والمقترحات الخاصة','inbox'],['lineage','سجل قراباتي','إدارة سجل النسب الشخصي','network'],['directory','دليل الكفاءات','استعراض التخصصات المتاحة','landmark'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
     const l=dashboardLink(memberQuick,'#member-hub',title,description,icon);l.dataset.hubTarget=key;
   }
   hubLink.dataset.hubTarget='overview';
@@ -1188,7 +1190,8 @@
     const menu=make('nav',shell);menu.className='dashboard-tabs';menu.setAttribute('aria-label','خدمات العضو');
     const content=make('div',shell);content.className='dashboard-content';
     const overview=make('div',content);overview.className='dashboard-overview';
-    make('h3',overview,'اختر الخدمة التي تحتاج إليها');
+    make('h3',overview,'مجلسك العائلي — خدماتك في مكان واحد');
+    make('p',overview,'انتقل إلى الخدمة المطلوبة، أو ابحث في الخدمات باستخدام حقل البحث أعلاه.').className='member-overview-note';
     const grid=make('div',overview);grid.className='dashboard-grid';
     const toolbar=make('div',shell);toolbar.className='dashboard-search';
     const search=field(toolbar,'البحث داخل خدماتي','hub-search','search',150);
@@ -3181,6 +3184,10 @@
     guestLogin.hidden = !!session;
     guestRegister.hidden = true;
     signedAccount.hidden = !session;
+    const primaryEntry = document.getElementById('family-primary-entry');
+    const joinEntry = document.getElementById('family-join-entry');
+    if(primaryEntry){primaryEntry.href=session?'#account':'#login';primaryEntry.textContent=session?'الانتقال إلى حسابي':'دخول الأعضاء';}
+    if(joinEntry)joinEntry.hidden=!!session;
     document.querySelectorAll('[data-guest-entry]').forEach(a => {
       a.href = session ? '#account' : '#login';
       a.textContent = session ? 'حسابي' : 'دخول / إنشاء حساب';
@@ -3206,6 +3213,7 @@
     $('#member-email').textContent = '';
     $('#member-number').textContent = '—';
     $('#account-status').textContent = '';
+    delete $('#account-status').dataset.state;
     $('#completeForm').reset();
     $('#completeForm').hidden = true;
     hubLink.hidden = true;
