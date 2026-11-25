@@ -6,9 +6,16 @@ on:
       - 'tests/restore-drill.sh'
       - '.github/workflows/recovery-drill.yml'
       - 'RECOVERY.md'
+  push:
+    branches: [main]
+    paths:
+      - 'tests/restore-drill.sh'
+      - 'tests/backup-smoke.sh'
+      - 'scripts/backup-*.sh'
+      - '.github/workflows/recovery-drill.yml'
   workflow_dispatch:
   schedule:
-    - cron: '31 4 1 * *'
+    - cron: '31 4 * * 1'
 permissions:
   contents: read
 jobs:
