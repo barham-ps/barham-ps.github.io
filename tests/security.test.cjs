@@ -117,13 +117,18 @@ test('password exposure screen sends only the padded hash prefix and rejects kno
 
 test('release keeps footer identity and deferred scripts in dependency order', () => {
   assert.match(html, /class="footer-wordmark" lang="ar">آل برهم/);
-  assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham 2026/);
-  assert.match(html, /class="footer-signature"/);
+  assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
+  assert.match(html, /class="site family-footer compact-footer"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
-  assert.equal(scripts.length,4);
+  assert.equal(scripts.length,6);
   assert.ok(scripts.every(x => x[0].includes('defer')));
-  assert.ok(scripts[0][1].includes('supabase'));
-  assert.ok(scripts[3][1].includes('portal.js'));
+  assert.ok(scripts[0][1].includes('runtime.js'));
+  assert.ok(scripts[1][1].includes('footer.js'));
+  assert.ok(scripts[2][1].includes('supabase'));
+  assert.ok(!scripts.some(x=>x[1].includes('martyrs/admin.js')));
+  assert.match(js,/await import\('\.\/martyrs\/admin\.js\?v=3'\)/);
+  assert.ok(scripts[4][1].includes('captcha.js'));
+  assert.ok(scripts[5][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);
   assert.match(css,/prefers-reduced-motion/);
@@ -283,8 +288,11 @@ test('five member groups cover all eight services without duplication',()=>{
 test('simplified navigation uses one tree entry and preserves historical content routing',()=>{
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
- const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
- assert.equal(Array.from(features.matchAll(/\['[^']+','[^']+','[^']+','[^']+'\]/g)).length,4);
+ assert.doesNotMatch(html, /id="features"|<nav class="visitor-entry"/);
+ assert.match(html,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
+ assert.match(html,/class="footer-links" aria-label="روابط البوابة المساندة"/);
+ assert.match(html,/<a href="#news" data-dock-route="news">[\s\S]*?<span>الأخبار<\/span><\/a>/);
+ assert.match(html,/<a href="\.\/martyrs\/" data-dock-route="martyrs">[\s\S]*?<span>الشهداء<\/span><\/a>/);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);
@@ -369,15 +377,246 @@ test('Gaza timestamps distinguish original certificate issuance and exported cop
  assert.match(js,/directory-signature/);
 });
 
+test('download PDF is a byte-correct local file and retry links are revoked',async()=>{
+ const source=js.slice(js.indexOf('function jpegPdf('),js.indexOf('function certificatePdf('));
+ const pdf=vm.runInNewContext(source+';jpegPdf',{Blob,TextEncoder});
+ const file=pdf(new Uint8Array([255,216,255,217]),1240,1754);
+ assert.equal(file.type,'application/pdf');
+ const data=Buffer.from(await file.arrayBuffer()),str=data.toString('latin1');
+ assert.ok(str.startsWith('%PDF-1.4'));
+ const start=Number(str.match(/startxref\n(\d+)/)[1]);assert.equal(str.slice(start,start+4),'xref');
+ const rows=str.slice(start).split('\n').slice(3,8);
+ rows.forEach((row,i)=>assert.equal(str.slice(Number(row.slice(0,10)),Number(row.slice(0,10))+7),(i+1)+' 0 obj'));
+ assert.match(js,/تنزيل الشهادة PDF/);
+ assert.match(js,/saveDownload\(certificatePdf\(box\)/);
+ assert.match(js,/window\.addEventListener\('hashchange',clearDownloads\)/);
+ assert.match(js,/clearDownloads\(\);\n    \$\('#change-password'\)/);
+});
 
-test('existing request bucket is reconciled to private and bounded settings',()=>{
+test('footer automatically changes month and year at Gaza calendar boundaries',()=>{
+ const footer=fs.readFileSync('footer.js','utf8');
+ const source=footer.slice(footer.indexOf('function footerDateParts('),footer.indexOf('function updateFooterDate('));
+ const parts=vm.runInNewContext(source+';footerDateParts');
+ const before=parts(new Date('2026-12-31T21:59:59Z'));
+ const after=parts(new Date('2026-12-31T22:00:00Z'));
+ assert.equal(before.year,'2026');assert.equal(before.month,'December');assert.equal(before.iso,'2026-12');
+ assert.equal(after.year,'2027');assert.equal(after.month,'January');assert.equal(after.iso,'2027-01');
+ assert.equal(parts(new Date('2027-01-31T22:00:00Z')).month,'February');
+ assert.equal((html.match(/data-footer-year/g)||[]).length,1);
+ assert.match(html,/<time id="footer-month" datetime="\d{4}-\d{2}">/);
+ assert.match(footer,/setInterval\(updateFooterDate,30000\)/);
+ assert.match(footer,/visibilitychange/);
+});
+
+test('security operations center uses admin-only aggregate records and scoped refresh',()=>{
+ const sql=fs.readFileSync('database/security_observability.sql','utf8');
+ assert.match(sql,/auth\.uid\(\) IS NULL OR NOT public\.family_is_admin\(\)/i);
+ assert.match(sql,/REVOKE EXECUTE ON FUNCTION public\.family_security_summary\(\) FROM PUBLIC,anon/i);
+ assert.doesNotMatch(sql,/ip_address|resource_id|actor_id AS/i);
+ assert.match(js,/function renderSecurityDashboard/);
+ assert.match(js,/if\(refreshing\|\|!current\(\)\|\|document\.hidden\)return/);
+ assert.match(js,/setInterval\(refreshDashboard,60000\)/);
+ assert.match(js,/securityEpoch\+\+;stopSecurityRefresh\(\);/);
+});
+
+
+test('email recovery accepts only a verified recovery session and matches the exact account',async()=>{
+ const src=js.slice(js.indexOf('  function createPasswordRecovery('),js.indexOf("  var reset = newView('reset'"));
+ const create=vm.runInNewContext(src+';createPasswordRecovery');
+ let calls=[],uid='test-user',otpError=null,sessionId=uid,screenResult='',updateError=null;
+ const auth={
+  resetPasswordForEmail:async(email,options)=>{calls.push(['request',email,options]);return {data:{},error:null}},
+  verifyOtp:async(args)=>{calls.push(['verify',args]);return {error:otpError,data:{user:{id:uid,email:'test@example.invalid'},session:{user:{id:uid}}}}},
+  getSession:async()=>({data:{session:{user:{id:sessionId}}}}),
+  getUser:async()=>({data:{user:{id:sessionId}}}),
+  updateUser:async(args)=>{calls.push(['update',args]);return {error:updateError}}
+ };
+ const flow=create(auth,async()=>screenResult,p=>p.length>=15&&p.length<=128);
+ const password='test-only-password-123';
+ await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ await flow.request('test@example.invalid',{captchaToken:undefined});
+ await assert.rejects(flow.verify('test@example.invalid','abc'),/أدخل الرمز/);
+ otpError={code:'otp_expired'};await assert.rejects(flow.verify('test@example.invalid','123456'),/انتهت صلاحيته/);
+ otpError={code:'invalid_otp'};await assert.rejects(flow.verify('test@example.invalid','123456'),/غير صحيح/);
+ otpError=null;await assert.rejects(flow.verify('other@example.invalid','123456'),/تعذر التحقق/);
+ await flow.verify('test@example.invalid','١٢٣٤٥٦');
+ assert.equal(calls.at(-1)[1].token,'123456');assert.equal(calls.at(-1)[1].type,'recovery');
+ await assert.rejects(flow.save(password,'different'),/غير متطابقتين/);
+ await assert.rejects(flow.save('short','short'),/١٥/);
+ screenResult='كلمة المرور مسربة';await assert.rejects(flow.save(password,password),/مسربة/);screenResult='';
+ sessionId='other';await assert.rejects(flow.save(password,password),/انتهت جلسة/);sessionId=uid;
+ updateError={code:'weak_password'};await assert.rejects(flow.save(password,password),/تعذر تغيير/);updateError=null;
+ assert.equal(await flow.save(password,password),uid);
+ assert.equal(calls.filter(c=>c[0]==='update').length,2);
+ await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ assert.ok(flow.acceptLink({user:{id:uid}}));flow.clear();await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ assert.match(js,/persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'family-password-recovery'/);
+ assert.match(js,/تغيير كلمة المرور برمز البريد/);
+});
+
+
+test('recovery restricts requests to the confirmed account, rejects mismatched identity and expires proof',async()=>{
+ const src=js.slice(js.indexOf('  function createPasswordRecovery('),js.indexOf("  var reset = newView('reset'"));
+ let now=1000;const create=vm.runInNewContext(src+';createPasswordRecovery',{Date:{now:()=>now}});
+ let sends=[],writes=0,verifiedUser={id:'member-a',email:'a@example.invalid'},sessionUser={id:'member-a',email:'a@example.invalid'};
+ const auth={resetPasswordForEmail:async email=>{sends.push(email);return {data:{}}},verifyOtp:async()=>({data:{user:verifiedUser,session:{user:sessionUser}}}),getSession:async()=>({data:{session:{user:sessionUser}}}),getUser:async()=>({data:{user:sessionUser}}),updateUser:async()=>{writes++;return {data:{}}}};
+ const flow=create(auth,async()=>'',()=>true);
+ flow.bindAccount({id:'member-a',email:'a@example.invalid'});
+ await assert.rejects(flow.request('b@example.invalid',{}),/البريد المسجل/);assert.equal(sends.length,0);
+ await flow.request('a@example.invalid',{});assert.deepEqual(sends,['a@example.invalid']);
+ await assert.rejects(flow.verify('b@example.invalid','123456'),/البريد المسجل/);
+ verifiedUser={id:'member-b',email:'a@example.invalid'};sessionUser=verifiedUser;
+ await assert.rejects(flow.verify('a@example.invalid','123456'),/تعذر التحقق/);
+ assert.equal(flow.acceptLink({user:verifiedUser}),false);
+ verifiedUser={id:'member-a',email:'a@example.invalid'};sessionUser=verifiedUser;
+ await flow.verify('a@example.invalid','123456');now+=600001;
+ await assert.rejects(flow.save('password','password'),/انتهت مهلة/);assert.equal(writes,0);
+ await flow.verify('a@example.invalid','123456');
+ sessionUser={id:'member-a',email:'changed@example.invalid'};
+ await assert.rejects(flow.save('password','password'),/انتهت جلسة/);assert.equal(writes,0);
+ sessionUser=verifiedUser;await flow.verify('a@example.invalid','123456');
+ assert.equal(await flow.save('password','password'),'member-a');assert.equal(writes,1);
+ assert.match(js,/resetInput\.readOnly=Boolean\(recoveryAccount\)/);
+ assert.match(js,/recoveryAccount\?recoveryAccount\.email:resetInput\.value\.trim\(\)/);
+ assert.match(js,/email_confirmed_at/);
+});
+
+
+test('account email recovery fails closed when session identity cannot be confirmed',()=>{
+ assert.match(js,/recoveryIdentityPending\|\|!recoveryIdentityReady/);
+ assert.match(js,/sendCode\.disabled=haveCode\.disabled=!recoveryIdentityReady/);
+ assert.match(js,/await assertRecoveryOwner\(\)/);
+ assert.match(js,/user\.id!==recoveryAccount\.id/);
+});
+
+
+test('dynamic navigation and icon rendering never parse interpolated HTML',()=>{
+  assert.doesNotMatch(js,/nav\.innerHTML|\$\('#services'\)\.innerHTML|\.innerHTML\s*=\s*['"]<svg/);
+  const source=js.slice(js.indexOf('  function appendPortalIcon('),js.indexOf('  function dashboardIcon('));
+  function node(tag){return {tag,attrs:{},children:[],setAttribute(k,v){this.attrs[k]=v},appendChild(n){this.children.push(n)}}}
+  const render=vm.runInNewContext(source+';appendPortalIcon',{document:{createElementNS:(_,tag)=>node(tag)}});
+  const root=node('div');
+  render(root,'home',24);
+  assert.equal(root.children[0].children[0].attrs.href,'#i-home');
+  render(root,'bad"><script>',24);
+  render(root,'https://evil.invalid',24);
+  assert.equal(root.children.length,1);
+});
+test('private views reject unconfirmed, anonymous, deleted and currently banned identities',()=>{
+  const guard=js.slice(js.indexOf('async function guardPrivate'),js.indexOf('async function loadMfa'));
+  for(const field of ['email_confirmed_at','is_anonymous','deleted_at','banned_until']) assert.ok(guard.includes(field));
+});
+
+test('public trust center uses independent evidence links and does not claim accreditation',()=>{
+ const page=fs.readFileSync('trust/index.html','utf8');
+ assert.match(page,/default-src 'none'/);
+ assert.doesNotMatch(page,/<script\b|<iframe\b|\s(?:onclick|onload|onerror)=/i);
+ assert.match(page,/لا تدّعي البوابة حصولها على اعتماد رسمي/);
+ assert.match(page,/ssllabs\.com\/ssltest/);
+ assert.match(page,/actions\/workflows\/security\.yml/);
+ assert.match(html,/href="\.\/trust\/"/);
+ assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp trust\/index\.html dist\/trust\//);
+ for(const link of page.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g))assert.match(link[0],/rel="noopener noreferrer"/);
+});
+
+test('RFC 9116 disclosure and independent evidence links are shipped without third-party scripts',()=>{
+ const s=fs.readFileSync('.well-known/security.txt','utf8');
+ assert.match(s,/^Contact: mailto:/m);
+ assert.match(s,/^Canonical: https:\/\/barham-ps\.github\.io\/\.well-known\/security\.txt$/m);
+ const expires=Date.parse(s.match(/^Expires: (.+)$/m)[1]);
+ assert.ok(Number.isFinite(expires)&&expires>Date.now(),'Renew security.txt before expiry');
+ assert.match(fs.readFileSync('_config.yml','utf8'),/include:\s*\n\s*- \.well-known/);
+ assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp \.well-known\/security\.txt dist\/\.well-known\//);
+ const page=fs.readFileSync('trust/index.html','utf8');
+ for(const host of ['crt.sh','virustotal.com','developer.mozilla.org','45637767950']) assert.ok(page.includes(host));
+ assert.doesNotMatch(page,/<script\b|<iframe\b/i);
+});
+
+test('advanced scans are scoped, pinned and do not require service keys',()=>{
+ const workflow=fs.readFileSync('.github/workflows/advanced-security.yml','utf8');
+ assert.match(workflow,/--redact=100/);
+ assert.match(workflow,/sha256sum --check/);
+ assert.match(workflow,/--package-lock-only --sbom-format cyclonedx/);
+ assert.match(workflow,/docker network create --internal portal-zap/);
+ assert.match(workflow,/zap-baseline\.py -t http:\/\/portal-preview:8765\//);
+ assert.doesNotMatch(workflow,/pull_request_target|SUPABASE_SERVICE_ROLE|secrets\./);
+ const score=fs.readFileSync('.github/workflows/scorecard.yml','utf8');
+ assert.match(score,/ossf\/scorecard-action@[a-f0-9]{40}/);
+ assert.match(score,/publish_results: false/);
+});
+
+test('ISO readiness is clearly distinct from accredited certification',()=>{
+ const p=fs.readFileSync('trust/index.html','utf8');
+ assert.match(p,/قيد الإعداد — غير معتمد/);
+ assert.match(p,/لا توجد شهادة رسمية أو رقم اعتماد/);
+ assert.match(fs.readFileSync('_config.yml','utf8'),/\n\s*- isms\n/);
+ assert.doesNotMatch(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp[^\n]+isms\//);
+});
+
+test('secret diagnostics separate history and deployed files without hiding scanner failures',()=>{
+ const workflow=fs.readFileSync('.github/workflows/advanced-security.yml','utf8');
+ assert.match(workflow,/git --redact=100/);
+ assert.match(workflow,/dir --redact=100/);
+ assert.match(workflow,/secret_scan_summary\.py/);
+ assert.match(workflow,/test "\$current_status" -eq 0/); assert.match(workflow,/--config scripts\/gitleaks-known-public\.toml/);
+ assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
+});
+
+test('signup uses a single SDK flow and always obtains the configured CAPTCHA token',()=>{
+ const signup=js.slice(js.indexOf("$('#regForm').addEventListener"),js.indexOf("$('#logForm').addEventListener"));
+ assert.equal((signup.match(/\.auth\.signUp\(/g)||[]).length,1);
+ assert.match(signup,/await window\.familyCaptcha\.token\(this\)/);
+ assert.match(signup,/captchaToken/);
+ assert.doesNotMatch(signup,/\/auth\/v1\/signup|\bfetch\(/);
+});
+
+test('CAPTCHA refuses ambiguous provider configuration before requesting tokens',async()=>{
+ const env={window:{FAMILY_SECURITY_CONFIG:{hcaptchaSiteKey:'example-h',turnstileSiteKey:'example-t'}}};
+ vm.runInNewContext(fs.readFileSync('captcha.js','utf8'),env);
+ await assert.rejects(env.window.familyCaptcha.token({}),/Invalid CAPTCHA configuration/);
+});
+test('edge CSP and permission policy are ready for the selected CAPTCHA and passkeys',()=>{
+ const edge=fs.readFileSync('_headers','utf8');
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const v=Object.fromEntries(config.headers[0].headers.map(x=>[x.key,x.value]));
+ for(const value of [edge,v['Content-Security-Policy'],html])assert.match(value,/connect-src 'self' https:\/\/challenges\.cloudflare\.com/);
+ for(const value of [edge,v['Permissions-Policy']])assert.match(value,/publickey-credentials-get=\(self\)/);
+ const configText=fs.readFileSync('scripts/gitleaks-known-public.toml','utf8');
+ assert.match(configText,/targetRules = \["generic-api-key"\]/);
+ assert.match(configText,/condition = "AND"/);
+ assert.match(configText,/regexes = \['\^sb_publishable_[A-Za-z0-9_-]+\$'\]/);
+});
+
+
+test('home navigation is rendered without third-party scripts or render-blocking fonts',()=>{
+ const head=html.slice(0,html.indexOf('</head>'));
+ assert.doesNotMatch(head,/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com/);
+ assert.equal((html.match(/data-dock-route="/g)||[]).length,5);
+ assert.equal((html.match(/data-r="/g)||[]).length,7);
+ assert.ok(js.includes("const dock=document.querySelector('.mobile-dock')"));
+ assert.match(fs.readFileSync('runtime.js','utf8'),/if\(isHome\|\|lowData\(\)/);
+});
+
+
+test('balanced glass changes only surface alpha and preserves accessible fallbacks',()=>{
+ const css=fs.readFileSync('portal.css','utf8');
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.82\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
+ assert.match(css,/--glass-chrome:rgba\(3,37,28,\.86\)/);
+ assert.match(css,/--glass-chrome:rgba\(255,253,248,\.86\)/);
+ assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
+});
+
+
+test('private request bucket provisioning reconciles existing settings',()=>{
  const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
  assert.match(sql,/on conflict \(id\) do update set\s+public = false,\s+file_size_limit = excluded.file_size_limit,\s+allowed_mime_types = excluded.allowed_mime_types;/i);
 });
-test('main meta CSP matches configured hosting policy apart from HTTP frame protection',()=>{
+test('main meta CSP and hosting CSP agree and navigation is not cached by configured edge',()=>{
  const meta=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/i)[1];
- const vercel=JSON.parse(fs.readFileSync('vercel.json','utf8'));
- const header=vercel.headers[0].headers.find(x=>x.key==='Content-Security-Policy').value;
- assert.equal(header,meta+"; frame-ancestors 'none'");
- assert.ok(fs.readFileSync('_headers','utf8').includes('Content-Security-Policy: '+header));
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const csp=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.equal(csp,meta+"; frame-ancestors 'none'");
+ for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
 });

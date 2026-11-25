@@ -1,0 +1,25 @@
+name: Isolated PostgreSQL recovery drill
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/restore-drill.sh'
+      - '.github/workflows/recovery-drill.yml'
+      - 'RECOVERY.md'
+  workflow_dispatch:
+  schedule:
+    - cron: '31 4 1 * *'
+permissions:
+  contents: read
+jobs:
+  synthetic-restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: PostgreSQL synthetic backup and restore
+        run: bash tests/restore-drill.sh
+      - name: Synthetic encryption check
+        run: bash tests/backup-smoke.sh

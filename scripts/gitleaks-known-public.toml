@@ -1,0 +1,12 @@
+# Only the single previously published client key; never allowlist a secret key.
+# Raw historical and deployment scans remain in the workflow.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known Supabase publishable client key in historical portal.js only"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['(^|/)portal\.js$']
+regexTarget = "secret"
+regexes = ['^sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw$']

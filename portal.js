@@ -1,19 +1,6 @@
 (function() {
   document.documentElement.setAttribute('dir', 'rtl');
   document.documentElement.setAttribute('lang', 'ar');
-  var NAV = [
-    ['home', 'الرئيسية'],
-    ['news', 'الأخبار'],
-    ['heritage', 'العائلة والتراث'],
-    ['community', 'المجتمع العائلي'],
-    ['membership', 'العضوية والتحقق']
-  ];
-  var FEAT = [
-    ['heritage','landmark','العائلة والتراث','التاريخ والشجرة والأرشيف'],
-    ['news','news','أخبار العائلة','الأخبار والإعلانات والتهاني'],
-    ['community','heart','المجتمع العائلي','المبادرات والتواصل'],
-    ['membership','shield','العضوية','الانضمام والتحقق من الشهادات']
-  ];
   var SERV = [
     ['الهوية والملف', 'البطاقة الرقمية والشهادة والملف الشخصي.'],
     ['العائلة والكفاءات', 'سجل القرابات ودليل المهن الاختياري.'],
@@ -35,36 +22,54 @@
       });
     }
   });
-  nav.innerHTML = NAV.map(function(n) {
-    return '<a href="#' + n[0] + '" data-r="' + n[0] + '">' + n[1] + '</a>'
-  }).join('');
+  const servicesRoot = $('#services');
+  if (servicesRoot) SERV.forEach(function(s) {
+    const card = make('div', servicesRoot);
+    card.className = 'card';
+    make('span', card, 'للأعضاء المعتمدين').className = 'chip c-ok';
+    make('h3', card, s[0]);
+    make('p', card, s[1]);
+  });
 
-  $('#features').innerHTML = FEAT.map(function(f) {
-    return '<a class="card" href="#' + f[0] + '"><div class="ic"><svg width="26" height="26"><use href="#i-' + f[
-      1] + '"/></svg></div><h3>' + f[2] + '</h3><p>' + f[3] + '</p><span class="more">استكشف القسم ←</span></a>'
-  }).join('');
-  if ($('#services')) $('#services').innerHTML = SERV.map(function(s, i) {
-    return '<div class="card"><span class="chip c-ok">للأعضاء المعتمدين</span><h3>' + s[0] + '</h3><p>' + s[1] +
-      '</p></div>'
-  }).join('');
-
-  var h = new Date().getHours(),
-    g = document.getElementById('greet');
-  g.textContent = (h >= 5 && h < 12 ? 'صباح الخير' : h >= 12 && h < 17 ? 'نهارك سعيد' : h >= 17 && h < 21 ?
-    'مساء الخير' : 'ليلتك سعيدة') + '، أهلًا بك في بيتنا';
+  // Palestinian civil time; only the greeting is displayed.
+  function familyGreeting(now) {
+    var hour = Number(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Gaza', hour: '2-digit', hourCycle: 'h23'
+    }).format(now));
+    return (hour >= 5 && hour < 12 ? 'صباح الخير' :
+      hour >= 12 && hour < 17 ? 'نهارك سعيد' : 'مساء الخير') + '، أهلًا بك في بيتنا';
+  }
+  function updateFamilyGreeting() {
+    var greet = document.getElementById('greet');
+    if (!greet) return;
+    try {
+      var message = familyGreeting(new Date());
+      if (greet.textContent !== message) greet.textContent = message;
+    } catch (error) {
+      greet.textContent = 'أهلًا بك في بيتنا';
+    }
+  }
+  updateFamilyGreeting();
+  window.setInterval(updateFamilyGreeting, 15000);
+  window.addEventListener('pageshow', updateFamilyGreeting);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) updateFamilyGreeting();
+  });
   var views = [].slice.call(document.querySelectorAll('.view'));
   var hdr = $('#hdr'),
     btn = $('#menuBtn');
 
+  const publicHomeTitle=document.title;
   function route() {
     var r = (location.hash || '#home').slice(1) || 'home';
     if (r.startsWith('verify/')) r = 'verify';
     if (r.startsWith('news/')) r = 'news';
     var el = document.getElementById('v-' + r) || document.getElementById('v-notfound');
+    document.documentElement.dataset.homeRoute=String(r==='home');
     views.forEach(function(v) {
       v.hidden = v !== el
     });
-    document.title = (el.dataset.title && r !== 'home' ? el.dataset.title + ' | ' : '') + 'آل برهم';
+    document.title = r==='home' ? publicHomeTitle : (el.dataset.title ? el.dataset.title + ' | ' : '') + 'آل برهم';
     [].forEach.call(nav.children, function(a) {
       if (a.dataset.r === r || (a.dataset.r === 'news' && r === 'events') || (a.dataset.r === 'heritage' && ['history', 'archive', 'tree', 'stories'].includes(
           r)) || (a.dataset.r === 'community' && ['initiatives', 'contact'].includes(r)) || (a.dataset
@@ -82,7 +87,7 @@
   // Explicit entry via query string works even in browsers that strip URL fragments.
   var requestedPage = new URLSearchParams(location.search).get('page');
   if (['register', 'certificate', 'login', 'account', 'admin', 'member-hub', 'member-services-admin', 'reset',
-      'news-admin', 'mfa', 'security'
+      'news-admin', 'martyrs-admin', 'mfa', 'security'
     ].includes(requestedPage) && !/access_token=|error=|code=/.test(location.hash)) {
     var entry = new URL(location.href);
     entry.searchParams.delete('page');
@@ -171,30 +176,28 @@
     var u = s.data.user;
     $('#member-welcome').textContent = 'أهلًا بك، ' + (u.user_metadata?.full_name || u.email);
     $('#member-email').textContent = u.email;
-    var adm = await client().rpc('family_is_admin');
-    adminShortcut.hidden = adm.error || adm.data !== true;
+    const adminCheck=client().rpc('family_is_admin');
+    Promise.resolve(adminCheck).then(adm=>{if(location.hash==='#account'&&recoveredSession?.user.id===u.id)adminShortcut.hidden=adm.error||adm.data!==true;}).catch(()=>{});
     var q = await client().from('member_applications').select('full_name,status,membership_number,submitted_at').eq(
       'auth_user_id', u.id).maybeSingle();
+    if(location.hash!=='#account'||recoveredSession?.user.id!==u.id)return;
     if (q.error) {
       $('#account-status').textContent = 'تعذر قراءة حالة الطلب.';
       return;
     }
+    $('#account-status').dataset.state = q.data?.status || 'incomplete';
     $('#account-status').textContent = q.data ? 'حالة العضوية: ' + (statusLabels[q.data.status] || 'قيد المراجعة') +
       (q.data.membership_number ? ' | رقم العضوية: ' + q.data.membership_number : '') :
       'أكمل طلب عضويتك بعد تأكيد البريد.';
     $('#completeForm').hidden = !!q.data;
     $('#member-number').textContent = q.data?.membership_number || 'لم يصدر بعد';
-    $('#member-certificate').hidden = true;
+    $('#member-certificate').hidden = q.data?.status !== 'approved';
     hubLink.hidden = q.data?.status !== 'approved';
-    memberQuick.hidden = true;
+    memberQuick.hidden = q.data?.status !== 'approved';
     if(q.data?.full_name)$('#member-welcome').textContent='أهلًا بك، '+q.data.full_name;
     if (q.data?.status === 'approved') {
-      var notice = await client().from('family_member_notices').select('id', {
-        count: 'exact',
-        head: true
-      }).eq('user_id', u.id).is('read_at', null);
-      hubLink.textContent = 'فتح خدماتي' + (!notice.error && notice.count ? ' (' + notice.count + ' جديد)' :
-        '');
+      hubLink.textContent='فتح خدماتي';
+      Promise.resolve(client().from('family_member_notices').select('id',{count:'exact',head:true}).eq('user_id',u.id).is('read_at',null)).then(notice=>{if(location.hash==='#account'&&recoveredSession?.user.id===u.id)hubLink.textContent='فتح خدماتي'+(!notice.error&&notice.count?' ('+notice.count+' جديد)':'');}).catch(()=>{});
     }
     var m = u.user_metadata || {};
     $('#c-name').value = m.full_name || '';
@@ -282,50 +285,16 @@
     try {
       const leakMessage = await requirePasswordScreen(pw);
       if (leakMessage) return show('#r-msg', leakMessage, 1);
-      if (window.familyCaptcha.enabled) {
-        const captchaToken = await window.familyCaptcha.token(this);
-        const signup = await client().auth.signUp({email, password: pw, options: {emailRedirectTo: location.origin + location.pathname, data: {full_name: name, phone: p, whatsapp: w}, captchaToken}});
-        if (signup.error) return show('#r-msg', authError(signup.error), 1);
-        if (signup.data.session) { location.hash = 'account'; await account(); return; }
-        show('#r-msg', 'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
-        this.reset(); syncWa(); return;
-      }
-      var endpoint = 'https://vfxxghfmkmgdqrczeowx.supabase.co/auth/v1/signup?redirect_to=' +
-        encodeURIComponent(location.origin + location.pathname);
-      var response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: pw,
-          data: {
-            full_name: name,
-            phone: p,
-            whatsapp: w
-          }
-        })
+      // One SDK path for all signups, with the same CAPTCHA integration.
+      const captchaToken = await window.familyCaptcha.token(this);
+      const signup = await client().auth.signUp({
+        email, password: pw,
+        options: {emailRedirectTo: location.origin + location.pathname,
+          data: {full_name: name, phone: p, whatsapp: w}, captchaToken}
       });
-      var data = await response.json();
-      if (!response.ok) {
-        const duplicate = ['email_exists', 'user_already_exists'].includes(data.code || data.error_code);
-        return show('#r-msg', authError(data), duplicate ? 0 : 1);
-      }
-      if (data.access_token && data.refresh_token && window.supabase) {
-        var sess = await client().auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token
-        });
-        if (!sess.error) {
-          location.hash = 'account';
-          await account();
-          return;
-        }
-      }
-      show('#r-msg',
-        'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
+      if (signup.error) return show('#r-msg', authError(signup.error), 1);
+      if (signup.data.session) { location.hash = 'account'; await account(); return; }
+      show('#r-msg', 'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
       this.reset();
       syncWa();
     } catch (err) {
@@ -349,7 +318,7 @@
       if (z.error) throw Error('تعذر الدخول. تأكد من البريد وكلمة المرور وتأكيد البريد الإلكتروني.');
       var next = sessionStorage.getItem('family_after_login');
       sessionStorage.removeItem('family_after_login');
-      location.hash = ['certificate', 'admin', 'member-hub', 'member-services-admin', 'news-admin', 'mfa',
+      location.hash = ['certificate', 'admin', 'member-hub', 'member-services-admin', 'news-admin', 'martyrs-admin', 'mfa',
         'security'
       ].includes(next) ? next : 'account';
     } catch (err) {
@@ -369,7 +338,7 @@
       $('#account-note').textContent = 'تم إرسال طلب العضوية للمراجعة.';
       await account();
     } catch (err) {
-      $('#account-note').textContent = err.message;
+      $('#account-note').textContent = 'تعذر تقديم الطلب. تحقق من تأكيد البريد وصحة الأرقام والاتصال.';
     } finally {
       b.disabled = false;
     }
@@ -432,15 +401,22 @@
   var cms = make('div', admin); cms.className='card'; cms.hidden=true;
   var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
   async function renderPublicCMS(){
+    const requested=location.hash.slice(1);
     for(const [key,label] of Object.entries(sectionsCMS)){
+      if(key!==requested)continue;
       const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host) continue;
       let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
-      const q=await client().from('family_public_content').select('*').eq('section',key).eq('published',true).order('created_at',{ascending:false});
-      if(q.error) continue; panel.replaceChildren();
+      const q=await client().from('family_public_content').select('id,title,body,image_path,created_at').eq('section',key).eq('published',true).order('created_at',{ascending:false});
+      if(q.error){if(!panel.childElementCount){const note=make('p',panel,'تعذر تحميل المحتوى المنشور.');note.className='portal-loading';action(panel,'إعادة المحاولة',()=>{panel.replaceChildren();renderPublicCMS().catch(()=>{});});}continue;}panel.replaceChildren();
       for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
-        if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
+        if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.alt=item.title;im.loading='lazy';im.decoding='async';im.src=signed.data.signedUrl;im.style.maxWidth='100%';}}
       }
     }
+  }
+  // Load the administrative editor only after the server-side authorization check.
+  async function loadMemorialModule(){
+    if(!window.mountMemorialAdmin) await import('./martyrs/admin.js?v=3');
+    if(typeof window.mountMemorialAdmin!=='function') throw Error('Editor unavailable');
   }
   async function loadPublicCMS(){
     cms.hidden=true;cms.replaceChildren();
@@ -448,7 +424,11 @@
     cms.hidden=activeAdminPanel!=='content';make('h2',cms,'إدارة المحتوى');
     const contentLinks=make('div',cms);contentLinks.className='row dashboard-content-links';
     dashboardLink(contentLinks,'#news-admin','الأخبار والإعلانات','تحرير ونشر الأخبار','news');
+    dashboardLink(contentLinks,'#martyrs-admin','سجل الشهداء والصور','إدارة الأسماء والمعارض','heart');
     const privateLink=dashboardLink(contentLinks,'#member-services-admin','الأرشيف والمناسبات الخاصة','مواد مخصصة للأعضاء','archive');privateLink.dataset.adminService='content';
+    const editorSlot=make('div',cms);
+    const openEditor=make('button',editorSlot,'فتح محرر سجل الشهداء');openEditor.type='button';openEditor.className='btn btn-ghost';
+    openEditor.onclick=async()=>{openEditor.disabled=true;try{const a=await client().rpc('family_is_admin');if(a.error||a.data!==true||!editorSlot.isConnected)return;await loadMemorialModule();if(!editorSlot.isConnected||cms.hidden||location.hash!=='#admin')return;editorSlot.replaceChildren();window.mountMemorialAdmin(editorSlot,client,true);}catch{if(editorSlot.isConnected)openEditor.textContent='تعذر التحميل، أعد المحاولة';}finally{openEditor.disabled=false;}};
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
     const msg=make('p',cms);msg.setAttribute('role','status');const sectionLabel=make('label',cms,'القسم المراد تحريره');sectionLabel.className='f';const section=make('select',sectionLabel);
     for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}
@@ -460,14 +440,14 @@
     action(cms,'حفظ المحتوى / المسودة',async function(){
       if(!title.value.trim()){msg.textContent='أدخل العنوان';return;}
       if(pub.checked&&!confirm('تأكيد النشر العام؟'))return;
-      this.disabled=true;let uploaded=null;
+      this.disabled=true;let uploaded=null,saved=false;
       try{
-        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
+        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880){msg.textContent='صورة غير مدعومة أو أكبر من 5 ميجابايت';return;}uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
         const row={section:section.value,title:title.value.trim(),body:body.value,published:pub.checked,image_path:uploaded||current?.image_path||null};
-        const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;
+        const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;saved=true;
         if(uploaded&&current?.image_path)await client().storage.from('family-public-content').remove([current.image_path]);
         await loadPublicCMS();await renderPublicCMS();
-      }catch(e){if(uploaded)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent='تعذر الحفظ: '+e.message;}finally{this.disabled=false;}
+      }catch(e){if(uploaded&&!saved)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent=saved?'تم الحفظ، لكن تعذر تحديث العرض. حدّث الصفحة.':'تعذر الحفظ. تحقق من الاتصال والصلاحيات وحاول مجددًا.';}finally{this.disabled=false;}
     });
     action(cms,'محتوى جديد',()=>loadPublicCMS());
     const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
@@ -494,6 +474,7 @@
       dashboardIcon(tile,icon);const text=make('span',tile);make('strong',text,title);make('small',text,description);
       tile.onclick=()=>switchAdminPanel(key);
     }
+    dashboardLink(adminNavigation,'#martyrs-admin','إدارة الشهداء والصور','السجل ومعارض الصور','heart');
     const inboxLink=dashboardLink(adminNavigation,'#member-services-admin','الطلبات والرسائل','الشكاوى والمساهمات والردود','inbox');inboxLink.dataset.adminService='requests';
     dashboardLink(adminNavigation,'#security','الإعدادات والأمان','التحقق الثنائي وسجل العمليات','shield');
     dashboardLink(adminNavigation,'#account','حسابي','العودة إلى حساب العضو','user');
@@ -506,7 +487,7 @@
     const report=[['إجمالي العضويات',members.length],...Object.entries(statusLabels).map(([key,label])=>[label,members.filter(m=>m.status===key).length])];
     const table=make('table',adminReports);const header=make('tr',table);make('th',header,'المؤشر');make('th',header,'العدد');
     for(const [label,n] of report){const row=make('tr',table);make('td',row,label);make('td',row,new Intl.NumberFormat('ar-EG').format(n));}
-    action(adminReports,'تصدير تقرير CSV (Excel)',()=>{const csv='\ufeffالمؤشر,العدد\r\n'+report.map(([label,n])=>label+','+n).join('\r\n')+'\r\n\r\nتاريخ ووقت الإصدار,"'+formatPortalTime(new Date()).replace(/"/g,'""')+'"\r\nالجهة المصدرة,إدارة آل برهم';const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='albarham-membership-report.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+    action(adminReports,'تصدير تقرير CSV (Excel)',()=>{const csv='\ufeffالمؤشر,العدد\r\n'+report.map(([label,n])=>label+','+n).join('\r\n')+'\r\n\r\nتاريخ ووقت الإصدار,"'+formatPortalTime(new Date()).replace(/"/g,'""')+'"\r\nالجهة المصدرة,إدارة آل برهم';saveDownload(new Blob([csv],{type:'text/csv;charset=utf-8'}),'albarham-membership-report.csv',adminReports);});
   }
   // Private roster: use the existing MFA-protected administrative RPC, never public tables.
   async function readMemberDirectory(){
@@ -586,7 +567,7 @@
           clearMemberPrint();
           const report=make('section',document.body);report.id='member-directory-print';report.dir='rtl';
           const banner=make('header',report);banner.className='directory-print-banner';
-          const logo=make('img',banner);logo.src='./icon.svg';logo.alt='آل برهم';logo.width=48;logo.height=48;
+          const logo=make('img',banner);logo.src='./barham-emblem.webp';logo.alt='آل برهم';logo.width=48;logo.height=48;
           const brand=make('div',banner);make('strong',brand,'آل برهم');make('p',brand,'البوابة العائلية الرقمية · أصالة الجذور وعهد الأجيال');
           make('span',banner,'سري — للاستخدام الإداري').className='directory-confidential';
           make('h1',report,'سجل أعضاء عائلة برهم');
@@ -715,13 +696,167 @@
       adminMsg.textContent = 'تعذر الاتصال بالخدمة.';
     }
   }
+  // Export files locally; retry links expire and never persist in storage.
+  const downloadLinks=new Map();
+  function clearDownloads(){
+    for(const [url,entry] of downloadLinks){clearTimeout(entry.timer);entry.link.remove();URL.revokeObjectURL(url);}
+    downloadLinks.clear();
+  }
+  window.addEventListener('hashchange',clearDownloads);
+  function saveDownload(blob,name,parent){
+    if(!(blob instanceof Blob)||!blob.size||!parent.isConnected)throw Error('File unavailable');
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=String(name).replace(/[\u0000-\u001f\u007f<>:"/\\|?*\u202a-\u202e\u2066-\u2069]/g,'-').trim()||'albarham-file';
+    link.className='btn btn-ghost sm';link.textContent='إعادة محاولة التنزيل';link.rel='noopener';
+    parent.appendChild(link);
+    const timer=setTimeout(()=>{link.remove();URL.revokeObjectURL(url);downloadLinks.delete(url);},120000);
+    downloadLinks.set(url,{link,timer});try{link.click();}catch(e){/* retry link remains available */}
+  }
+  function fileExtension(file){
+    return ({'application/pdf':'.pdf','image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','image/gif':'.gif','text/plain':'.txt','text/csv':'.csv','application/zip':'.zip','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'.docx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'.xlsx'})[(file.type||'').split(';')[0].toLowerCase()]||'.bin';
+  }
+  function canvasBytes(canvas,mime,quality){
+    const data=canvas.toDataURL(mime,quality);
+    if(!data.startsWith('data:'+mime+';base64,'))throw Error('Image export failed');
+    return Uint8Array.from(atob(data.split(',')[1]),c=>c.charCodeAt(0));
+  }
+  function jpegPdf(jpeg,width,height){
+    const encoder=new TextEncoder(),parts=[],offsets=[0];let length=0;
+    const add=x=>{const bytes=typeof x==='string'?encoder.encode(x):x;parts.push(bytes);length+=bytes.length;};
+    const obj=(i,s)=>{offsets[i]=length;add(i+' 0 obj\n'+s+'\nendobj\n');};
+    add('%PDF-1.4\n');
+    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+    offsets[4]=length;
+    add('4 0 obj\n<< /Type /XObject /Subtype /Image /Width '+width+' /Height '+height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpeg.length+' >>\nstream\n');add(jpeg);add('\nendstream\nendobj\n');
+    const commands='q\n595.28 0 0 841.89 0 0 cm\n/Im0 Do\nQ\n';
+    obj(5,'<< /Length '+commands.length+' >>\nstream\n'+commands+'endstream');
+    const xref=length;add('xref\n0 6\n0000000000 65535 f \n');
+    for(let i=1;i<=5;i++)add(String(offsets[i]).padStart(10,'0')+' 00000 n \n');
+    add('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
+    return new Blob(parts,{type:'application/pdf'});
+  }
+  function certificatePdf(box){
+    // A4 export of the same glass membership-document design (portal.css).
+    const c=document.createElement('canvas');c.width=1240;c.height=1754;
+    const ctx=c.getContext('2d');if(!ctx)throw Error('Canvas unavailable');
+    const W=c.width,H=c.height,center=W/2,white='#f4f8ff',muted='#d0e0ef',blue='#bcd9ef';
+    const bodyFont=getComputedStyle(box).fontFamily,displayFont=getComputedStyle(box.querySelector('.md-name')).fontFamily;
+    const read=selector=>box.querySelector(selector)?.textContent.trim()||'';
+    function round(x,y,w,h,r,fill,stroke,line=2){
+      ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke();}
+    }
+    function text(value,x,y,size=32,color=white,bold=false,align='right',dir='rtl',max=1080,font=bodyFont){
+      ctx.direction=dir;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillStyle=color;
+      ctx.font=(bold?'700 ':'400 ')+size+'px '+font;ctx.fillText(String(value||''),x,y,max);
+    }
+    function wrapped(value,x,y,size,max,lineHeight,limit,color=muted,bold=false,align='right',dir='rtl'){
+      ctx.font=(bold?'700 ':'400 ')+size+'px '+bodyFont;
+      const words=String(value||'').split(/\s+/),lines=[];let line='';
+      for(const word of words){const next=line?line+' '+word:word;if(line&&ctx.measureText(next).width>max){lines.push(line);line=word;}else line=next;}
+      if(line)lines.push(line);
+      if(lines.length>limit){lines[limit-1]=lines.slice(limit-1).join(' ');lines.length=limit;}
+      lines.forEach((l,i)=>text(l,x,y+i*lineHeight,size,color,bold,align,dir,max));
+    }
+    function glow(x,y,rx,ry,color,stop){
+      ctx.save();ctx.translate(x,y);ctx.scale(rx,ry);
+      const g=ctx.createRadialGradient(0,0,0,0,0,1);g.addColorStop(0,color);g.addColorStop(stop,'transparent');g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.fillRect(-2,-2,4,4);ctx.restore();
+    }
+    ctx.fillStyle='#101e35';ctx.fillRect(0,0,W,H);
+    round(22,22,W-44,H-44,34);ctx.save();ctx.clip();
+    const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#101e35');bg.addColorStop(.65,'#263d54');bg.addColorStop(1,'#18283d');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    glow(W*.90,H*.80,W*1.30,H*.82,'#655477',.68);
+    glow(W*.12,H*.08,W*1.20,H*.70,'#426d83',.65);
+    ctx.fillStyle='#dcecff0b';ctx.fillRect(22,22,W-44,196);
+    ctx.strokeStyle='#dcecff35';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(22,218);ctx.lineTo(W-22,218);ctx.stroke();
+    const logo=box.querySelector('.md-head img');
+    if(!logo||!logo.complete||!logo.naturalWidth)throw Error('Certificate logo not ready');
+    const ratio=Math.min(138/logo.naturalWidth,138/logo.naturalHeight);
+    const lw=logo.naturalWidth*ratio,lh=logo.naturalHeight*ratio;ctx.drawImage(logo,145-lw/2,120-lh/2,lw,lh);
+    text(read('.md-head small'),1150,76,22,blue,false,'right','ltr',910,'Arial');
+    text(read('.md-head h3'),1150,139,46,white,true,'right','rtl',910,displayFont);
+    text(read('.md-head p'),1150,181,25,muted,false,'right','rtl',910);
+    text(read('.md-kicker'),1150,263,20,blue,false,'right','ltr',1060,'Arial');
+    text(read('.md-main h1'),1150,332,65,white,true,'right','rtl',1060,displayFont);
+    text(read('.md-en'),1150,374,28,blue,false,'right','ltr',1060,'Arial');
+    wrapped(read('.md-intro'),1150,434,32,1060,44,2);
+    const person=ctx.createLinearGradient(80,500,1160,690);person.addColorStop(0,'#e1f1ff24');person.addColorStop(1,'#e1f1ff09');
+    round(80,505,1080,200,24,person,'#d6eaff55',3);
+    text(read('.md-person small'),1125,552,27,muted);
+    text(read('.md-name'),1125,626,62,white,true,'right','rtl',1010,displayFont);
+    text(read('.md-person span'),1125,677,29,muted,false,'right','rtl',1010);
+    Array.from(box.querySelectorAll('.md-fields > div')).forEach((field,i)=>{
+      const x=i%2===0?630:80,y=730+Math.floor(i/2)*115;
+      round(x,y,530,102,17,'#dcecff0d','#dcecff28',2);
+      text(field.querySelector('small').textContent,x+505,y+33,24,muted,false,'right','rtl',480);
+      wrapped(field.querySelector('strong').textContent,x+505,y+70,30,480,29,2,white,true,'right',i===0?'ltr':'rtl');
+    });
+    ctx.fillStyle='#a8c9e4';ctx.fillRect(1154,1085,4,110);
+    text(read('.md-statement strong'),1134,1119,32,white,true);
+    wrapped(read('.md-statement p'),1134,1161,27,1025,36,2);
+    round(80,1220,1080,264,24,'#c7dfff0b','#c7dfff30',2);
+    const signX=975;
+    text(read('.md-signature'),signX,1323,46,'#e0edff',true,'center','rtl',300,displayFont);
+    ctx.strokeStyle='#b9d6ed66';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(830,1342);ctx.lineTo(1120,1342);ctx.stroke();
+    text(read('.md-sign strong'),signX,1376,26,white,true,'center','rtl',300);
+    text(read('.md-sign small'),signX,1413,23,muted,false,'center','rtl',300);
+    ctx.save();ctx.translate(center,1351);ctx.rotate(-9*Math.PI/180);
+    const sealFill=ctx.createRadialGradient(0,0,0,0,0,107);sealFill.addColorStop(0,'#c6e3ff20');sealFill.addColorStop(1,'#c6e3ff06');
+    ctx.beginPath();ctx.arc(0,0,105,0,Math.PI*2);ctx.fillStyle=sealFill;ctx.fill();ctx.strokeStyle='#c2d9ee';ctx.lineWidth=3;ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,92,0,Math.PI*2);ctx.setLineDash([5,5]);ctx.strokeStyle='#c2d9eea0';ctx.stroke();ctx.setLineDash([]);
+    text('AL BARHAM · PORTAL',0,-52,15,blue,false,'center','ltr',166,'Arial');
+    text('♔',0,-12,36,blue,false,'center','ltr',160,'Arial');
+    text(read('.md-seal strong'),0,24,34,white,true,'center','rtl',160,displayFont);
+    text(read('.md-seal small'),0,51,18,blue,false,'center','rtl',160);
+    text('VERIFIED',0,76,15,blue,true,'center','ltr',160,'Arial');ctx.restore();
+    const verify=box.querySelector('.md-qr a');
+    if(!verify||!window.QRCode)throw Error('Certificate QR not ready');
+    const qrNode=document.createElement('div');
+    new QRCode(qrNode,{text:verify.href,width:196,height:196,correctLevel:QRCode.CorrectLevel.M});
+    const qr=qrNode.querySelector('canvas');
+    if(!qr||!qr.width)throw Error('Certificate QR unavailable');
+    round(149,1233,240,240,9,'#ffffff');ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,173,1257,192,192);ctx.imageSmoothingEnabled=true;
+    text('رابط التحقق الإلكتروني',center,1522,27,white,true,'center');
+    text(verify.href,center,1558,22,blue,false,'center','ltr',1080,'Arial');
+    text(read('.certificate-copy-time'),center,1598,23,muted,false,'center','rtl',1080);
+    wrapped(read('.md-note'),center,1636,22,1080,28,2,'#c6d8e9',false,'center');
+    ctx.fillStyle='#07152840';ctx.fillRect(22,1687,W-44,45);
+    ctx.strokeStyle='#dcecff35';ctx.beginPath();ctx.moveTo(22,1687);ctx.lineTo(W-22,1687);ctx.stroke();
+    text(read('.md-foot span'),1150,1717,22,'#dcecff',false,'right','rtl',740);
+    text('barham-ps.github.io',90,1717,20,'#dcecff',false,'left','ltr',350,'Arial');
+    ctx.restore();
+    round(22,22,W-44,H-44,34,null,'#a9c7df80',2);
+    round(38,38,W-76,H-76,23,null,'#d9eaff35',2);
+    return jpegPdf(canvasBytes(c,'image/jpeg',0.96),W,H);
+  }
   var cert = newView('certificate', 'شهادة العضوية الرقمية'),
     certBody = make('div', cert);
   certBody.className = 'cert-prev';
   var certControls = make('div', cert);
   certControls.className = 'row';
   var printButton = action(certControls, 'طباعة / حفظ PDF', () => {const stamp=certBody.querySelector('.certificate-copy-time');if(stamp)stamp.textContent='تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date());window.print();});
-  printButton.hidden = true;
+  var downloadCertificate=action(certControls,'تنزيل الشهادة PDF',async()=>{
+    const box=certBody.querySelector('.membership-document');
+    if(!box||location.hash!=='#certificate'||!recoveredSession)return;
+    const sessionId=recoveredSession.user.id;
+    if(downloadCertificate.disabled)return;
+    downloadCertificate.disabled=true;
+    try{
+      const logo=box.querySelector('.md-head img');
+      const ready=Promise.all([ensureQR(),document.fonts?.ready,logo?.decode?.()]);
+      let timer;try{await Promise.race([ready,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Assets timed out')),10000);})]);}finally{clearTimeout(timer);}
+      if(!box.isConnected||location.hash!=='#certificate'||recoveredSession?.user.id!==sessionId)return;
+      box.querySelector('.certificate-copy-time').textContent='تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date());
+      const number=box.querySelector('.md-fields strong').textContent;
+      saveDownload(certificatePdf(box),'albarham-certificate-'+number+'.pdf',certControls);
+    }catch(e){alert('تعذر إنشاء ملف PDF أو تحميل عناصر الشهادة. أعد المحاولة أو استخدم الطباعة.');}finally{downloadCertificate.disabled=false;}
+  });
+  printButton.textContent='طباعة الشهادة';
+  printButton.hidden = downloadCertificate.hidden = true;
   var qrLoad = null;
   async function ensureQR() {
     if (window.QRCode) return true;
@@ -742,9 +877,11 @@
   }
   async function loadCertificate() {
     certBody.replaceChildren();
-    printButton.hidden = true;
+    printButton.hidden = downloadCertificate.hidden = true;
+    const sessionId=recoveredSession?.user.id;
     try {
       var q = await client().rpc('family_my_certificate');
+      if(location.hash!=='#certificate'||recoveredSession?.user.id!==sessionId)return;
       if (q.error) throw q.error;
       if (!q.data.length) {
         var session = await client().auth.getSession();
@@ -765,7 +902,7 @@
       var d = q.data[0];
       var box = make('article', certBody);
       box.className = 'membership-document';
-      box.innerHTML = '<header class="md-head"><div><small>AL BARHAM / MEMBERSHIP OFFICE</small><h3>البوابة العائلية لآل برهم</h3><p>سجل العضوية الإلكتروني</p></div><img src="./icon.svg" alt="شعار آل برهم"></header><div class="md-main"><div class="md-kicker">MEMBERSHIP CERTIFICATE · 01</div><h1>شهادة اعتماد العضوية</h1><div class="md-en">OFFICIAL PORTAL MEMBERSHIP</div><p class="md-intro">بناءً على مراجعة طلب الانتساب واعتماده في سجل البوابة العائلية، تُمنح هذه الشهادة إلى</p><div class="md-person"><small>الاسم الكامل للعضو</small><h2 class="md-name"></h2><span>عضو معتمد في البوابة العائلية الرقمية</span></div><div class="md-fields"></div><div class="md-statement"><strong>نطاق الاعتماد</strong><p>تؤكد هذه الشهادة اعتماد صاحبها للاستفادة من خدمات العضوية والمشاركة في أنشطة المنصة وفق سياساتها المعمول بها.</p></div><div class="md-auth"><div class="md-sign"><div class="md-signature">إدارة آل برهم</div><strong>إدارة العضوية</strong><small>اعتماد مؤسسي إلكتروني</small></div><div class="md-seal"><span>AL BARHAM · PORTAL</span><span aria-hidden="true" style="font-size:19px;line-height:1.2">♔</span><strong>آل برهم</strong><small>اعتماد العضوية</small><span>✦ VERIFIED ✦</span></div><div class="md-qr"></div></div><p class="md-note">تُراجع صلاحية الوثيقة إلكترونيًا عند استخدامها. هذه شهادة عضوية خاصة بالبوابة وليست وثيقة حكومية أو إثبات نسب.</p></div><footer class="md-foot"><span>آل برهم | أصالة الجذور وعهد الأجيال</span><span dir="ltr">barham-ps.github.io</span></footer>';
+      box.innerHTML = '<header class="md-head"><div><small>AL BARHAM / MEMBERSHIP OFFICE</small><h3>البوابة العائلية لآل برهم</h3><p>سجل العضوية الإلكتروني</p></div><img src="./barham-emblem.webp" alt="شعار آل برهم"></header><div class="md-main"><div class="md-kicker">MEMBERSHIP CERTIFICATE · 01</div><h1>شهادة اعتماد العضوية</h1><div class="md-en">OFFICIAL PORTAL MEMBERSHIP</div><p class="md-intro">بناءً على مراجعة طلب الانتساب واعتماده في سجل البوابة العائلية، تُمنح هذه الشهادة إلى</p><div class="md-person"><small>الاسم الكامل للعضو</small><h2 class="md-name"></h2><span>عضو معتمد في البوابة العائلية الرقمية</span></div><div class="md-fields"></div><div class="md-statement"><strong>نطاق الاعتماد</strong><p>تؤكد هذه الشهادة اعتماد صاحبها للاستفادة من خدمات العضوية والمشاركة في أنشطة المنصة وفق سياساتها المعمول بها.</p></div><div class="md-auth"><div class="md-sign"><div class="md-signature">إدارة آل برهم</div><strong>إدارة العضوية</strong><small>اعتماد مؤسسي إلكتروني</small></div><div class="md-seal"><span>AL BARHAM · PORTAL</span><span aria-hidden="true" style="font-size:19px;line-height:1.2">♔</span><strong>آل برهم</strong><small>اعتماد العضوية</small><span>✦ VERIFIED ✦</span></div><div class="md-qr"></div></div><p class="md-note">تُراجع صلاحية الوثيقة إلكترونيًا عند استخدامها. هذه شهادة عضوية خاصة بالبوابة وليست وثيقة حكومية أو إثبات نسب.</p></div><footer class="md-foot"><span>آل برهم | أصالة الجذور وعهد الأجيال</span><span dir="ltr">barham-ps.github.io</span></footer>';
       box.querySelector('.md-name').textContent = d.full_name;
       var fields = box.querySelector('.md-fields');
       var issued = formatPortalTime(d.issued_at);
@@ -774,34 +911,50 @@
       });
       var url = location.origin + location.pathname + '#verify/' + d.verification_token;
       var qr = box.querySelector('.md-qr');
-      await ensureQR();
-      if (window.QRCode) new QRCode(qr,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});
       var link = make('a',qr,'تحقق من صحة الوثيقة'); link.href=url;
       make('small',qr,'امسح الرمز أو استخدم الرابط');
       const copyStamp=make('p',box.querySelector('.md-main'),'تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date()));copyStamp.className='certificate-copy-time';
-      printButton.hidden = false;
+      printButton.hidden = downloadCertificate.hidden = false;
+      const renderQR=()=>{if(box.isConnected&&location.hash==='#certificate'&&recoveredSession?.user.id===sessionId){try{const qrBox=make('div',qr);qr.prepend(qrBox);new QRCode(qrBox,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});}catch(e){}}};
+      if(window.QRCode)renderQR();else ensureQR().then(ready=>{if(ready)renderQR();});
     } catch (e) {
       make('p', certBody, 'تعذر تحميل الشهادة.');
     }
   }
   var verify = newView('verify', 'التحقق من العضوية'),
     verifyBody = make('div', verify);
-  verifyBody.className = 'card';
-  var tokenInput = make('input', verify);
+  verifyBody.className = 'card verify-result';
+  const verifyForm=make('div',verify);verifyForm.className='verify-form';
+  verify.insertBefore(verifyForm,verifyBody);
+  make('h2',verifyForm,'تحقق من صحة العضوية');
+  make('p',verifyForm,'أدخل رقم العضوية أو رمز التحقق الموجود على الشهادة. هذه الخدمة متاحة للجميع دون حساب.');
+  const verifyRow=make('div',verifyForm);verifyRow.className='verify-row';
+  var tokenInput = make('input', verifyRow);
   tokenInput.type = 'text';
   tokenInput.placeholder = 'رقم العضوية أو رمز التحقق';
   tokenInput.dir = 'ltr';
-  action(verify, 'تحقق', () => verifyToken(tokenInput.value.trim()));
+  tokenInput.maxLength=80;tokenInput.autocomplete='off';tokenInput.setAttribute('aria-label','رقم العضوية أو رمز التحقق');
+  verifyBody.setAttribute('aria-live','polite');
+  let verificationEpoch=0;
+  const verifyButton=action(verifyRow, 'تحقق', () => verifyToken(tokenInput.value.trim()));
+  tokenInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();verifyToken(tokenInput.value.trim());}});
+  window.addEventListener('hashchange',()=>{verificationEpoch++;verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;});
   async function verifyToken(token) {
-    verifyBody.replaceChildren();
+    const epoch=++verificationEpoch, requestedHash=location.hash;
+    const current=()=>epoch===verificationEpoch&&location.hash===requestedHash;
+    verifyBody.replaceChildren();verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;
     token = String(token || '').trim().replace(/[٠-٩]/g, c => String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g, c => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
     const byNumber = /^AB-\d{4}-\d{6}$/i.test(token);
     if (!byNumber && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
       make('p', verifyBody, 'أدخل رقم العضوية بصيغة AB-2026-000001 أو رمز التحقق الصحيح.');
       return;
     }
+    verifyBody.setAttribute('aria-busy','true');verifyButton.disabled=true;
+    make('p',verifyBody,'جارٍ التحقق…');
     try {
       let q = byNumber ? await client().rpc('family_verify_membership_number', {p_number: token.toUpperCase()}) : await client().rpc('family_verify_certificate', {p_token: token.toLowerCase()});
+      if(!current())return;
+      verifyBody.replaceChildren();
       if (q.error) {
         make('p', verifyBody, 'تعذر التحقق الآن.');
         return;
@@ -811,17 +964,19 @@
         return;
       }
       let d = q.data[0];
-      make('h2', verifyBody, d.valid ? 'عضوية سارية ومعتمدة' : 'عضوية غير سارية');
+      make('h2', verifyBody, d.valid ? 'عضوية سارية ومعتمدة' : 'عضوية غير سارية').className=d.valid?'verify-valid':'verify-invalid';
       make('p', verifyBody, 'رقم العضوية: ' + d.membership_number);
       make('p', verifyBody, 'تاريخ الإصدار: ' + formatPortalTime(d.issued_at));
     } catch (e) {
-      make('p', verifyBody, 'تعذر الاتصال.');
+      if(current()){verifyBody.replaceChildren();make('p',verifyBody,'تعذر الاتصال.');}
+    } finally {
+      if(current()){verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;}
     }
   }
   var memberBox = make('div', panel.querySelector('.wrap'));
   memberBox.className = 'card account-summary';
   memberBox.innerHTML =
-    '<h2 id="member-welcome">حساب العضو</h2><p id="member-email" dir="ltr"></p><p>رقم العضوية: <strong id="member-number">—</strong></p><p>يظل تسجيل دخولك محفوظًا على هذا المتصفح حتى تسجيل الخروج أو انتهاء صلاحية الجلسة.</p>';
+    '<div class="member-identity"><img src="./barham-emblem.webp" alt="" width="64" height="64" decoding="async"><div><span class="member-kicker">مجلس آل برهم الرقمي</span><h2 id="member-welcome">حساب العضو</h2><p id="member-email" dir="ltr"></p></div></div><div class="member-number-panel"><span>رقم العضوية</span><strong id="member-number">—</strong></div><p class="member-device-note">على الأجهزة المشتركة، سجّل خروجك بعد الانتهاء حفاظًا على خصوصيتك.</p>';
   panel.querySelector('.wrap').insertBefore(memberBox, $('#account-status'));
   var accountLinks = make('div', panel.querySelector('.wrap'));
   accountLinks.className = 'row account-actions';
@@ -838,36 +993,22 @@
   var pwBox = make('details', panel.querySelector('.wrap'));
   pwBox.className = 'card';
   pwBox.innerHTML =
-    '<summary>إعدادات وأمان الحساب</summary><form id="change-password"><label class="f">كلمة مرور جديدة<input type="password" minlength="15" maxlength="128" autocomplete="new-password" required></label><button class="btn btn-dark" type="submit">تغيير كلمة المرور</button><p role="status"></p></form>';
-  pwBox.appendChild($('#logout'));
+    '<summary>إعدادات وأمان الحساب</summary><form id="change-password"><p>لتغيير كلمة المرور، تحقّق أولًا من بريدك الإلكتروني.</p><button class="btn btn-dark" type="submit">تغيير كلمة المرور برمز البريد</button><p role="status"></p></form>';
+  accountLinks.appendChild($('#logout'));
   $('#logout').className='btn btn-ghost';
   $('#change-password').onsubmit = async function(e) {
     e.preventDefault();
-    var f = this,
-      b = f.querySelector('button'),
-      p = f.querySelector('input'),
-      msg = f.querySelector('p');
-    if (b.disabled) return;
-    if (!validNewPassword(p.value)) {
-      msg.textContent = 'اختر كلمة مرور من ١٥ إلى ١٢٨ حرفًا.';
-      return;
-    }
-    b.disabled = true;
-    try {
-      const password = p.value;
-      const leakMessage = await requirePasswordScreen(password);
-      if (leakMessage) { msg.textContent = leakMessage; return; }
-      var z = await client().auth.updateUser({
-        password: password
-      });
-      msg.textContent = z.error ? 'تعذر تغيير كلمة المرور؛ قد يلزم تسجيل الدخول مجددًا.' :
-      'تم تغيير كلمة المرور.';
-      if (!z.error) f.reset();
-    } catch (e) {
-      msg.textContent = 'تعذر الاتصال.';
-    } finally {
-      b.disabled = false;
-    }
+    const button=this.querySelector('button'),message=this.querySelector('p');
+    if(button.disabled)return;button.disabled=true;
+    try{
+      const result=await client().auth.getUser();
+      if(result.error||!result.data?.user?.email)throw Error();
+      if(recoveryBusy)throw Error();
+      if(!result.data.user.email_confirmed_at)throw Error();
+      discardRecovery();bindRecoveryAccount(result.data.user);recoveryIdentityReady=true;
+      setRecoveryStep(1,'أرسل رمز التحقق إلى بريد حسابك لتغيير كلمة المرور.');
+      location.hash='reset';
+    }catch{message.textContent='تعذر التحقق من الحساب. حاول مرة أخرى.';}finally{button.disabled=false;}
   };
 
   if (window.FAMILY_SECURITY_CONFIG?.passkeysEnabled === true && window.PublicKeyCredential && window.isSecureContext) {
@@ -875,8 +1016,10 @@
       if (loginPasskey.disabled) return;
       loginPasskey.disabled = true;
       try {
-        const z = await client().auth.signInWithPasskey();
-        if (z.error) throw z.error;
+        const auth = client().auth;
+        if (typeof auth.signInWithPasskey !== 'function') throw Error('Passkey SDK unavailable');
+        const z = await auth.signInWithPasskey();
+        if (z.error || !z.data?.session) throw z.error || Error('No verified session');
         location.hash = 'account';
       } catch (_) { show('#l-msg', 'تعذر الدخول بمفتاح المرور. يمكنك الدخول بالطريقة المعتادة.', 1); }
       finally { loginPasskey.disabled = false; }
@@ -888,7 +1031,11 @@
       try {
         const level = ok(await client().auth.mfa.getAuthenticatorAssuranceLevel());
         if (level.nextLevel === 'aal2' && level.currentLevel !== 'aal2') { location.hash = 'mfa'; return; }
-        const z = await client().auth.registerPasskey();
+        const auth = client().auth;
+        const verified = await auth.getUser();
+        if (verified.error || !verified.data.user?.email_confirmed_at || verified.data.user.is_anonymous === true) throw Error('Confirmed identity required');
+        if (typeof auth.registerPasskey !== 'function') throw Error('Passkey SDK unavailable');
+        const z = await auth.registerPasskey();
         if (z.error) throw z.error;
         alert('تم تسجيل مفتاح المرور. احتفظ بطريقة استعادة الحساب.');
       } catch (_) { alert('تعذر تسجيل مفتاح المرور. تحقق من إعدادات المصادقة والجهاز.'); }
@@ -905,8 +1052,9 @@
   hubLink.hidden = true;
   var memberQuick = make('div',panel.querySelector('.wrap'));
   memberQuick.className='dashboard-grid account-quick';memberQuick.hidden=true;
+  make('h2',memberQuick,'خدماتك الأقرب إليك').className='member-quick-heading';
   panel.querySelector('.wrap').insertBefore(memberQuick,pwBox);
-  for(const [key,title,description,icon] of [['requests','إرسال طلب أو مساهمة','الشكاوى والمقترحات والمعلومات العائلية','heart'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','file'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['identity','بطاقتي الرقمية','عرض بطاقة العضوية والشهادة','shield'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
+  for(const [key,title,description,icon] of [['identity','بطاقتي وشهادتي','عرض الهوية العائلية ووثيقة العضوية','shield'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','bell'],['requests','طلباتي ومساهماتي','متابعة الطلبات والمقترحات الخاصة','inbox'],['lineage','سجل قراباتي','إدارة سجل النسب الشخصي','network'],['directory','دليل الكفاءات','استعراض التخصصات المتاحة','landmark'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
     const l=dashboardLink(memberQuick,'#member-hub',title,description,icon);l.dataset.hubTarget=key;
   }
   hubLink.dataset.hubTarget='overview';
@@ -987,9 +1135,22 @@
     'المناسبات والتهاني':'occasions','المناسبات':'occasions',
     'الطلبات والمساهمات والشكاوى':'requests','الطلبات':'requests'
   };
+  function appendPortalIcon(parent, name, size) {
+    // Only local SVG symbol names are permitted. No interpolated markup.
+    if (typeof name !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(name)) return;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns,'svg');
+    svg.setAttribute('width',String(size));
+    svg.setAttribute('height',String(size));
+    svg.setAttribute('aria-hidden','true');
+    const use = document.createElementNS(ns,'use');
+    use.setAttribute('href','#i-'+name);
+    svg.appendChild(use);
+    parent.appendChild(svg);
+  }
   function dashboardIcon(parent,name){
     const icon=make('span',parent);icon.className='dashboard-icon';
-    icon.innerHTML='<svg width="24" height="24" aria-hidden="true"><use href="#i-'+name+'"/></svg>';
+    appendPortalIcon(icon,name,24);
   }
   function dashboardLink(parent,href,title,description,icon){
     const link=make('a',parent);link.className='dashboard-tile';link.href=href;
@@ -1009,7 +1170,8 @@
     const menu=make('nav',shell);menu.className='dashboard-tabs';menu.setAttribute('aria-label','خدمات العضو');
     const content=make('div',shell);content.className='dashboard-content';
     const overview=make('div',content);overview.className='dashboard-overview';
-    make('h3',overview,'اختر الخدمة التي تحتاج إليها');
+    make('h3',overview,'مجلسك العائلي — خدماتك في مكان واحد');
+    make('p',overview,'انتقل إلى الخدمة المطلوبة، أو ابحث في الخدمات باستخدام حقل البحث أعلاه.').className='member-overview-note';
     const grid=make('div',overview);grid.className='dashboard-grid';
     const toolbar=make('div',shell);toolbar.className='dashboard-search';
     const search=field(toolbar,'البحث داخل خدماتي','hub-search','search',150);
@@ -1136,8 +1298,8 @@
       this.disabled=true;
       try{
         const file=ok(await client().storage.from(requestFilesBucket).download(uid+'/'+row.id));
-        const ext=file.type==='application/pdf'?'.pdf':file.type==='image/jpeg'?'.jpg':'.bin';
-        const url=URL.createObjectURL(file),link=document.createElement('a');link.href=url;link.download='albarham-request-'+row.id+ext;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+        if(!parent.isConnected||!recoveredSession||!['#member-hub','#member-services-admin'].includes(location.hash))return;
+        saveDownload(file,'albarham-request-'+row.id+fileExtension(file),parent);
       }catch(e){alert('المرفق غير متاح أو لم يكتمل رفعه. تحقق من صلاحية الوصول.');}
       finally{refreshState();}
     });
@@ -1160,7 +1322,28 @@
         var l = make('a', hubBody, 'متابعة حسابي');
         l.href = '#account';
         return;
-      } {
+      }
+      if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
+      const loading=make('div',hubBody);loading.className='row';
+      const quickCert=make('a',loading,'عرض الشهادة وتنزيلها');quickCert.href='#certificate';quickCert.className='btn btn-gold';
+      make('p',loading,'جارٍ تجهيز بقية الخدمات…').setAttribute('role','status');
+      // Start independent reads concurrently after approval; each section handles its own failure.
+      const read=query=>Promise.resolve(query).catch(error=>({error}));
+      const prefetched={certificate:read(client().rpc('family_my_certificate')),
+        profile:read(client().from('family_profiles').select('*').eq('user_id', uid).maybeSingle()),
+        lineage:read(client().from('family_lineage').select('*').eq('user_id', uid).order(
+          'created_at')),
+        directory:read(client().from('family_profiles').select('display_name,profession,city,bio').eq(
+            'directory_opt_in', true).order('display_name').limit(100)),
+        notices:read(client().from('family_member_notices').select('*').eq('user_id', uid).order(
+            'created_at', {
+              ascending: false
+            }).limit(100)),
+        content:read(client().from('family_member_content').select('*').eq('published', true).order(
+            'created_at', {
+              ascending: false
+            }).limit(100))};
+      {
         var beforeCount = hubBody.children.length;
         try {
           var card = section(hubBody, 'بطاقتي العائلية الرقمية');
@@ -1170,9 +1353,9 @@
           make('h2', card, app.full_name);
           make('p', card, 'رقم العضوية: ' + app.membership_number);
           make('p', card, 'عضوية معتمدة');
-          var cq = ok(await client().rpc('family_my_certificate'));
+          var cq = ok(await prefetched.certificate);
           if(cq.length)make('p',card,'تاريخ ووقت اعتماد الشهادة: '+formatPortalTime(cq[0].issued_at));
-          if (cq.length) await ensureQR();
+          if (cq.length) await Promise.race([ensureQR(),new Promise(resolve=>setTimeout(resolve,1800))]);
           if (cq.length && window.QRCode) {
             var qr = make('div', card);
             new QRCode(qr, {
@@ -1211,13 +1394,10 @@
               ctx.font = '30px Arial';
               ctx.fillText('إدارة آل برهم — بطاقة عضوية رقمية',600,632,1090);
               ctx.font='23px Arial';ctx.fillText('إعداد النسخة: '+formatPortalTime(new Date()),600,665,1090);
-              var a = document.createElement('a');
-              a.download = 'albarham-membership.png';
-              a.href = canvas.toDataURL('image/png');
-              a.click();
+              try{saveDownload(new Blob([canvasBytes(canvas,'image/png')],{type:'image/png'}),'albarham-membership.png',card);}catch(e){alert('تعذر حفظ البطاقة. أعد المحاولة.');}
             });
           }
-          var certA = make('a', card, 'عرض الشهادة وطباعتها');
+          var certA = make('a', card, 'عرض الشهادة وتنزيلها');
           certA.href = '#certificate';
           certA.className = 'btn btn-gold';
         } catch (e) {
@@ -1231,7 +1411,7 @@
         var beforeCount = hubBody.children.length;
         try {
           var profile = section(hubBody, 'ملفي الشخصي');
-          var p = ok(await client().from('family_profiles').select('*').eq('user_id', uid).maybeSingle()) || {};
+          var p = ok(await prefetched.profile) || {};
           var f = make('form', profile),
             dn = field(f, 'الاسم المعروض', 'name', 'text', 150),
             job = field(f, 'المهنة أو التخصص', 'profession', 'text', 150),
@@ -1275,8 +1455,7 @@
             grandmother: 'الجدة',
             other: 'صلة أخرى'
           };
-          var entries = ok(await client().from('family_lineage').select('*').eq('user_id', uid).order(
-          'created_at'));
+          var entries = ok(await prefetched.lineage);
           var diagram = make('div', tree);
           diagram.className = 'card';
           make('h3', diagram, app.full_name);
@@ -1332,8 +1511,7 @@
         try {
           var dir = section(hubBody, 'دليل المهن والكفاءات');
           make('p', dir, 'يضم فقط الملفات التي وافق أصحابها على المشاركة.');
-          var ds = ok(await client().from('family_profiles').select('display_name,profession,city,bio').eq(
-            'directory_opt_in', true).order('display_name').limit(100));
+          var ds = ok(await prefetched.directory);
           if (!ds.length) make('p', dir, 'لا توجد ملفات مشاركة بعد.');
           var search = field(dir, 'بحث في الدليل', 'search', 'search', 150),
             list = make('div', dir);
@@ -1358,10 +1536,7 @@
         var beforeCount = hubBody.children.length;
         try {
           var inbox = section(hubBody, 'صندوق الإشعارات الخاص');
-          var ns = ok(await client().from('family_member_notices').select('*').eq('user_id', uid).order(
-            'created_at', {
-              ascending: false
-            }).limit(100));
+          var ns = ok(await prefetched.notices);
           var unread = ns.filter(x => !x.read_at).length;
           make('p', inbox, 'غير مقروءة: ' + unread);
           if (!ns.length) make('p', inbox, 'لا إشعارات حتى الآن.');
@@ -1395,10 +1570,7 @@
       } {
         var beforeCount = hubBody.children.length;
         try {
-          var content = ok(await client().from('family_member_content').select('*').eq('published', true).order(
-            'created_at', {
-              ascending: false
-            }).limit(100));
+          var content = ok(await prefetched.content);
           for (var k of ['archive', 'occasion']) {
             var c = section(hubBody, k === 'archive' ? 'الأرشيف الحصري' : 'المناسبات والتهاني');
             var rows = content.filter(x => x.kind === k);
@@ -1419,14 +1591,8 @@
                 try {
                   var file = ok(await client().storage.from('family-archive').download(x
                   .attachment_path));
-                  var url = URL.createObjectURL(file);
-                  var a = document.createElement('a');
-                  a.href = url;
-                  a.download = x.title.replace(/[\\/]/g, '-') + (file.type === 'application/pdf' ?
-                    '.pdf' : file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' :
-                    '.jpg');
-                  a.click();
-                  setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  if(!item.isConnected||!recoveredSession||location.hash!=='#member-hub')return;
+                  saveDownload(file,x.title+fileExtension(file),item);
                 } catch (e) {
                   alert('تعذر تنزيل المرفق.');
                 } finally {
@@ -1524,6 +1690,8 @@
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       }
+      loading.remove();
+      if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
       decorateHub(app);
     } catch (e) {
       hubBody.replaceChildren();
@@ -1712,7 +1880,7 @@
       l.href = '#' + x[0];
       var ic = make('div', l);
       ic.className = 'ic';
-      ic.innerHTML = '<svg width="26" height="26" aria-hidden="true"><use href="#i-' + x[2] + '"/></svg>';
+      appendPortalIcon(ic,x[2],26);
       make('h3', l, x[1]);
       make('p', l, x[3]);
     });
@@ -1739,6 +1907,7 @@
     ['شجرة العائلة','الأنساب والأجيال والفروع','tree'],
     ['الأرشيف والحكايات','الوثائق والصور والروايات','archive'],
     ['أخبار العائلة','الأخبار والإعلانات والتهاني والمناسبات','news'],
+    ['سجل الشهداء','الشهداء والذاكرة والصور والمعارض','martyrs'],
     ['المبادرات','التكافل والتعاون والمقترحات','initiatives'],
     ['العضوية','التسجيل والتحقق من الشهادات','membership'],
     ['التواصل','مراسلة الإدارة وتصحيح المعلومات','contact'],
@@ -1750,7 +1919,7 @@
     searchSubmit.disabled=true;searchStatus.textContent='جارٍ البحث…';searchResults.replaceChildren();
     try{
       const matching=(v)=>terms.every(t=>normalizeSearch(v).includes(t));
-      const found=publicRoutes.filter(x=>matching(x[0]+' '+x[1])).map(x=>({title:x[0],desc:x[1],url:'#'+x[2]}));
+      const found=publicRoutes.filter(x=>matching(x[0]+' '+x[1])).map(x=>({title:x[0],desc:x[1],url:x[2]==='martyrs'?'./martyrs/':'#'+x[2]}));
       const requests=[
         ()=>client().from('family_news').select('id,title,body,category').eq('published',true).order('created_at',{ascending:false}).limit(100),
         ()=>client().from('family_public_content').select('section,title,body').eq('published',true).order('created_at',{ascending:false}).limit(100)
@@ -1770,6 +1939,21 @@
       searchStatus.textContent='النتائج: '+new Intl.NumberFormat('ar-EG').format(found.length)+(partial?' — تعذر تحميل بعض المحتوى، والنتائج جزئية.':' — البحث يشمل آخر ١٠٠ مادة من كل مصدر.');
     }catch(err){searchStatus.textContent='تعذر إكمال البحث. حاول مجددًا.';}finally{searchSubmit.disabled=false;}
   };
+  const memorialEditor=newView('martyrs-admin','إدارة سجل الشهداء والصور');
+  const memorialBack=make('a',memorialEditor,'العودة إلى مركز الإدارة');memorialBack.href='#admin';memorialBack.className='btn btn-ghost';
+  const memorialEditorBody=make('div',memorialEditor);let memorialEditorEpoch=0;
+  async function loadMemorialEditor(){
+    const token=++memorialEditorEpoch;memorialEditorBody.replaceChildren();
+    const status=make('p',memorialEditorBody,'جارٍ التحقق من الصلاحية…');status.setAttribute('role','status');
+    try{
+      const q=await client().rpc('family_is_admin');
+      if(token!==memorialEditorEpoch||location.hash!=='#martyrs-admin')return;
+      if(q.error||q.data!==true){status.textContent='هذه الصفحة للإدارة المعتمدة بعد التحقق الثنائي.';return;}
+      await loadMemorialModule();
+      if(token!==memorialEditorEpoch||location.hash!=='#martyrs-admin')return;
+      memorialEditorBody.replaceChildren();window.mountMemorialAdmin(memorialEditorBody,client,true);
+    }catch{if(token===memorialEditorEpoch&&location.hash==='#martyrs-admin')status.textContent='تعذر الاتصال بالخدمة. حدّث الصفحة.';}
+  }
   var newsEditor = newView('news-admin', 'إدارة الأخبار'),
     newsEditorBody = make('div', newsEditor);
   const newsBack=make('a',newsEditor,'العودة إلى إدارة المحتوى');newsBack.href='#admin';newsBack.className='btn btn-ghost';newsBack.dataset.adminTarget='content';newsEditor.insertBefore(newsBack,newsEditorBody);
@@ -1885,6 +2069,8 @@
     g.className = 'news-gallery' + (cover ? ' news-cover' : '');
     g.dataset.count = String(paths.length);
     var urls = [];
+    const reduced=window.familyRuntime?.lowData()===true || navigator.onLine===false;
+    if(reduced)g.hidden=true;
     var items = paths.map((path, i) => {
       var a = make('button', g);
       a.type = 'button';
@@ -1892,7 +2078,8 @@
       a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
       var im = make('img', a);
       im.alt = title + ' — صورة ' + (i + 1);
-      const priority = parent.classList.contains('home-news-card') && i === 0;
+      // The main hero is the high-priority content; below-the-fold news images are lazy.
+      const priority = false;
       im.loading = priority ? 'eager' : 'lazy';
       im.fetchPriority = priority ? 'high' : 'low';
       im.decoding = 'async';
@@ -1925,7 +2112,10 @@
       g.replaceChildren();
       make('p', g, 'تعذر تحميل الصور.');
     });
-    nearViewport(g, load, parent.classList.contains('home-news-card'));
+    if(reduced){
+      const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
+      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
+    }else nearViewport(g, load);
   }
 
   async function loadPublicNews() {
@@ -2112,6 +2302,7 @@
             var img = make('img', c);
             img.alt = 'صورة ' + (i + 1);
             img.loading = 'lazy';
+            img.decoding = 'async';
             if (entry.file) img.src = entry.preview;
             else client().storage.from('family-news').createSignedUrl(entry.path, 900).then(z => {
               if (!z.error && img.isConnected) img.src = z.data.signedUrl;
@@ -2246,7 +2437,7 @@
 
   function extraRoute() {
     var nh = location.hash;
-    if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#certificate', '#mfa',
+    if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate', '#mfa',
         '#security'
       ].includes(nh) && !authReady) return;
     if (nh === '#mfa') {
@@ -2259,6 +2450,7 @@
     }
     if (nh === '' || nh === '#home' || nh === '#news' || nh.startsWith('#news/')) loadPublicNews();
     if (nh === '#news-admin') guardPrivate(loadNewsEditor);
+    if (nh === '#martyrs-admin') guardPrivate(loadMemorialEditor);
     if (['#history','#tree','#archive'].includes(nh))renderPublicCMS().catch(()=>{});
     if (location.hash === '#reset') showReset();
     var hash = location.hash.slice(1);
@@ -2274,62 +2466,216 @@
     }
   }
   window.addEventListener('hashchange', extraRoute);
+  // Only provider-verified recovery sessions can update a password. OTP sessions stay in memory.
+  function createPasswordRecovery(auth, screen, valid) {
+    let verifiedId = null, verifiedUntil = 0, expectedAccount = null, revision = 0;
+    function normalizeCode(value) {
+      return String(value).trim().replace(/[٠-٩۰-۹]/g,c=>String(c.charCodeAt(0)-(c.charCodeAt(0)>=0x6f0?0x6f0:0x660)));
+    }
+    function failure(message){throw Error(message);}
+    function check(result,message){if(result.error)failure(message);return result.data;}
+    const canonicalEmail=value=>String(value||'').trim().toLowerCase();
+    function resetProof(){verifiedId=null;verifiedUntil=0;revision++;}
+    function enforceEmail(email){if(expectedAccount&&canonicalEmail(email)!==expectedAccount.email)failure('يجب استخدام البريد المسجل في حساب عضويتك.');}
+    function requireCurrent(version){if(version!==revision)failure('انتهت عملية الاستعادة. ابدأ من جديد.');}
+    return Object.freeze({
+      bindAccount(account){resetProof();expectedAccount=account?{id:account.id,email:canonicalEmail(account.email)}:null;},
+      async request(email,options) {
+        resetProof();enforceEmail(email);
+        const version=revision;
+        check(await auth.resetPasswordForEmail(email,options),'تعذر إرسال رسالة الاستعادة. تحقق من الاتصال أو حاول لاحقًا.');
+        requireCurrent(version);
+      },
+      async verify(email,value) {
+        resetProof();enforceEmail(email);
+        const version=revision;
+        const token=normalizeCode(value);
+        if(!/^\d{6,8}$/.test(token))failure('أدخل الرمز الرقمي كما ورد في رسالة البريد.');
+        const data=check(await auth.verifyOtp({email,token,type:'recovery'}),'الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا عند الحاجة.');
+        const user=data?.user||data?.session?.user;
+        requireCurrent(version);
+        if(!user?.id||data?.session?.user?.id!==user.id||canonicalEmail(user.email)!==canonicalEmail(email)|| (expectedAccount&&user.id!==expectedAccount.id))failure('تعذر التحقق من الحساب.');
+        verifiedId=user.id;verifiedUntil=Date.now()+600000;
+      },
+      acceptLink(session) {
+        resetProof();
+        const user=session?.user;
+        if(!user?.id||(expectedAccount&&(user.id!==expectedAccount.id||canonicalEmail(user.email)!==expectedAccount.email)))return false;
+        verifiedId=user.id;verifiedUntil=Date.now()+600000;
+        return true;
+      },
+      clear(){resetProof();},
+      async save(password,confirmation) {
+        const uid=verifiedId,version=revision;
+        if(!uid)failure('تحقق من رمز البريد أولًا.');
+        if(Date.now()>=verifiedUntil){resetProof();failure('انتهت مهلة تغيير كلمة المرور. اطلب رمزًا جديدًا.');}
+        if(!valid(password))failure('اختر كلمة مرور من ١٥ إلى ١٢٨ حرفًا.');
+        if(password!==confirmation)failure('كلمتا المرور غير متطابقتين.');
+        const leak=await screen(password);if(leak)failure(leak);
+        const session=check(await auth.getSession(),'انتهت جلسة الاستعادة. اطلب رمزًا جديدًا.')?.session;
+        const user=check(await auth.getUser(),'تعذر التحقق من جلسة الاستعادة.')?.user;
+        requireCurrent(version);
+        if(verifiedId!==uid||Date.now()>=verifiedUntil||session?.user?.id!==uid||user?.id!==uid||(expectedAccount&&canonicalEmail(user.email)!==expectedAccount.email))failure('انتهت جلسة الاستعادة. اطلب رمزًا جديدًا.');
+        const result=await auth.updateUser({password});
+        if(result.error)failure('تعذر تغيير كلمة المرور. قد يلزم رمز جديد أو تحقق إضافي.');
+        resetProof();
+        return uid;
+      }
+    });
+  }
+
   var reset = newView('reset', 'استعادة كلمة المرور'),
     resetBox = make('div', reset);
-  resetBox.className = 'card';
+  resetBox.className = 'card recovery-panel';
+  const resetSteps=make('ol',resetBox);resetSteps.className='recovery-steps';
+  const stepLabels=['البريد الإلكتروني','رمز التحقق','كلمة المرور الجديدة'];
+  stepLabels.forEach((label,i)=>{const li=make('li',resetSteps);make('b',li,String(i+1).replace(/[1-3]/g,n=>'١٢٣'[Number(n)-1]));make('span',li,label);});
   var resetMsg = make('p', resetBox);
+  resetMsg.setAttribute('role','status');resetMsg.setAttribute('aria-live','polite');resetMsg.className='recovery-message';
   var resetForm = make('form', resetBox),
-    resetInput = field(resetForm, 'البريد الإلكتروني', 'email', 'email', 254);
-  resetInput.required = true;
-  formAction(resetForm, 'إرسال رابط الاستعادة', async () => {
-    try {
-      var z = await client().auth.resetPasswordForEmail(resetInput.value.trim(), {
-        redirectTo: location.origin + location.pathname + '?page=reset',
-        captchaToken: await window.familyCaptcha.token(resetForm)
-      });
-      if (z.error) throw z.error;
-      resetMsg.textContent = 'إذا كان الحساب موجودًا فستصلك رسالة الاستعادة.';
-    } finally { window.familyCaptcha.reset(resetForm); }
-  });
+    resetInput = field(resetForm, 'البريد الإلكتروني المسجل في العضوية', 'email', 'email', 254);
+  resetForm.id='recovery-email-form';resetInput.required=true;resetInput.autocomplete='email';resetInput.dir='ltr';
+  const sendCode=make('button',resetForm,'إرسال رمز الاستعادة');sendCode.type='submit';sendCode.className='btn btn-gold';
+  const haveCode=action(resetForm,'لدي رمز بالفعل',()=>{if(recoveryBusy||recoveryIdentityPending||!recoveryIdentityReady||!resetInput.reportValidity())return;startCode();});
+  haveCode.className='btn btn-ghost';
+  var codeForm=make('form',resetBox);codeForm.id='recovery-code-form';
+  const codeEmail=make('p',codeForm);codeEmail.className='recovery-email-label';
+  const codeInput=field(codeForm,'رمز التحقق الوارد بالبريد','code','text',8);
+  codeInput.required=true;codeInput.inputMode='numeric';codeInput.autocomplete='one-time-code';codeInput.dir='ltr';codeInput.placeholder='••••••';
+  const verifyCode=make('button',codeForm,'تأكيد الرمز');verifyCode.type='submit';verifyCode.className='btn btn-gold';
+  const resendCode=action(codeForm,'إرسال رمز جديد',()=>{if(recoveryBusy)return;setRecoveryStep(1,'يمكنك طلب رمز جديد من البريد نفسه.');});
+  resendCode.className='btn btn-ghost';
   var changeForm = make('form', resetBox),
     newPass = field(changeForm, 'كلمة المرور الجديدة', 'password', 'password', 128);
-  newPass.required = true;
-  newPass.minLength = 15;
-  changeForm.hidden = true;
-  formAction(changeForm, 'حفظ كلمة المرور الجديدة', async () => {
-    if (!validNewPassword(newPass.value)) throw Error('كلمة المرور غير صالحة');
-    const password = newPass.value;
-    const leakMessage = await requirePasswordScreen(password);
-    if (leakMessage) { alert(leakMessage); throw Error('Password screening failed'); }
-    var z = await client().auth.updateUser({
-      password: password
+  changeForm.id='recovery-password-form';newPass.required=true;newPass.minLength=15;newPass.autocomplete='new-password';
+  const confirmPass=field(changeForm,'تأكيد كلمة المرور الجديدة','confirmation','password',128);
+  confirmPass.required=true;confirmPass.minLength=15;confirmPass.autocomplete='new-password';
+  make('p',changeForm,'اختر كلمة مرور قوية من ١٥ حرفًا على الأقل.').className='recovery-hint';
+  const savePass=make('button',changeForm,'حفظ كلمة المرور الجديدة');savePass.type='submit';savePass.className='btn btn-gold';
+  const doneLink=make('a',resetBox,'العودة إلى تسجيل الدخول');doneLink.href='#login';doneLink.className='btn btn-ghost';
+  const help=make('p',resetBox,'لم تصلك الرسالة؟ افحص البريد غير المرغوب فيه. لا تشارك رمزك مع أي شخص.');
+  help.className='recovery-hint';
+  let recoveryClient=null, recoveryFlow=null, recoveryStep=1, recoveryEmail='', recoveryBusy=false, recoveryLinkMode=false, recoverySentAt=0, recoveryAccount=null;
+  let recoveryEpoch=0, recoveryIdentityPending=false, recoveryIdentityReady=false;
+  function bindRecoveryAccount(account){
+    recoveryAccount=account?{id:account.id,email:account.email}:null;
+    resetInput.readOnly=Boolean(recoveryAccount);
+    if(recoveryAccount)resetInput.value=recoveryAccount.email;
+    recoveryFlow?.bindAccount(recoveryAccount);
+  }
+  async function assertRecoveryOwner(){
+    if(!recoveryAccount)return;
+    const result=await client().auth.getUser();
+    const user=result.data?.user;
+    if(result.error||!user?.email_confirmed_at||user.id!==recoveryAccount.id||String(user.email).toLowerCase()!==String(recoveryAccount.email).toLowerCase())throw Error('تغيرت جلسة العضوية. أعد فتح صفحة الاستعادة.');
+  }
+  function selectedRecoveryEmail(){
+    if(recoveryIdentityPending||!recoveryIdentityReady)throw Error('يلزم التحقق من جلسة الحساب أولًا. أعد فتح الصفحة.');
+    return recoveryAccount?recoveryAccount.email:resetInput.value.trim();
+  }
+  function discardRecovery(){
+    recoveryEpoch++;recoveryFlow?.clear();recoveryFlow=null;recoveryClient=null;recoveryLinkMode=false;recoveryEmail='';codeEmail.textContent='';codeForm.reset();changeForm.reset();
+  }
+  function otpAuth(){
+    if(!recoveryClient)recoveryClient=window.supabase.createClient('https://vfxxghfmkmgdqrczeowx.supabase.co','sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'family-password-recovery'}});
+    return recoveryClient.auth;
+  }
+  function otpFlow(){if(!recoveryFlow){recoveryFlow=createPasswordRecovery(otpAuth(),requirePasswordScreen,validNewPassword);recoveryFlow.bindAccount(recoveryAccount);}return recoveryFlow;}
+  function setRecoveryStep(step,message){
+    recoveryStep=step;resetForm.hidden=step!==1;codeForm.hidden=step!==2;changeForm.hidden=step!==3;doneLink.hidden=step!==4;
+    [...resetSteps.children].forEach((li,i)=>{if(i===step-1)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');});
+    if(message)resetMsg.textContent=message;
+    if(step===1){sendCode.disabled=haveCode.disabled=!recoveryIdentityReady;if(location.hash==='#reset')window.familyCaptcha.prepare(resetForm).catch(()=>{});}
+  }
+  function startCode(){
+    recoveryEmail=selectedRecoveryEmail();codeEmail.textContent='البريد: '+recoveryEmail;codeInput.value='';
+    setRecoveryStep(2,'إذا كان الحساب موجودًا، ستصلك رسالة الاستعادة. أدخل الرمز منها، أو استخدم رابط الاستعادة إن ورد في الرسالة.');
+    codeInput.focus();
+  }
+  function bindRecovery(form,button,handler){
+    form.addEventListener('submit',async e=>{
+      e.preventDefault();if(recoveryBusy)return;recoveryBusy=true;button.disabled=true;
+      try{await handler();}catch(err){resetMsg.textContent=err?.message&&/[\u0600-\u06ff]/.test(err.message)?err.message:'تعذر إتمام العملية. تحقق من الاتصال وحاول مجددًا.';}
+      finally{recoveryBusy=false;button.disabled=false;}
     });
-    if (z.error) throw z.error;
-    changeForm.reset();
-    location.hash = 'account';
+  }
+  bindRecovery(resetForm,sendCode,async()=>{
+    if(Date.now()-recoverySentAt<60000)throw Error('انتظر دقيقة قبل طلب رسالة جديدة.');
+    const targetEmail=selectedRecoveryEmail(),version=recoveryEpoch;
+    try{
+      await assertRecoveryOwner();
+      await otpFlow().request(targetEmail,{redirectTo:location.origin+location.pathname+'?page=reset',captchaToken:await window.familyCaptcha.token(resetForm)});
+      if(version!==recoveryEpoch||location.hash!=='#reset')return;
+      recoverySentAt=Date.now();recoveryLinkMode=false;resetInput.value=targetEmail;startCode();
+    }finally{window.familyCaptcha.reset(resetForm);}
   });
-
+  bindRecovery(codeForm,verifyCode,async()=>{
+    const version=recoveryEpoch;
+    await assertRecoveryOwner();
+    await otpFlow().verify(recoveryEmail,codeInput.value);
+    if(version!==recoveryEpoch||location.hash!=='#reset')return;
+    codeForm.reset();recoveryLinkMode=false;setRecoveryStep(3,'تم التحقق من الرمز. اختر كلمة مرور جديدة.');newPass.focus();
+  });
+  bindRecovery(changeForm,savePass,async()=>{
+    if(recoveryStep!==3||!recoveryFlow)throw Error('تحقق من البريد أولًا.');
+    await assertRecoveryOwner();
+    const uid=await recoveryFlow.save(newPass.value,confirmPass.value);
+    changeForm.reset();
+    const auth=recoveryLinkMode?client().auth:otpAuth();
+    let logoutWarning=false;
+    try{const result=await auth.signOut({scope:'global'});logoutWarning=Boolean(result.error);}catch{logoutWarning=true;}
+    if(!recoveryLinkMode){
+      try{const current=await client().auth.getSession();if(current.data?.session?.user?.id===uid){const result=await client().auth.signOut({scope:'local'});logoutWarning=logoutWarning||Boolean(result.error);}}catch{logoutWarning=true;}
+    }
+    recoveryFlow=null;recoveryClient=null;recoveryEmail='';resetInput.value='';codeEmail.textContent='';codeForm.reset();
+    setRecoveryStep(4,logoutWarning?'تم تغيير كلمة المرور. تعذر تأكيد إنهاء جميع الجلسات؛ سجّل خروجك من الأجهزة المشتركة.':'تم تغيير كلمة المرور بنجاح. سجّل الدخول باستخدام كلمة المرور الجديدة.');
+  });
   function prepareCaptcha() {
     const routes = {'#register': $('#regForm'), '#login': $('#logForm'), '#reset': resetForm};
     const form = routes[location.hash];
     if (form && !form.hidden) window.familyCaptcha.prepare(form).catch(() => {});
   }
   window.addEventListener('hashchange', prepareCaptcha);
+  setRecoveryStep(1,'أدخل بريد حسابك لاستعادة كلمة المرور.');
   prepareCaptcha();
-
-  function showReset() {
-    resetMsg.textContent = changeForm.hidden ? 'أدخل بريد حسابك لاستعادة كلمة المرور.' : 'اختر كلمة مرور جديدة.';
+  async function showReset() {
+    if(recoveryStep!==1||recoveryIdentityPending)return;
+    const version=recoveryEpoch;
+    recoveryIdentityPending=true;recoveryIdentityReady=false;sendCode.disabled=haveCode.disabled=true;
+    try{
+      if(!window.supabase)throw Error();
+      const session=await client().auth.getSession();
+      if(session.error)throw session.error;
+      if(version!==recoveryEpoch||location.hash!=='#reset'||recoveryStep!==1)return;
+      if(session.data.session){
+        const result=await client().auth.getUser();
+        if(result.error||!result.data.user?.email||!result.data.user.email_confirmed_at||result.data.user.id!==session.data.session.user.id)throw Error();
+        if(version!==recoveryEpoch||location.hash!=='#reset'||recoveryStep!==1)return;
+        bindRecoveryAccount(result.data.user);
+        resetMsg.textContent='سيُرسل الرمز إلى بريد حساب عضويتك المؤكد فقط. لا يمكن تغييره هنا.';
+      }else{
+        bindRecoveryAccount(null);
+        resetMsg.textContent='أدخل البريد الإلكتروني المسجل في حساب عضويتك.';
+      }
+      recoveryIdentityReady=true;
+    }catch{if(version===recoveryEpoch){resetMsg.textContent='تعذر التحقق من جلسة الحساب. أعد فتح الصفحة وحاول مجددًا.';return;}}
+    finally{recoveryIdentityPending=false;if(version===recoveryEpoch&&location.hash==='#reset'&&recoveryStep===1){sendCode.disabled=haveCode.disabled=!recoveryIdentityReady;}}
   }
+  window.addEventListener('hashchange',()=>{
+    if(location.hash==='#reset')return;
+    if(recoveryBusy)return;
+    recoveryIdentityReady=false;discardRecovery();bindRecoveryAccount(null);resetInput.value='';setRecoveryStep(1,'أدخل بريد حسابك لاستعادة كلمة المرور.');
+  });
   var forgot = make('a', $('#logForm'), 'نسيت كلمة المرور؟');
   forgot.href = '#reset';
   forgot.className = 'more';
   try {
-    client().auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        resetForm.hidden = true;
-        changeForm.hidden = false;
-        location.hash = 'reset';
-        resetMsg.textContent = 'اختر كلمة مرور جديدة.';
+    client().auth.onAuthStateChange((event,session) => {
+      if (event === 'PASSWORD_RECOVERY'&&session?.user?.id) {
+        discardRecovery();
+        recoveryFlow=createPasswordRecovery(client().auth,requirePasswordScreen,validNewPassword);
+        recoveryFlow.bindAccount(recoveryAccount);
+        if(recoveryFlow.acceptLink(session)){recoveryLinkMode=true;location.hash='reset';setRecoveryStep(3,'تم التحقق من رابط البريد. اختر كلمة مرور جديدة.');}
       }
     });
   } catch (e) {}
@@ -2354,10 +2700,13 @@
         location.hash = 'login';
         return;
       }
-      const verifiedUser = await client().auth.getUser();
+      const [verifiedUser,assurance] = await Promise.all([client().auth.getUser(),client().auth.mfa.getAuthenticatorAssuranceLevel()]);
       if (location.hash !== requestedHash) return;
       if (verifiedUser.error || !verifiedUser.data.user || verifiedUser.data.user.id !== session.data.session.user.id) throw Error('Session verification failed');
-      var level = ok(await client().auth.mfa.getAuthenticatorAssuranceLevel());
+      const identity = verifiedUser.data.user;
+      if (!identity.email_confirmed_at || identity.is_anonymous === true || identity.deleted_at ||
+          (identity.banned_until && Date.parse(identity.banned_until)>Date.now())) throw Error('Session identity not eligible');
+      var level = ok(assurance);
       if (location.hash !== requestedHash) return;
       if (level.nextLevel === 'aal2' && level.currentLevel !== 'aal2') {
         mfaReturn = location.hash;
@@ -2391,10 +2740,10 @@
       }
       var factors = ok(await client().auth.mfa.listFactors()),
         level = ok(await client().auth.mfa.getAuthenticatorAssuranceLevel());
-      var verified = factors.totp || [];
+      var verified = (factors.totp || []).filter(x => x.status === 'verified');
 
-      function verifyForm(factorId) {
-        var f = make('form', mfaBody),
+      function verifyForm(factorId, target = mfaBody) {
+        var f = make('form', target),
           code = field(f, 'رمز التطبيق (6 أرقام)', 'code', 'text', 6);
         code.required = true;
         code.inputMode = 'numeric';
@@ -2417,10 +2766,20 @@
       if (verified.length) {
         make('p', mfaBody, level.currentLevel === 'aal2' ? 'التحقق الثنائي مفعّل وهذه الجلسة مؤكدة.' :
           'أدخل الرمز من تطبيق المصادقة للمتابعة.');
-        if (level.currentLevel !== 'aal2') verifyForm(verified[0].id);
+        if (level.currentLevel !== 'aal2') {
+          if (verified.length === 1) verifyForm(verified[0].id);
+          else {
+            const choices=make('div',mfaBody);
+            const target=make('div',mfaBody);
+            for (const [i,factor] of verified.entries()) action(choices,'عامل المصادقة '+(i+1),()=>{
+              target.replaceChildren();
+              verifyForm(factor.id,target);
+            });
+          }
+        }
         return;
       }
-      make('p', mfaBody, 'أضف تطبيق مصادقة مثل Google Authenticator. احتفظ بمفتاح الاسترداد الخاص بك في مكان آمن.');
+      make('p', mfaBody, 'أضف تطبيق مصادقة مثل Google Authenticator. احتفظ ببيانات إعداد تطبيق المصادقة في مكان آمن ومنفصل، ورتّب طريقة استرداد الحساب مع الإدارة. لا تشارك مفتاح المصادقة مع أحد.');
       var enroll = action(mfaBody, 'إعداد التحقق الثنائي', async () => {
         enroll.disabled = true;
         try {
@@ -2466,12 +2825,80 @@
   secLink.href = '#security';
   secLink.hidden=true;
   secLink.className = 'btn btn-dark';
+  let securityEpoch=0,securityTimer=null;
+  function stopSecurityRefresh(){if(securityTimer!==null){clearInterval(securityTimer);securityTimer=null;}}
+  window.addEventListener('hashchange',()=>{if(location.hash!=='#security'){securityEpoch++;stopSecurityRefresh();}});
+  function securityCount(value){return Number.isFinite(Number(value))&&Number(value)>=0?new Intl.NumberFormat('ar').format(Number(value)):'—';}
+  function renderSecurityDashboard(target,d){
+    target.replaceChildren();
+    const stamp=make('p',target,'آخر قراءة من الخادم: '+formatPortalTime(d.generated_at));stamp.className='soc-stamp';
+    const grid=make('div',target);grid.className='soc-grid';
+    const last=d.latest_scan,checks=Array.isArray(last?.checks)?last.checks:[];
+    const failed=checks.filter(x=>x.state==='fail').length,warn=checks.filter(x=>x.state==='warn').length;
+    const cards=[
+      ['جلسة الإدارة',d.current_aal==='aal2'&&d.mfa_enabled?'AAL2':'غير مؤكد','التحقق الثنائي',d.current_aal==='aal2'&&d.mfa_enabled?'pass':'warn'],
+      ['عمليات مدققة · ٧ أيام',securityCount(d.events_7d),'تعديلات مسجلة بالخادم','neutral'],
+      ['أحداث المصادقة · ٧ أيام',d.auth_latest_at?securityCount(d.auth_events_7d):'لا بيانات','سجل Auth المتاح',d.auth_latest_at?'neutral':'warn'],
+      ['آخر فحص',checks.length?securityCount(failed)+' خلل':'لم يُفحص',checks.length?securityCount(warn)+' تنبيه':'لا نتيجة لهذا المسؤول',checks.length?(failed?'fail':warn?'warn':'pass'):'warn']
+    ];
+    for(const [title,value,detail,state] of cards){const c=make('div',grid);c.className='soc-metric '+state;make('small',c,title);make('strong',c,value);make('span',c,detail);}
+    const alerts=make('div',target);alerts.className='soc-alerts';
+    if(!d.auth_latest_at)make('p',alerts,'لا توجد سجلات مصادقة متاحة في قاعدة البيانات؛ لا يعني ذلك أن محاولات الدخول معدومة.');
+    if(!checks.length)make('p',alerts,'شغّل فحص الحماية للحصول على نتائج موثقة.');
+    for(const x of checks.filter(x=>x.state==='fail'||x.state==='warn')){const row=make('p',alerts,(scanNames[x.id]?.[0]||x.id)+' — '+(x.state==='fail'?'خلل':'تنبيه'));row.className=x.state;}
+    const attachmentCounts=Object.fromEntries((Array.isArray(d.attachments)?d.attachments:[]).map(x=>[x.state,Math.max(0,Number(x.total)||0)]));
+    if(attachmentCounts.blocked)make('p',alerts,'تنبيه: مرفقات محظورة — '+securityCount(attachmentCounts.blocked)).className='fail';
+    if(attachmentCounts.awaiting_scanner||attachmentCounts.error)make('p',alerts,'تنبيه تشغيلي: مرفقات بانتظار الفحص أو تعذر فحصها — '+securityCount((attachmentCounts.awaiting_scanner||0)+(attachmentCounts.error||0))).className='warn';
+    const recovery=(Array.isArray(d.auth_actions)?d.auth_actions:[]).filter(x=>['password_recovery_requested','user_recovery_requested'].includes(x.action)).reduce((n,x)=>n+(Number(x.total)||0),0);
+    if(recovery>=10)make('p',alerts,'مؤشر للمراجعة: '+securityCount(recovery)+' حدث استعادة حساب في ٧ أيام. لا يثبت ذلك وجود هجوم.').className='warn';
+    const daily=Array.isArray(d.daily_activity)?d.daily_activity:[];
+    const chart=make('div',target);chart.className='soc-chart';
+    make('h3',chart,'نشاط آخر سبعة أيام · توقيت غزة');
+    make('p',chart,'العمليات المدققة — أحداث المصادقة المسجلة');
+    const max=Math.max(1,...daily.flatMap(x=>[Number(x.operations)||0,Number(x.auth_events)||0]));
+    for(const x of daily){const row=make('div',chart);row.className='soc-chart-row';const day=make('span',row,String(x.day).slice(5));day.dir='ltr';
+      const group=make('div',row);group.className='soc-bars';
+      for(const [kind,n] of [['operations',x.operations],['auth',x.auth_events]]){const line=make('div',group);line.className='soc-bar-line';const bar=make('div',line);bar.className='soc-bar '+kind;bar.style.width=Math.min(100,Math.max(0,(Number(n)||0)/max*100))+'%';make('span',line,securityCount(n));}
+    }
+    if(!daily.length)make('p',chart,'لا بيانات متاحة.');
+    const auth=make('div',target);auth.className='soc-detail';
+    make('h3',auth,'تصنيف أحداث المصادقة');
+    const authNames={login:'دخول',logout:'خروج',signup:'تسجيل',user_signedup:'تسجيل مستخدم',user_updated:'تحديث حساب',user_deleted:'حذف حساب',password_recovery_requested:'استعادة كلمة المرور',token_refreshed:'تجديد الجلسة',token_revoked:'إلغاء رمز',mfa_factor_enrolled:'إضافة عامل تحقق',mfa_factor_unenrolled:'إزالة عامل تحقق',mfa_challenge_verified:'تحقق ثنائي',user_recovery_requested:'استعادة الحساب',user_confirmation_requested:'تأكيد الحساب',user_invited:'دعوة مستخدم',other:'أخرى'};
+    for(const x of d.auth_actions||[]){const row=make('div',auth);row.className='scan-result';make('span',row,authNames[x.action]||'أخرى');make('strong',row,securityCount(x.total));}
+    if(!(d.auth_actions||[]).length)make('p',auth,'لا أحداث متاحة في الفترة؛ افحص إعداد سجل Auth عند المزود.');
+    const files=make('div',target);files.className='soc-detail';make('h3',files,'مراقبة عزل المرفقات');
+    const states={clean:'اجتاز الفحص',pending:'قيد الفحص',awaiting_scanner:'بانتظار محرك الفحص',blocked:'محظور',infected:'مصاب',rejected:'مرفوض',error:'تعذر الفحص',not_requested:'غير مطلوب'};
+    for(const x of d.attachments||[]){const row=make('div',files);row.className='scan-result';make('span',row,states[x.state]||'حالة أخرى');make('strong',row,securityCount(x.total));}
+    if(!(d.attachments||[]).length)make('p',files,'لا مرفقات مطلوبة مسجلة.');
+  }
   async function loadSecurity() {
+    stopSecurityRefresh();
+    const epoch=++securityEpoch,actor=recoveredSession?.user.id;
+    const current=()=>epoch===securityEpoch&&location.hash==='#security'&&recoveredSession?.user.id===actor;
     secBody.replaceChildren();
     make('p', secBody, 'جارٍ تحميل سجل الحماية…');
     try {
       var d = ok(await client().rpc('family_security_summary'));
+      if(!current())return;
       secBody.replaceChildren();
+      const command=section(secBody,'لوحة العمليات الأمنية');
+      command.classList.add('soc-command');
+      make('p',command,'مراقبة إدارية من سجلات الخادم، دون تعقب الزوار أو عرض عناوين IP أو رموز الجلسات. لا تُعد إحصاءات السجل كشفًا لكل الهجمات.');
+      const commandActions=make('div',command);commandActions.className='row';
+      const updateMsg=make('p',command);updateMsg.setAttribute('role','status');
+      const dashboard=make('div',command);
+      renderSecurityDashboard(dashboard,d);
+      let refreshing=false;
+      async function refreshDashboard(){
+        if(refreshing||!current()||document.hidden)return;
+        refreshing=true;
+        try{const updated=ok(await client().rpc('family_security_summary'));if(!current())return;renderSecurityDashboard(dashboard,updated);drawEvents(updated.recent_events);updateMsg.textContent='تم تحديث مؤشرات الخادم.';}
+        catch(_){if(current())updateMsg.textContent='تعذر تحديث المؤشرات؛ آخر قراءة معروضة قديمة.';}
+        finally{refreshing=false;}
+      }
+      action(commandActions,'تحديث المؤشرات',refreshDashboard).className='btn btn-gold';
+      const jump=action(commandActions,'إجراء فحص الحماية',()=>secBody.querySelector('.security-scan')?.scrollIntoView({block:'start'}));jump.className='btn btn-ghost';
+      make('small',command,'تحديث تلقائي كل ٦٠ ثانية أثناء عرض اللوحة فقط.');
       var overview = section(secBody, 'حالة الحماية');
       make('p', overview, 'التحقق الثنائي: ' + (d.mfa_enabled ? 'مفعّل' : 'يحتاج إلى تفعيل'));
       make('p', overview, 'مستوى التحقق الحالي: ' + (d.current_aal === 'aal2' ? 'AAL2 — تحقق ثنائي مؤكد' : 'غير مؤكد'));
@@ -2525,16 +2952,25 @@
           UPDATE: 'تعديل',
           DELETE: 'حذف'
         };
-      if (!d.recent_events.length) make('p', log, 'لا عمليات مسجلة بعد.');
-      for (const e of d.recent_events) {
-        make('p', log, (names[e.resource] || e.resource) + ' • ' + (ops[e.action] || e.action) + ' • ' + new Date(e
-          .occurred_at).toLocaleString('ar'));
+      const filter=make('input',log);filter.type='search';filter.placeholder='بحث في نوع العملية أو المورد';filter.setAttribute('aria-label','بحث في سجل العمليات');filter.maxLength=100;
+      const events=make('div',log);events.className='soc-timeline';
+      let recentEvents=[];
+      function drawEvents(rows){
+        if(Array.isArray(rows))recentEvents=rows;
+        events.replaceChildren();
+        const term=filter.value.trim().toLowerCase();
+        const matches=recentEvents.filter(e=>[names[e.resource]||e.resource,ops[e.action]||e.action,e.action,e.resource].join(' ').toLowerCase().includes(term));
+        make('p',events,'عرض '+securityCount(matches.length)+' من آخر '+securityCount(recentEvents.length)+' عملية مسجلة.');
+        for(const e of matches){const row=make('div',events);row.className='soc-event';make('strong',row,(names[e.resource]||e.resource)+' — '+(ops[e.action]||e.action));const t=make('time',row,formatPortalTime(e.occurred_at));t.dateTime=e.occurred_at;}
       }
+      filter.addEventListener('input',()=>drawEvents());drawEvents(d.recent_events);
       var reviews = section(secBody, 'قرارات العضوية الأخيرة');
       for (const e of d.recent_reviews) make('p', reviews, statusLabels[e.action] || e.action);
       await mountSecurityScanner(secBody);
+      if(current())securityTimer=setInterval(refreshDashboard,60000);
     } catch (e) {
-      secBody.replaceChildren();
+      if(!current())return;
+      stopSecurityRefresh();secBody.replaceChildren();
       make('p', secBody, 'تعذر الوصول إلى مركز الحماية. هذه الخدمة للإدارة المعتمدة فقط.');
     }
   }
@@ -2657,7 +3093,7 @@
 
   async function mountSecurityScanner(parent) {
     var scanner = section(parent, 'فحص الحماية المباشر');
-    parent.prepend(scanner);
+    const command=parent.querySelector('.soc-command');if(command)command.after(scanner);else parent.prepend(scanner);
     scanner.classList.add('security-scan');
     make('p', scanner,
       'افحص إعدادات الحماية الحقيقية في قاعدة البيانات دون مغادرة الموقع. لا يغيّر الفحص بيانات الأعضاء.');
@@ -2719,6 +3155,21 @@
     });
     headerBtn.className = 'btn btn-dark';
     const updateInfrastructure = mountInfrastructureStatus(parent);
+    const production=section(parent,'المراقبة الخارجية للموقع المنشور');
+    make('p',production,'فحص اصطناعي للصفحات العامة وشهادة TLS كل ست ساعات تقريبًا عبر GitHub Actions، دون حسابات أو تتبع الزوار. قد تتأخر الجدولة؛ التحذيرات لا تعني توقف الموقع.');
+    const prodMsg=make('p',production,'لم تُقرأ نتيجة الفحص بعد.');prodMsg.setAttribute('role','status');
+    const prodButton=action(production,'قراءة آخر فحص خارجي',async()=>{
+      prodButton.disabled=true;prodMsg.textContent='جارٍ قراءة النتيجة…';
+      try{
+        const response=await fetch('https://api.github.com/repos/barham-ps/barham-ps.github.io/actions/workflows/production-monitor.yml/runs?branch=main&per_page=1',{credentials:'omit',cache:'no-store'});
+        if(!response.ok)throw Error('Unavailable');
+        const item=(await response.json()).workflow_runs?.[0];
+        if(!item){prodMsg.textContent='لا يوجد تشغيل مسجل بعد.';return;}
+        const state=item.status==='completed'?(item.conclusion==='success'?'اجتاز فحص التوفر الأساسي؛ راجع التحذيرات':item.conclusion==='failure'?'فشل الفحص؛ راجع السجل':'لم يُؤكد النجاح'):'الفحص قيد التنفيذ';
+        prodMsg.textContent=state+' — '+formatPortalTime(item.updated_at||item.created_at);
+      }catch(_){prodMsg.textContent='تعذر التحقق من سجل المراقبة الخارجية.';}finally{prodButton.disabled=false;}
+    });prodButton.className='btn btn-gold';
+    const prodLink=make('a',production,'سجل المراقبة الخارجية');prodLink.href='https://github.com/barham-ps/barham-ps.github.io/actions/workflows/production-monitor.yml';prodLink.target='_blank';prodLink.rel='noopener noreferrer';prodLink.className='btn btn-ghost';
     var gh = section(parent, 'نتائج فحص الكود في GitHub');
     var ghMsg = make('p', gh, 'يمكنك قراءة آخر نتيجة متاحة للفرع الرئيسي من سجل GitHub Actions.');
     ghMsg.setAttribute('role', 'status');
@@ -2851,31 +3302,16 @@
     return cleanImage(file, 10485760);
   }
 
-  var dock = document.createElement('nav');
-  dock.className = 'mobile-dock';
-  dock.setAttribute('aria-label', 'التنقل السريع');
-  [
-    ['home', 'الرئيسية', 'home'],
-    ['news', 'الأخبار', 'news'],
-    ['heritage', 'العائلة', 'landmark'],
-    ['account', 'حسابي', 'user']
-  ].forEach(x => {
-    var l = make('a', dock);
-    l.href = '#' + x[0];
-    l.innerHTML = '<svg width="22" height="22" aria-hidden="true"><use href="#i-' + x[2] + '"/></svg>';
-    make('span', l, x[1]);
-  });
-  document.body.appendChild(dock);
+  const dock=document.querySelector('.mobile-dock');
+  const dockAccount = dock.querySelector('[data-dock-route="account"]');
 
   function markDock() {
     var r = (location.hash || '#home').slice(1).split('/')[0];
-    if (['login', 'register', 'reset', 'member-hub', 'member-services-admin', 'news-admin', 'admin', 'certificate',
-        'verify', 'membership', 'security', 'mfa'
-      ].includes(r)) r = 'account';
-    if (['history', 'tree', 'archive', 'stories'].includes(r)) r = 'heritage';
-    if (r === 'events' || r === 'community' || r === 'initiatives' || r === 'contact') r = 'news';
+    if (['login','register','reset','member-hub','member-services-admin','news-admin','martyrs-admin','admin','certificate','verify','membership','security','mfa','card'].includes(r)) r = 'account';
+    if (['history','heritage','archive','stories'].includes(r)) r = 'tree';
+    if (r === 'events') r = 'news';
     Array.from(dock.querySelectorAll('a')).forEach(a => {
-      if (a.getAttribute('href') === '#' + r) a.setAttribute('aria-current', 'page');
+      if (a.dataset.dockRoute === r) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
   }
@@ -2893,6 +3329,13 @@
     guestLogin.hidden = !!session;
     guestRegister.hidden = true;
     signedAccount.hidden = !session;
+    dockAccount.href = session ? '#account' : '#login';
+    dockAccount.querySelector('span').textContent = session ? 'حسابي' : 'دخول';
+    markDock();
+    const primaryEntry = document.getElementById('family-primary-entry');
+    const joinEntry = document.getElementById('family-join-entry');
+    if(primaryEntry){primaryEntry.href=session?'#account':'#login';primaryEntry.textContent=session?'الانتقال إلى حسابي':'دخول الأعضاء';}
+    if(joinEntry)joinEntry.hidden=!!session;
     document.querySelectorAll('[data-guest-entry]').forEach(a => {
       a.href = session ? '#account' : '#login';
       a.textContent = session ? 'حسابي' : 'دخول / إنشاء حساب';
@@ -2902,6 +3345,7 @@
     recoveredSession = null;
 
   function clearPrivate() {
+    securityEpoch++;stopSecurityRefresh();
     hubNavigate=null;activeHubGroup='overview';activeServicePanel='requests';memberQuick.hidden=true;
     hubBody.replaceChildren();
     cms.replaceChildren();cms.hidden=true;
@@ -2909,6 +3353,7 @@
     adminRows.replaceChildren();directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;clearMemberPrint();
     adminServiceBody.replaceChildren();
     newsEditorBody.replaceChildren();
+    memorialEditorBody.replaceChildren();memorialEditorEpoch++;
     certBody.replaceChildren();
     mfaBody.replaceChildren();
     secBody.replaceChildren();
@@ -2916,15 +3361,17 @@
     $('#member-email').textContent = '';
     $('#member-number').textContent = '—';
     $('#account-status').textContent = '';
+    delete $('#account-status').dataset.state;
     $('#completeForm').reset();
     $('#completeForm').hidden = true;
     hubLink.hidden = true;
     adminShortcut.hidden = true;
     certShortcut.hidden = true;
-    printButton.hidden = true;
+    printButton.hidden = downloadCertificate.hidden = true;
+    clearDownloads();
     $('#change-password').reset();
   }
-  guestLogin.hidden = true;
+  guestLogin.hidden = false;
   signedAccount.hidden = true;
 
   function reconcileSession(session) {
@@ -2944,14 +3391,20 @@
     if (location.hash === '#account') guardPrivate(account);
   });
   route();
+  // Public routes must not wait for authentication recovery on slow connections.
+  const initialHash=location.hash;
+  const initialPublicRoute=initialHash===''||initialHash==='#home'||initialHash==='#news'||initialHash.startsWith('#news/')||['#history','#tree','#archive','#verify'].includes(initialHash)||initialHash.startsWith('#verify/');
+  if(initialPublicRoute)extraRoute();
   try {
     client().auth.onAuthStateChange((event, session) => {
       if (!authReady) return;
+      const previousUser=recoveredSession?.user.id;
+      if(previousUser&&previousUser!==session?.user.id)clearPrivate();
       recoveredSession = session;
       updateHeader(session);
       if (event === 'SIGNED_OUT') {
         clearPrivate();
-        if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#certificate',
+        if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate',
             '#security', '#mfa'
           ].includes(location.hash)) location.hash = 'home';
       }
@@ -2967,7 +3420,7 @@
       }
       reconcileSession(z.data.session);
       route();
-      extraRoute();
+      if(!initialPublicRoute||location.hash!==initialHash)extraRoute();
       if (location.hash === '#account' && !z.data.session) location.hash = 'login';
     }).catch(() => {
       authReady = true;
@@ -2981,7 +3434,7 @@
 
 ;
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=31').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=32').catch(() => {});
 }
 let installPrompt;
 window.addEventListener('beforeinstallprompt', e => {

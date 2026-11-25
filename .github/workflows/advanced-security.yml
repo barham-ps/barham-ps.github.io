@@ -1,0 +1,105 @@
+name: Advanced supply chain and isolated web security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '43 4 * * 2'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gitleaks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download verified Gitleaks CLI and scan history
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          curl --fail --silent --show-error --location --max-time 90 https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz -o "$work/tool.tar.gz"
+          echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  $work/tool.tar.gz" | sha256sum --check -
+          tar -xzf "$work/tool.tar.gz" -C "$work" gitleaks
+          history_status=0
+          current_status=0
+          "$work/gitleaks" git --redact=100 --no-banner --exit-code 1 --log-opts="--all" --report-format json --report-path "$work/history.json" . || history_status=$?
+          sh scripts/build-pages.sh
+          "$work/gitleaks" dir --redact=100 --no-banner --exit-code 1 --report-format json --report-path "$work/public.json" dist || current_status=$?
+          # Log only counts and validated rule categories, never matched text, paths or commit identifiers.
+          python3 scripts/secret_scan_summary.py "$work/history.json" "$work/public.json"
+          # Keep the raw historical evidence. Independently classify only the exact known public key.
+          test "$current_status" -eq 0
+          if [ "$history_status" -ne 0 ]; then
+            "$work/gitleaks" git --config scripts/gitleaks-known-public.toml --redact=100 --no-banner --exit-code 1 --log-opts="--all" .
+            echo "Historical matches remaining after exact known public-key classification: 0"
+          fi
+  dependency-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Inventory pinned browser packages without running dependency scripts
+        run: |
+          set -eu
+          work="$RUNNER_TEMP/portal-inventory"
+          mkdir -p "$work"
+          cd "$work"
+          npm init -y >/dev/null
+          npm install --package-lock-only --ignore-scripts --no-audit --save-exact @supabase/supabase-js@2.119.2 qrcodejs@1.0.0
+          npm sbom --package-lock-only --sbom-format cyclonedx > portal.cdx.json
+          node -e "const s=require('./portal.cdx.json');if(s.bomFormat!=='CycloneDX'||!s.components?.length)process.exit(1)"
+      - name: Upload CycloneDX software inventory
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: portal-cyclonedx-sbom
+          path: ${{ runner.temp }}/portal-inventory/portal.cdx.json
+          retention-days: 30
+      - name: Trivy verified CLI dependency and configuration audit
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          curl --fail --silent --show-error --location --max-time 90 https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_Linux-64bit.tar.gz -o "$work/tool.tar.gz"
+          echo "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf  $work/tool.tar.gz" | sha256sum --check -
+          tar -xzf "$work/tool.tar.gz" -C "$work" trivy
+          "$work/trivy" fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 "$RUNNER_TEMP/portal-inventory"
+          "$work/trivy" fs --scanners misconfig --severity HIGH,CRITICAL --exit-code 1 .
+  zap-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Passive scan against isolated static preview only
+        run: |
+          set -eu
+          sh scripts/build-pages.sh
+          docker pull python:3.12-alpine
+          docker pull ghcr.io/zaproxy/zaproxy:2.17.0
+          python_image=$(docker image inspect --format '{{index .RepoDigests 0}}' python:3.12-alpine)
+          zap_image=$(docker image inspect --format '{{index .RepoDigests 0}}' ghcr.io/zaproxy/zaproxy:2.17.0)
+          printf '%s\n' "$python_image" "$zap_image"
+          docker network create --internal portal-zap
+          trap 'docker rm -f portal-preview >/dev/null 2>&1 || true; docker network rm portal-zap >/dev/null 2>&1 || true' EXIT
+          docker run -d --name portal-preview --network portal-zap --read-only --cap-drop ALL --security-opt no-new-privileges -v "$PWD/dist:/site:ro" "$python_image" python -B -m http.server 8765 --directory /site
+          mkdir -p "$RUNNER_TEMP/zap-report"
+          chmod 777 "$RUNNER_TEMP/zap-report"
+          status=0
+          docker run --rm --network portal-zap --cap-drop ALL --security-opt no-new-privileges -v "$RUNNER_TEMP/zap-report:/zap/wrk:rw" "$zap_image" zap-baseline.py -t http://portal-preview:8765/ -m 1 -T 5 -J report.json -r report.html -I || status=$?
+          # Treat scanner errors as failures. Baseline reports warnings, not exploit attempts.
+          exit "$status"
+      - name: Upload isolated scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: zap-local-baseline
+          path: ${{ runner.temp }}/zap-report/
+          retention-days: 14
+          if-no-files-found: warn
