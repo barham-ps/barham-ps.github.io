@@ -131,6 +131,10 @@
     if (v.startsWith('00')) v = '+' + v.slice(2);
     return v.startsWith('+') ? v : cc + v.replace(/^0+/, '');
   }
+  function formatPortalTime(value){
+    const d=new Date(value);if(!value||!Number.isFinite(d.getTime()))return 'غير متاح';
+    return new Intl.DateTimeFormat('ar-PS',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Gaza'}).format(d)+' — توقيت غزة';
+  }
   var statusLabels = {
     pending_email: 'بانتظار تأكيد البريد',
     under_review: 'قيد المراجعة',
@@ -433,7 +437,7 @@
       let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
       const q=await client().from('family_public_content').select('*').eq('section',key).eq('published',true).order('created_at',{ascending:false});
       if(q.error) continue; panel.replaceChildren();
-      for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';
+      for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
         if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
       }
     }
@@ -586,13 +590,14 @@
           make('span',banner,'سري — للاستخدام الإداري').className='directory-confidential';
           make('h1',report,'سجل أعضاء عائلة برهم');
           const meta=make('div',report);meta.className='directory-print-meta';
-          make('span',meta,'تاريخ الإصدار: '+new Intl.DateTimeFormat('ar-EG',{dateStyle:'long',timeStyle:'short',timeZone:'Asia/Gaza'}).format(new Date()));
+          make('span',meta,'تاريخ ووقت الإصدار: '+formatPortalTime(new Date()));
           make('span',meta,'عدد السجلات: '+new Intl.NumberFormat('ar-EG').format(selected.length));
           make('span',meta,'النطاق: '+(status.value==='all'?'جميع حالات العضوية':statusLabels[status.value])+(query.value.trim()?' · نتائج البحث':''));
           memberDirectoryTable(report,selected);
           const foot=make('footer',report);foot.className='directory-print-footer';
           make('p',foot,'إدارة البوابة الرقمية لآل برهم — وثيقة داخلية تتضمن بيانات شخصية، يمنع تداولها خارج الإدارة.');
           make('p',foot,'السجل يعكس البيانات المتاحة وقت الإصدار، ولا يعد شهادة عضوية فردية.');
+          const signature=make('div',foot);signature.className='directory-signature';make('strong',signature,'إدارة آل برهم');make('small',signature,'توقيع مؤسسي — سجل العضويات');
           document.body.classList.add('printing-member-directory');
           if(document.fonts?.ready)await document.fonts.ready;
           try{await logo.decode();}catch(_){}
@@ -714,7 +719,7 @@
   certBody.className = 'cert-prev';
   var certControls = make('div', cert);
   certControls.className = 'row';
-  var printButton = action(certControls, 'طباعة / حفظ PDF', () => window.print());
+  var printButton = action(certControls, 'طباعة / حفظ PDF', () => {const stamp=certBody.querySelector('.certificate-copy-time');if(stamp)stamp.textContent='تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date());window.print();});
   printButton.hidden = true;
   var qrLoad = null;
   async function ensureQR() {
@@ -762,8 +767,8 @@
       box.innerHTML = '<header class="md-head"><div><small>AL BARHAM / MEMBERSHIP OFFICE</small><h3>البوابة العائلية لآل برهم</h3><p>سجل العضوية الإلكتروني</p></div><img src="./icon.svg" alt="شعار آل برهم"></header><div class="md-main"><div class="md-kicker">MEMBERSHIP CERTIFICATE · 01</div><h1>شهادة اعتماد العضوية</h1><div class="md-en">OFFICIAL PORTAL MEMBERSHIP</div><p class="md-intro">بناءً على مراجعة طلب الانتساب واعتماده في سجل البوابة العائلية، تُمنح هذه الشهادة إلى</p><div class="md-person"><small>الاسم الكامل للعضو</small><h2 class="md-name"></h2><span>عضو معتمد في البوابة العائلية الرقمية</span></div><div class="md-fields"></div><div class="md-statement"><strong>نطاق الاعتماد</strong><p>تؤكد هذه الشهادة اعتماد صاحبها للاستفادة من خدمات العضوية والمشاركة في أنشطة المنصة وفق سياساتها المعمول بها.</p></div><div class="md-auth"><div class="md-sign"><div class="md-signature">إدارة آل برهم</div><strong>إدارة العضوية</strong><small>اعتماد مؤسسي إلكتروني</small></div><div class="md-seal"><span>AL BARHAM · PORTAL</span><span aria-hidden="true" style="font-size:19px;line-height:1.2">♔</span><strong>آل برهم</strong><small>اعتماد العضوية</small><span>✦ VERIFIED ✦</span></div><div class="md-qr"></div></div><p class="md-note">تُراجع صلاحية الوثيقة إلكترونيًا عند استخدامها. هذه شهادة عضوية خاصة بالبوابة وليست وثيقة حكومية أو إثبات نسب.</p></div><footer class="md-foot"><span>آل برهم | أصالة الجذور وعهد الأجيال</span><span dir="ltr">barham-ps.github.io</span></footer>';
       box.querySelector('.md-name').textContent = d.full_name;
       var fields = box.querySelector('.md-fields');
-      var issued = new Date(d.issued_at).toLocaleDateString('ar-PS', {year:'numeric',month:'long',day:'numeric'});
-      [['رقم العضوية',d.membership_number],['تاريخ الإصدار',issued],['حالة العضوية','معتمدة وسارية'],['الجهة المصدرة','إدارة بوابة آل برهم'],['نوع الوثيقة','شهادة عضوية رقمية'],['نطاق العضوية','البوابة العائلية']].forEach(([label,value]) => {
+      var issued = formatPortalTime(d.issued_at);
+      [['رقم العضوية',d.membership_number],['تاريخ ووقت الإصدار',issued],['حالة العضوية','معتمدة وسارية'],['الجهة المصدرة','إدارة بوابة آل برهم'],['نوع الوثيقة','شهادة عضوية رقمية'],['نطاق العضوية','البوابة العائلية']].forEach(([label,value]) => {
         var item = make('div',fields); make('small',item,label); var val=make('strong',item,value); if(label==='رقم العضوية'||label==='مرجع السجل') val.dir='ltr';
       });
       var url = location.origin + location.pathname + '#verify/' + d.verification_token;
@@ -772,6 +777,7 @@
       if (window.QRCode) new QRCode(qr,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});
       var link = make('a',qr,'تحقق من صحة الوثيقة'); link.href=url;
       make('small',qr,'امسح الرمز أو استخدم الرابط');
+      const copyStamp=make('p',box.querySelector('.md-main'),'تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date()));copyStamp.className='certificate-copy-time';
       printButton.hidden = false;
     } catch (e) {
       make('p', certBody, 'تعذر تحميل الشهادة.');
@@ -806,7 +812,7 @@
       let d = q.data[0];
       make('h2', verifyBody, d.valid ? 'عضوية سارية ومعتمدة' : 'عضوية غير سارية');
       make('p', verifyBody, 'رقم العضوية: ' + d.membership_number);
-      make('p', verifyBody, 'تاريخ الإصدار: ' + new Date(d.issued_at).toLocaleDateString('ar'));
+      make('p', verifyBody, 'تاريخ الإصدار: ' + formatPortalTime(d.issued_at));
     } catch (e) {
       make('p', verifyBody, 'تعذر الاتصال.');
     }
@@ -1111,19 +1117,31 @@
     if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)||file.size>10485760)throw Error('اختر صورة أو PDF بحجم لا يتجاوز ١٠ ميجابايت.');
     return checkArchiveFile(file);
   }
+  async function scanRequestFile(row){
+    const result=await client().functions.invoke('scan-request-attachment',{body:{request_id:row.id}});
+    if(result.error)throw result.error;
+    row.attachment_scan_status=result.data.status;row.attachment_scanned_at=result.data.scanned_at;return result.data.status;
+  }
   async function uploadRequestFile(row,uid,file){
-    return ok(await client().storage.from(requestFilesBucket).upload(uid+'/'+row.id,file,{contentType:file.type,upsert:false}));
+    const result=ok(await client().storage.from(requestFilesBucket).upload(uid+'/'+row.id,file,{contentType:file.type,upsert:false}));
+    try{await scanRequestFile(row);}catch(e){row.attachment_scan_status='pending';}
+    return result;
   }
   function requestDownload(parent,row,uid){
-    action(parent,'تنزيل المرفق',async function(){
+    const labels={pending:'بانتظار الفحص',awaiting_scanner:'معزول — محرك الفحص غير متصل',clean:'اجتاز فحص ClamAV',blocked:'محظور — لم يجتز الفحص',error:'معزول — تعذر الفحص'};
+    const state=make('p',parent);state.className='attachment-scan-state';
+    const refreshState=()=>{state.textContent='حالة المرفق: '+(labels[row.attachment_scan_status]||labels.pending)+(row.attachment_scanned_at?' · '+formatPortalTime(row.attachment_scanned_at):'');download.disabled=row.attachment_scan_status!=='clean';check.hidden=['clean','blocked'].includes(row.attachment_scan_status);};
+    const download=action(parent,'تنزيل المرفق',async function(){
       this.disabled=true;
       try{
         const file=ok(await client().storage.from(requestFilesBucket).download(uid+'/'+row.id));
         const ext=file.type==='application/pdf'?'.pdf':file.type==='image/jpeg'?'.jpg':'.bin';
         const url=URL.createObjectURL(file),link=document.createElement('a');link.href=url;link.download='albarham-request-'+row.id+ext;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
       }catch(e){alert('المرفق غير متاح أو لم يكتمل رفعه. تحقق من صلاحية الوصول.');}
-      finally{this.disabled=false;}
+      finally{refreshState();}
     });
+    const check=action(parent,'فحص / تحديث حالة المرفق',async function(){this.disabled=true;try{await scanRequestFile(row);refreshState();}catch(e){state.textContent='تعذر تأكيد نتيجة الفحص. يبقى المرفق معزولًا.';}finally{this.disabled=false;}});
+    refreshState();
   }
   async function loadHub() {
     hubNavigate=null;
@@ -1152,6 +1170,7 @@
           make('p', card, 'رقم العضوية: ' + app.membership_number);
           make('p', card, 'عضوية معتمدة');
           var cq = ok(await client().rpc('family_my_certificate'));
+          if(cq.length)make('p',card,'تاريخ ووقت اعتماد الشهادة: '+formatPortalTime(cq[0].issued_at));
           if (cq.length) await ensureQR();
           if (cq.length && window.QRCode) {
             var qr = make('div', card);
@@ -1189,7 +1208,8 @@
               }
               ctx.fillStyle = '#e6cc99';
               ctx.font = '30px Arial';
-              ctx.fillText('بطاقة عضوية رقمية', 600, 655);
+              ctx.fillText('إدارة آل برهم — بطاقة عضوية رقمية',600,632,1090);
+              ctx.font='23px Arial';ctx.fillText('إعداد النسخة: '+formatPortalTime(new Date()),600,665,1090);
               var a = document.createElement('a');
               a.download = 'albarham-membership.png';
               a.href = canvas.toDataURL('image/png');
@@ -1350,7 +1370,7 @@
           ns.forEach(x => {
             var c = section(inbox, x.title);
             noticeRows.push({el:c,read:Boolean(x.read_at)});
-            make('time', c, new Date(x.created_at).toLocaleString('ar'));
+            make('time', c, formatPortalTime(x.created_at));
             make('p', c, x.body);
             make('p', c, x.read_at ? 'مقروء' : 'جديد');
             if (!x.read_at) action(c, 'تحديد كمقروء', async () => {
@@ -1391,7 +1411,7 @@
               make('h3', item, x.title);
               make('p', item, x.body);
               if (x.source_note) make('p', item, 'المصدر: ' + x.source_note).className = 'family-source';
-              if (x.event_at) make('p', item, 'موعد المناسبة: ' + new Date(x.event_at).toLocaleString('ar', {timeZone:'Asia/Gaza'}));
+              if (x.event_at) make('p', item, 'موعد المناسبة: ' + formatPortalTime(x.event_at));
               records.push({el:item, text:[x.title,x.body,x.source_note].filter(Boolean).join(' ')});
               if (x.attachment_path) action(item, 'تنزيل المرفق', async function() {
                 this.disabled = true;
@@ -1452,7 +1472,7 @@
             for(const x of mine){
               var card=section(list,(kinds[x.kind]||x.kind)+' — '+x.title);
               make('p',card,'الحالة: '+(states[x.status]||x.status));
-              if(x.created_at)make('time',card,new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'})).dateTime=x.created_at;
+              if(x.created_at)make('time',card,formatPortalTime(x.created_at)).dateTime=x.created_at;
               make('p',card,x.body).className='request-body';
               make('p',card,'رد الإدارة: '+(x.reply||'لا رد بعد'));
               if(x.attachment_requested){
@@ -1460,7 +1480,7 @@
                 if(x.status==='pending'&&!uploadedHere.has(x.id)){
                   const retry=make('details',card);make('summary',retry,'استكمال رفع المرفق عند الحاجة');const input=field(retry,'اختر الملف','retry-attachment','file');input.accept=attachment.accept;
                   const msg=make('p',retry);msg.setAttribute('role','status');
-                  action(retry,'رفع المرفق',async function(){if(!input.files[0]){msg.textContent='اختر الملف أولًا.';return;}this.disabled=true;try{const file=await prepareRequestFile(input.files[0]);await uploadRequestFile(x,uid,file);uploadedHere.add(x.id);drawRequests();requestMsg.textContent='تم رفع المرفق.';}catch(e){msg.textContent='تعذر الرفع أو يوجد مرفق محفوظ مسبقًا. جرّب زر التنزيل للتحقق.';}finally{this.disabled=false;}});
+                  action(retry,'رفع المرفق',async function(){if(!input.files[0]){msg.textContent='اختر الملف أولًا.';return;}this.disabled=true;try{const file=await prepareRequestFile(input.files[0]);await uploadRequestFile(x,uid,file);uploadedHere.add(x.id);drawRequests();requestMsg.textContent='تم رفع المرفق إلى العزل؛ تابع نتيجة الفحص.';}catch(e){msg.textContent='تعذر الرفع أو يوجد مرفق محفوظ مسبقًا. جرّب زر التنزيل للتحقق.';}finally{this.disabled=false;}});
                 }
               }
             }
@@ -1481,14 +1501,14 @@
             try{
               let file=null;
               try{file=await prepareRequestFile(attachment.files[0]);}catch(e){requestMsg.textContent=e.message||'ملف غير صالح.';return;}
-              const created=ok(await client().from('family_member_requests').insert({user_id:uid,kind,title,body,attachment_requested:!!file}).select('id,kind,title,body,status,reply,created_at,attachment_requested').single());
+              const created=ok(await client().from('family_member_requests').insert({user_id:uid,kind,title,body,attachment_requested:!!file}).select('id,kind,title,body,status,reply,created_at,attachment_requested,attachment_scan_status,attachment_scanned_at').single());
               mine=[created,...mine.filter(x=>x.id!==created.id)];
               if(file){
                 try{await uploadRequestFile(created,uid,file);uploadedHere.add(created.id);}
                 catch(e){drawRequests();rf.reset();requestMsg.textContent='تم حفظ الطلب، لكن لم يتأكد رفع المرفق. استخدم استكمال الرفع في سجل الطلبات دون إعادة إرسال الطلب.';return;}
               }
               drawRequests();rf.reset();
-              requestMsg.textContent='تم إرسال الطلب بنجاح. يمكنك الآن إرسال طلب آخر.';
+              requestMsg.textContent=file?'تم حفظ الطلب والمرفق. يبقى المرفق معزولًا حتى اجتياز الفحص.':'تم إرسال الطلب بنجاح. يمكنك الآن إرسال طلب آخر.';
             }catch(err){
               const msg=String(err?.message||'');
               requestMsg.textContent=msg.includes('Daily request limit')?'بلغت الحد الوقائي: ١٠ طلبات خلال ٢٤ ساعة. حاول لاحقًا.':err?.code==='42501'?'تعذر الإرسال: تحقق من اعتماد العضوية وصلاحية الجلسة.':err?.code==='23514'?'تعذر الإرسال: تحقق من طول العنوان والتفاصيل ونوع الطلب.':'تعذر تأكيد إرسال الطلب. حدّث السجل أولًا لتجنب التكرار ثم حاول مجددًا.';
@@ -1555,14 +1575,14 @@
         var c=make('div',entry);c.className='dashboard-record-body';
         const identityBox=make('div',c);identityBox.className='request-identity';
         make('h3',identityBox,'بيانات المرسل المسجلة');
-        const fields=[['الاسم الكامل',person?.full_name],['رقم العضوية',person?.membership_number],['البريد الإلكتروني',person?.email],['الهاتف',person?.phone],['واتساب',person?.whatsapp],['حالة العضوية',statusLabels[person?.member_status]||person?.member_status],['تاريخ التسجيل',person?.submitted_at?new Date(person.submitted_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}):null]];
+        const fields=[['الاسم الكامل',person?.full_name],['رقم العضوية',person?.membership_number],['البريد الإلكتروني',person?.email],['الهاتف',person?.phone],['واتساب',person?.whatsapp],['حالة العضوية',statusLabels[person?.member_status]||person?.member_status],['تاريخ التسجيل',person?.submitted_at?formatPortalTime(person.submitted_at):null]];
         const dl=make('dl',identityBox);
         for(const [label,value] of fields){const cell=make('div',dl);make('dt',cell,label);make('dd',cell,value||'غير متاح');}
         if(!person?.full_name)make('p',identityBox,'لم يُعثر على سجل عضوية مرتبط بهذا الطلب.');
         if(x.created_at)make('p',c,'تاريخ الإرسال: '+new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}));
         const stateText=make('p',c,'الحالة: '+(states[x.status]||x.status));
         make('p', c, x.body).className='request-body';
-        if(x.attachment_requested){make('p',c,'مرفق خاص بالطلب؛ يُنزّل للمراجعة ولا يُنشر تلقائيًا.');requestDownload(c,x,x.user_id);}
+        if(x.attachment_requested){make('p',c,'مرفق خاص بالطلب؛ لا يمكن تنزيله إلا بعد اجتياز الفحص ولا يُنشر تلقائيًا.');requestDownload(c,x,x.user_id);}
         const record={el:entry,kind:x.kind,status:x.status,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')};records.push(record);
         var f = make('form', c),
           st = selectField(f, 'القرار', 'status', states),
@@ -1661,7 +1681,7 @@
       items.forEach(x => {
         var c = section(pub, x.title);
         make('p', c, x.published ? 'منشور' : 'غير منشور');
-        if (x.event_at) make('p', c, 'الموعد: ' + new Date(x.event_at).toLocaleString('ar', {timeZone:'Asia/Gaza'}));
+        if (x.event_at) make('p', c, 'الموعد: ' + formatPortalTime(x.event_at));
         if (x.source_note) make('p', c, 'المصدر: ' + x.source_note);
         action(c, x.published ? 'إخفاء' : 'إعادة نشر', async () => {
           try {
@@ -1944,7 +1964,7 @@
         teaser.className = 'home-news-card';
         make('span', teaser, newsLabels[latest.category] || 'آخر الأخبار').className = 'home-news-label';
         make('h3', teaser, latest.title);
-        make('time', teaser, new Date(latest.created_at).toLocaleDateString('ar')).className = 'news-date';
+        make('time', teaser, formatPortalTime(latest.created_at)).className = 'news-date';
         newsGallery(teaser, newsCover(latest), latest.title, true);
         var excerpt = latest.body.split('\n').filter(x => x.trim() && !x.startsWith('بسم') && !x.startsWith('﴿'))[
           0] || latest.body;
@@ -1968,7 +1988,7 @@
         newsRecords.push({el:c, text:[x.title,x.body,newsLabels[x.category]].filter(Boolean).join(' ')});
         make('span', c, newsLabels[x.category] || 'خبر').className = 'lux-badge';
         make('h2', c, x.title).className = 'lux-title';
-        make('time', c, new Date(x.created_at).toLocaleDateString('ar')).className = 'news-date';
+        make('time', c, formatPortalTime(x.created_at)).className = 'news-date';
         if (!selected) {
           newsGallery(c, newsCover(x), x.title, true);
           var excerpt = make('p', c, x.body.split(/\n\s*\n/).filter(v => !v.startsWith('بسم'))[0]?.slice(0, 250) ||
@@ -2456,6 +2476,8 @@
       make('p', overview, 'مستوى التحقق الحالي: ' + (d.current_aal === 'aal2' ? 'AAL2 — تحقق ثنائي مؤكد' : 'غير مؤكد'));
       make('p', overview, 'الجلسات المسجلة: ' + d.sessions);
       make('p', overview, 'مخازن الملفات الخاصة: ' + d.private_buckets);
+      make('p',overview,'مرفقات الطلبات: عزل إجباري حتى اجتياز فحص ClamAV. عند غياب المحرك تبقى المرفقات معزولة.');
+      make('p',overview,'آخر تحديث للعرض: '+formatPortalTime(new Date()));
       make('p', overview, 'عمليات آخر سبعة أيام: ' + d.events_7d);
       var m = make('a', overview, 'إعداد التحقق الثنائي');
       m.href = '#mfa';
