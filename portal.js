@@ -482,7 +482,7 @@
       if(pub.checked&&!confirm('تأكيد النشر العام؟'))return;
       this.disabled=true;let uploaded=null,saved=false;
       try{
-        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
+        if(file.files[0]){const original=file.files[0];if(!['image/jpeg','image/png','image/webp'].includes(original.type)||original.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');const f=await cleanImage(original,5242880);uploaded=crypto.randomUUID()+'.jpg';const u=await client().storage.from('family-public-content').upload(uploaded,f,{contentType:'image/jpeg',upsert:false});if(u.error){uploaded=null;throw u.error;}}
         const row={section:section.value,title:title.value.trim(),body:body.value,published:pub.checked,image_path:uploaded||current?.image_path||null};
         const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;saved=true;
         if(uploaded&&current?.image_path)await client().storage.from('family-public-content').remove([current.image_path]);
