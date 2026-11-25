@@ -963,17 +963,28 @@
   tokenInput.type = 'text';
   tokenInput.placeholder = 'رقم العضوية أو رمز التحقق';
   tokenInput.dir = 'ltr';
-  action(verify, 'تحقق', () => verifyToken(tokenInput.value.trim()));
+  tokenInput.maxLength=80;tokenInput.autocomplete='off';tokenInput.setAttribute('aria-label','رقم العضوية أو رمز التحقق');
+  verifyBody.setAttribute('aria-live','polite');
+  let verificationEpoch=0;
+  const verifyButton=action(verify, 'تحقق', () => verifyToken(tokenInput.value.trim()));
+  tokenInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();verifyToken(tokenInput.value.trim());}});
+  window.addEventListener('hashchange',()=>{verificationEpoch++;verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;});
   async function verifyToken(token) {
-    verifyBody.replaceChildren();
+    const epoch=++verificationEpoch, requestedHash=location.hash;
+    const current=()=>epoch===verificationEpoch&&location.hash===requestedHash;
+    verifyBody.replaceChildren();verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;
     token = String(token || '').trim().replace(/[٠-٩]/g, c => String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g, c => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
     const byNumber = /^AB-\d{4}-\d{6}$/i.test(token);
     if (!byNumber && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
       make('p', verifyBody, 'أدخل رقم العضوية بصيغة AB-2026-000001 أو رمز التحقق الصحيح.');
       return;
     }
+    verifyBody.setAttribute('aria-busy','true');verifyButton.disabled=true;
+    make('p',verifyBody,'جارٍ التحقق…');
     try {
       let q = byNumber ? await client().rpc('family_verify_membership_number', {p_number: token.toUpperCase()}) : await client().rpc('family_verify_certificate', {p_token: token.toLowerCase()});
+      if(!current())return;
+      verifyBody.replaceChildren();
       if (q.error) {
         make('p', verifyBody, 'تعذر التحقق الآن.');
         return;
@@ -987,7 +998,9 @@
       make('p', verifyBody, 'رقم العضوية: ' + d.membership_number);
       make('p', verifyBody, 'تاريخ الإصدار: ' + formatPortalTime(d.issued_at));
     } catch (e) {
-      make('p', verifyBody, 'تعذر الاتصال.');
+      if(current()){verifyBody.replaceChildren();make('p',verifyBody,'تعذر الاتصال.');}
+    } finally {
+      if(current()){verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;}
     }
   }
   var memberBox = make('div', panel.querySelector('.wrap'));
@@ -3123,9 +3136,15 @@
     if (location.hash === '#account') guardPrivate(account);
   });
   route();
+  // Public routes must not wait for authentication recovery on slow connections.
+  const initialHash=location.hash;
+  const initialPublicRoute=initialHash===''||initialHash==='#home'||initialHash==='#news'||initialHash.startsWith('#news/')||['#history','#tree','#archive','#verify'].includes(initialHash)||initialHash.startsWith('#verify/');
+  if(initialPublicRoute)extraRoute();
   try {
     client().auth.onAuthStateChange((event, session) => {
       if (!authReady) return;
+      const previousUser=recoveredSession?.user.id;
+      if(previousUser&&previousUser!==session?.user.id)clearPrivate();
       recoveredSession = session;
       updateHeader(session);
       if (event === 'SIGNED_OUT') {
@@ -3146,7 +3165,7 @@
       }
       reconcileSession(z.data.session);
       route();
-      extraRoute();
+      if(!initialPublicRoute||location.hash!==initialHash)extraRoute();
       if (location.hash === '#account' && !z.data.session) location.hash = 'login';
     }).catch(() => {
       authReady = true;

@@ -18,9 +18,14 @@ const base='http://127.0.0.1:8765/';
    await open('#home');await visible('#features');assert.equal(await page.locator('#features > a').count(),4);
    await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
    await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
-   for(const slug of ['about','history','membership']){
+   for(const slug of ['about','history','membership','en','en/history','en/membership']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
+   await open('#verify');await visible('#v-verify');
+   await page.locator('#v-verify input').fill('invalid');
+   await page.locator('#v-verify input').press('Enter');
+   assert.match(await page.locator('#v-verify .card').textContent(),/أدخل رقم العضوية/);
+   await noOverflow('verification');
    await open('genealogy/');await visible('#visual-panel');
    assert.equal(await page.locator('#family-tree .branch').count(),367);
    assert.equal(await page.locator('#focus-title').textContent(),'عائلة برهم');

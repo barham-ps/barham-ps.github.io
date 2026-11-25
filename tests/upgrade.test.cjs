@@ -39,3 +39,14 @@ test('public discovery preserves synchronized releases and private genealogy bou
  assert.ok(h.includes('href="./history/"')&&h.includes('href="./membership/"'));
  assert.ok(h.includes('https://wa.me/?text='));
 });
+
+test('public news starts without waiting for authentication and stale certificate checks are ignored',()=>{
+ const js=read('portal.js');
+ const start=js.indexOf('const initialPublicRoute='), recover=js.indexOf('client().auth.getSession().then(z =>',start);
+ assert.ok(start>=0&&recover>start);
+ assert.ok(js.slice(start,recover).includes('if(initialPublicRoute)extraRoute();'));
+ assert.ok(js.includes('if(!initialPublicRoute||location.hash!==initialHash)extraRoute();'));
+ assert.ok(js.includes('if(previousUser&&previousUser!==session?.user.id)clearPrivate();'));
+ assert.ok(js.includes('if(!current())return;'));
+ assert.ok(js.includes("verifyBody.setAttribute('aria-live','polite')"));
+});
