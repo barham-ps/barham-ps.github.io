@@ -48,3 +48,12 @@ The administrator-only family_security_summary RPC now reports aggregate daily a
 
 ## V61 production assurance
 The Portal security workflow is scheduled daily, and now runs both regression suites and production-monitor unit tests. The separate Public portal availability and TLS workflow schedules read-only synthetic GET checks approximately every six hours: public page content markers, certificate validity/expiry and presence of security headers. Missing headers are warnings, not silently treated as passed; failed reachability or TLS checks fail the job. GitHub schedule delays are possible. This is not continuous IDS, nor a WAF. No user identifiers or tokens are collected. For edge security, deploy the allowlisted dist build to a configured host; verify header behavior, login and certificate links before moving any domain. Protect Supabase Auth and API independently.
+
+
+## Advanced free checks
+- Gitleaks scans full checkout history with redaction. Treat any hit as a review item; rotate confirmed secrets before removing history.
+- Trivy checks the dependency inventory and configuration for high/critical findings; the official release binaries are checksum-verified.
+- CycloneDX SBOM is generated from a temporary package lock for pinned browser packages, not a complete inventory of hosted infrastructure.
+- ZAP baseline runs passive checks against a static preview on an internal Docker network only. Image versions are resolved to digests at runtime; this is not a production or authenticated pentest.
+- OpenSSF Scorecard publishes a workflow artifact only, with no claim of external certification; branch protection may be unavailable with the read-only token.
+- Turnstile requires an owner-created site key and matching Auth server secret. WebAuthn requires server-side relying-party settings and account recovery verification. Do not turn either flag on independently.

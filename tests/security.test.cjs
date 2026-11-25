@@ -528,3 +528,16 @@ test('RFC 9116 disclosure and independent evidence links are shipped without thi
  for(const host of ['crt.sh','virustotal.com','developer.mozilla.org','45637767950']) assert.ok(page.includes(host));
  assert.doesNotMatch(page,/<script\b|<iframe\b/i);
 });
+
+test('advanced scans are scoped, pinned and do not require service keys',()=>{
+ const workflow=fs.readFileSync('.github/workflows/advanced-security.yml','utf8');
+ assert.match(workflow,/--redact=100/);
+ assert.match(workflow,/sha256sum --check/);
+ assert.match(workflow,/--package-lock-only --sbom-format cyclonedx/);
+ assert.match(workflow,/docker network create --internal portal-zap/);
+ assert.match(workflow,/zap-baseline\.py -t http:\/\/portal-preview:8765\//);
+ assert.doesNotMatch(workflow,/pull_request_target|SUPABASE_SERVICE_ROLE|secrets\./);
+ const score=fs.readFileSync('.github/workflows/scorecard.yml','utf8');
+ assert.match(score,/ossf\/scorecard-action@[a-f0-9]{40}/);
+ assert.match(score,/publish_results: false/);
+});
