@@ -1,0 +1,34 @@
+name: Cross-browser network and quality checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  network:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build and install test browser
+        run: |
+          sh scripts/build-pages.sh
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify isolated browser behavior
+        run: |
+          tls=$(mktemp -d)
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 -keyout "$tls/key.pem" -out "$tls/cert.pem" >/dev/null 2>&1
+          python3 tests/local_https.py "$tls/cert.pem" "$tls/key.pem" >/tmp/portal-https.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true; rm -rf -- "$tls"' EXIT
+          for i in $(seq 1 20); do curl -kfsS https://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          curl -kfsS https://127.0.0.1:8765/runtime.js >/dev/null
+          node tests/network-browser.cjs ${{ matrix.browser }}

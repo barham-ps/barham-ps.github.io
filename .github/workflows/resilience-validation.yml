@@ -1,0 +1,29 @@
+name: Production resilience validation
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: JavaScript regressions
+        run: |
+          node --check portal.js
+          node --check martyrs/memorial.js
+          node --test tests/*.test.cjs
+      - name: Python regressions
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Build and ensure diagnostics stay unpublished
+        run: |
+          sh scripts/build-pages.sh
+          test -f dist/_headers
+          test ! -e dist/database
+          test ! -e dist/scripts
+          test ! -e dist/tests

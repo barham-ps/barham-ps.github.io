@@ -6,7 +6,7 @@ self.addEventListener('fetch', e => {
   if (request.method !== 'GET' || request.mode !== 'navigate' ||
       url.origin !== self.location.origin || !url.href.startsWith(self.registration.scope)) return;
   e.respondWith(fetch(request, { cache: 'no-store' }).catch(() => new Response(
-    '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>آل برهم — دون اتصال</title><main><h1>آل برهم</h1><p>لا يوجد اتصال بالإنترنت حاليًا. لم تُخزّن بيانات حسابك على هذا الجهاز بواسطة عامل الخدمة.</p><p><a href="./">إعادة المحاولة</a></p></main></html>', {
+    '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>آل برهم — دون اتصال</title><main><h1>آل برهم</h1><p>لا يوجد اتصال بالإنترنت حاليًا. لم تُخزّن بيانات حسابك على هذا الجهاز بواسطة عامل الخدمة.</p><p>يمكنك العودة عند توفر الاتصال. لم تُرسل أي طلبات عضوية أو تغييرات أثناء عدم الاتصال.</p><p><a href="./">إعادة المحاولة</a></p></main></html>', {
       status: 503,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',

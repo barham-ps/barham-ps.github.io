@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 test('public archive renders all text before signing unique image paths in bounded batches',async()=>{
  const js=fs.readFileSync('portal.js','utf8');
- const start=js.indexOf('  let publicCMSEpoch=0;'),end=js.indexOf('  async function loadPublicCMS(){',start);
+ const start=js.indexOf('  let publicCMSEpoch=0;'),end=js.indexOf('  // Load the administrative editor only after',start);
  assert.ok(start>=0&&end>start);
  const element=()=>({children:[],style:{},isConnected:true,get childElementCount(){return this.children.length},replaceChildren(){this.children=[]},querySelector(){return this.children.find(x=>x.className==='public-cms grid')||null}});
  const host=element(),location={hash:'#archive'},batches=[];
