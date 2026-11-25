@@ -420,6 +420,8 @@
   admin.insertBefore(adminNavigation,adminMsg);
   adminMsg.setAttribute('role','status');
   var activeAdminPanel='overview';
+  var adminDirectory=make('div',admin);adminDirectory.className='card member-directory';adminDirectory.hidden=true;
+  var directoryEpoch=0;
   var adminReports=make('div',admin);adminReports.className='card';adminReports.hidden=true;
   var adminIntro=make('p',admin,'اختر القسم المطلوب لإدارة شؤون العائلة.');adminIntro.hidden=true;
 
@@ -476,6 +478,8 @@
 
   function switchAdminPanel(key){
     activeAdminPanel=key;
+    adminDirectory.hidden=key!=='directory';
+    if(key!=='directory'){directoryEpoch++;adminDirectory.replaceChildren();clearMemberPrint();}
     adminRows.hidden=key!=='members';adminRefresh.hidden=key!=='members';cms.hidden=key!=='content';adminReports.hidden=key!=='reports';adminIntro.hidden=key!=='overview';
     adminNavigation.querySelectorAll('[data-admin-panel]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.adminPanel===key)));
   }
@@ -499,10 +503,116 @@
     for(const [label,n] of report){const row=make('tr',table);make('td',row,label);make('td',row,new Intl.NumberFormat('ar-EG').format(n));}
     action(adminReports,'تصدير تقرير CSV (Excel)',()=>{const csv='\ufeffالمؤشر,العدد\r\n'+report.map(([label,n])=>label+','+n).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='albarham-membership-report.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
   }
+  // Private roster: use the existing MFA-protected administrative RPC, never public tables.
+  async function readMemberDirectory(){
+    if(ok(await client().rpc('family_is_admin'))!==true)throw Error('Forbidden');
+    const records=[],size=500;
+    for(let start=0;;start+=size){
+      const rows=ok(await client().rpc('family_admin_list').order('submitted_at',{ascending:false}).order('id',{ascending:true}).range(start,start+size-1));
+      records.push(...rows);
+      if(rows.length<size)break;
+    }
+    return records;
+  }
+  const directoryFields=[['full_name','الاسم الكامل'],['membership_number','رقم العضوية'],['email','البريد الإلكتروني'],['phone','رقم الجوال'],['status','حالة العضوية']];
+  function sortedMemberDirectory(rows,query,status,sort){
+    const terms=normalizeSearch(query).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).split(/\s+/).filter(Boolean);
+    const list=rows.filter(r=>(status==='all'||r.status===status)&&terms.every(t=>normalizeSearch([r.full_name,r.membership_number,r.email,r.phone].filter(Boolean).join(' ')).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).includes(t)));
+    const collator=new Intl.Collator('ar',{numeric:true,sensitivity:'base'});
+    return list.sort((a,b)=>sort==='number'?collator.compare(a.membership_number||'\uffff',b.membership_number||'\uffff'):sort==='recent'?String(b.submitted_at||'').localeCompare(String(a.submitted_at||'')):collator.compare(a.full_name||'',b.full_name||''));
+  }
+  function memberDirectoryTable(parent,rows){
+    const table=make('table',parent);table.className='member-directory-table';table.dir='rtl';
+    const cols=make('colgroup',table);for(const k of ['seq',...directoryFields.map(x=>x[0])])make('col',cols).className='member-col-'+k;
+    const head=make('thead',table),header=make('tr',head);
+    for(const label of ['م',...directoryFields.map(x=>x[1])]){const th=make('th',header,label);th.scope='col';}
+    const body=make('tbody',table);
+    rows.forEach((r,i)=>{
+      const tr=make('tr',body);make('td',tr,new Intl.NumberFormat('ar-EG').format(i+1));
+      for(const [key] of directoryFields){
+        const value=key==='status'?(statusLabels[r.status]||r.status):r[key];
+        const cell=make('td',tr,value||'—');
+        if(['membership_number','email','phone'].includes(key))cell.dir='ltr';
+      }
+    });
+    return table;
+  }
+  function clearMemberPrint(){
+    document.body.classList.remove('printing-member-directory');
+    document.getElementById('member-directory-print')?.remove();
+  }
+  window.addEventListener('afterprint',clearMemberPrint);
+  window.addEventListener('hashchange',clearMemberPrint);
+  async function loadMemberDirectory(){
+    switchAdminPanel('directory');
+    const epoch=++directoryEpoch;
+    adminDirectory.replaceChildren();
+    const heading=make('div',adminDirectory);heading.className='directory-heading';
+    make('span',heading,'آل برهم · الإدارة').className='eyebrow';
+    make('h2',heading,'سجل جميع الأعضاء');
+    make('p',heading,'سجل إداري خاص، يشمل طلبات العضوية المسجلة بجميع حالاتها. الأرقام غير الصادرة والبيانات غير المسجلة تظهر بشرطة.');
+    action(adminDirectory,'العودة إلى إدارة الأعضاء',()=>switchAdminPanel('members')).className='btn btn-ghost';
+    const msg=make('p',adminDirectory,'جارٍ تحميل السجل…');msg.setAttribute('role','status');
+    try{
+      const records=await readMemberDirectory();
+      if(epoch!==directoryEpoch||activeAdminPanel!=='directory'||location.hash!=='#admin')return;
+      const tools=make('div',adminDirectory);tools.className='dashboard-filter';
+      const query=field(tools,'البحث بالاسم أو رقم العضوية أو البريد أو الجوال','directory-search','search',150);
+      const status=selectField(tools,'حالة العضوية','directory-status',{all:'جميع الحالات',...statusLabels});
+      const sort=selectField(tools,'ترتيب السجل','directory-sort',{name:'الاسم أبجديًا',number:'رقم العضوية',recent:'الأحدث تسجيلًا'});
+      const count=make('p',tools);count.setAttribute('aria-live','polite');
+      const actions=make('div',adminDirectory);actions.className='row directory-actions';
+      const print=action(actions,'تصدير PDF / طباعة',async function(){
+        if(this.disabled)return;
+        if(!confirm('يتضمن التقرير بيانات اتصال خاصة. احفظه في مكان آمن ولا تشاركه خارج الإدارة. هل تريد المتابعة؟'))return;
+        this.disabled=true;
+        try{
+          // Recheck live admin authorization and refresh data immediately before exporting.
+          const fresh=await readMemberDirectory();
+          if(epoch!==directoryEpoch||activeAdminPanel!=='directory'||location.hash!=='#admin')return;
+          const selected=sortedMemberDirectory(fresh,query.value,status.value,sort.value);
+          if(!selected.length){msg.textContent='لا توجد سجلات مطابقة للتصدير.';return;}
+          clearMemberPrint();
+          const report=make('section',document.body);report.id='member-directory-print';report.dir='rtl';
+          const banner=make('header',report);banner.className='directory-print-banner';
+          const logo=make('img',banner);logo.src='./icon.svg';logo.alt='آل برهم';logo.width=48;logo.height=48;
+          const brand=make('div',banner);make('strong',brand,'آل برهم');make('p',brand,'البوابة العائلية الرقمية · أصالة الجذور وعهد الأجيال');
+          make('span',banner,'سري — للاستخدام الإداري').className='directory-confidential';
+          make('h1',report,'سجل أعضاء عائلة برهم');
+          const meta=make('div',report);meta.className='directory-print-meta';
+          make('span',meta,'تاريخ الإصدار: '+new Intl.DateTimeFormat('ar-EG',{dateStyle:'long',timeStyle:'short',timeZone:'Asia/Gaza'}).format(new Date()));
+          make('span',meta,'عدد السجلات: '+new Intl.NumberFormat('ar-EG').format(selected.length));
+          make('span',meta,'النطاق: '+(status.value==='all'?'جميع حالات العضوية':statusLabels[status.value])+(query.value.trim()?' · نتائج البحث':''));
+          memberDirectoryTable(report,selected);
+          const foot=make('footer',report);foot.className='directory-print-footer';
+          make('p',foot,'إدارة البوابة الرقمية لآل برهم — وثيقة داخلية تتضمن بيانات شخصية، يمنع تداولها خارج الإدارة.');
+          make('p',foot,'السجل يعكس البيانات المتاحة وقت الإصدار، ولا يعد شهادة عضوية فردية.');
+          document.body.classList.add('printing-member-directory');
+          if(document.fonts?.ready)await document.fonts.ready;
+          try{await logo.decode();}catch(_){}
+          if(epoch!==directoryEpoch||location.hash!=='#admin'){clearMemberPrint();return;}
+          window.print();
+        }catch(e){clearMemberPrint();msg.textContent='تعذر تجهيز التقرير. تحقق من صلاحية حساب الإدارة والاتصال.';}
+        finally{this.disabled=false;}
+      });print.className='btn btn-gold';
+      action(actions,'تحديث السجل',()=>guardPrivate(loadMemberDirectory)).className='btn btn-ghost';
+      const wrap=make('div',adminDirectory);wrap.className='member-directory-tablewrap';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','جدول الأعضاء');
+      function draw(){
+        const selected=sortedMemberDirectory(records,query.value,status.value,sort.value);
+        wrap.replaceChildren();
+        if(selected.length)memberDirectoryTable(wrap,selected);else make('p',wrap,'لا توجد سجلات مطابقة.');
+        count.textContent='عرض '+new Intl.NumberFormat('ar-EG').format(selected.length)+' من '+new Intl.NumberFormat('ar-EG').format(records.length)+' سجلًا';
+        print.disabled=!selected.length;
+      }
+      query.oninput=status.onchange=sort.onchange=draw;
+      msg.textContent='البيانات خاصة بالإدارة. عند التصدير اختر «حفظ بتنسيق PDF» من نافذة الطباعة.';
+      draw();
+    }catch(e){if(epoch===directoryEpoch){adminDirectory.replaceChildren();make('p',adminDirectory,'تعذر فتح السجل؛ يلزم حساب إدارة مخوّل وتحقق ثنائي نشط.');action(adminDirectory,'العودة',()=>switchAdminPanel('members'));}}
+  }
   async function loadAdmin() {
     adminNavigation.hidden=true;adminRefresh.hidden=true;
     cms.hidden=true;cms.replaceChildren();adminReports.hidden=true;adminReports.replaceChildren();adminIntro.hidden=true;
-    adminRows.replaceChildren();
+    adminRows.replaceChildren();directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;clearMemberPrint();
     adminMsg.textContent = 'جارٍ التحقق من الصلاحية';
     try {
       var q = await client().rpc('family_admin_list');
@@ -511,6 +621,7 @@
         return;
       }
       mountAdminNavigation();
+      if(activeAdminPanel==='directory')activeAdminPanel='members';
       switchAdminPanel(activeAdminPanel);
       adminMsg.textContent = 'الطلبات: ' + q.data.length + ' | المعتمدة: ' + q.data.filter(x => x.status ===
         'approved').length + ' | قيد المراجعة: ' + q.data.filter(x => x.status === 'under_review').length;
@@ -518,6 +629,7 @@
       for (const [label, n] of [['إجمالي الطلبات', q.data.length], ['معتمدة', q.data.filter(x=>x.status==='approved').length], ['قيد المراجعة', q.data.filter(x=>x.status==='under_review').length], ['تحتاج استكمالًا', q.data.filter(x=>x.status==='more_info').length]]) {
         const stat = make('div', stats); stat.className = 'card'; make('strong', stat, String(n)); make('p', stat, label);
       }
+      const registryButton=action(adminRows,'سجل جميع الأعضاء — عرض وتصدير PDF',()=>guardPrivate(loadMemberDirectory));registryButton.className='btn btn-gold member-directory-entry';
       var filterBar = make('div', adminRows);
       filterBar.className = 'card dashboard-filter';
       var search = field(filterBar, 'بحث بالاسم أو رقم العضوية', 'search', 'search', 150),
@@ -2765,7 +2877,7 @@
     hubBody.replaceChildren();
     cms.replaceChildren();cms.hidden=true;
     adminNavigation.hidden=true;adminRefresh.hidden=true;adminMsg.textContent='';activeAdminPanel='overview';adminReports.replaceChildren();adminReports.hidden=true;adminIntro.hidden=true;
-    adminRows.replaceChildren();
+    adminRows.replaceChildren();directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;clearMemberPrint();
     adminServiceBody.replaceChildren();
     newsEditorBody.replaceChildren();
     certBody.replaceChildren();
