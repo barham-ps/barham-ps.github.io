@@ -115,13 +115,16 @@ test('password exposure screen sends only the padded hash prefix and rejects kno
   assert.equal(await check('test-password',async()=>({ok:true,text:async()=>'<html>'}),cryptoApi),'unavailable');
 });
 
-test('release keeps footer identity and deferred scripts in dependency order', () => {
+test('release starts small public runtime before CSS and keeps account scripts deferred in dependency order', () => {
   assert.match(html, /class="footer-wordmark" lang="ar">آل برهم/);
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="site family-footer compact-footer"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,6);
-  assert.ok(scripts.every(x => x[0].includes('defer')));
+  assert.ok(!scripts[0][0].includes('defer'));
+  assert.ok(scripts.slice(1).every(x => x[0].includes('defer')));
+  assert.ok(html.indexOf(scripts[0][0]) < html.indexOf('<link rel="stylesheet" href="./portal.css'));
+  assert.match(fs.readFileSync('runtime.js','utf8'),/document\.addEventListener\('DOMContentLoaded',updateFamilyGreeting,\{once:true\}\)/);
   assert.ok(scripts[0][1].includes('runtime.js'));
   assert.ok(scripts[1][1].includes('footer.js'));
   assert.ok(scripts[2][1].includes('supabase'));
@@ -558,7 +561,7 @@ test('secret diagnostics separate history and deployed files without hiding scan
  assert.match(workflow,/git --redact=100/);
  assert.match(workflow,/dir --redact=100/);
  assert.match(workflow,/secret_scan_summary\.py/);
- assert.match(workflow,/test "\$current_status" -eq 0/); assert.match(workflow,/--config scripts\/gitleaks-known-public\.toml/);
+ assert.match(workflow,/test "\$current_status" -eq 1/); assert.match(workflow,/dir --config scripts\/gitleaks-known-public\.toml/); assert.match(workflow,/git --config scripts\/gitleaks-known-public\.toml/);
  assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
 });
 
@@ -609,16 +612,15 @@ test('balanced glass changes only surface alpha and preserves accessible fallbac
 });
 
 
-test('private request bucket provisioning reconciles existing settings',()=>{
- const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
- assert.match(sql,/on conflict \(id\) do update set\s+public = false,\s+file_size_limit = excluded.file_size_limit,\s+allowed_mime_types = excluded.allowed_mime_types;/i);
-});
-test('main meta CSP and hosting CSP agree and navigation is not cached by configured edge',()=>{
- const meta=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/i)[1];
- const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
- const csp=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;
- assert.equal(csp,meta+"; frame-ancestors 'none'");
- for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
+test('early public news request is anonymous, RLS-filtered, bounded and not persisted',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/\/rest\/v1\/family_news/);
+ assert.match(runtime,/published:'eq.true',order:'created_at.desc',limit:'1'/);
+ assert.match(runtime,/credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer'/);
+ assert.match(runtime,/setTimeout\(\(\)=>controller.abort\(\),5000\)/);
+ assert.match(runtime,/initialNews=null;return pending/);
+ assert.match(js,/if\(rows===null\)/);
+ assert.match(js,/if\(epoch!==newsEpoch\|\|\(location.hash\|\|'#home'\)!==hash\)return/);
 });
 
 
@@ -630,6 +632,51 @@ test('public homepage has no network controls or diagnostic result markup',()=>{
  assert.doesNotMatch(runtime,/PerformanceObserver|local-diagnostics/);
 });
 
+
+test('early cover signing is scoped to published news and falls back to the authorized SDK',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/storage\/v1\/object\/sign\/family-news/);
+ assert.match(runtime,/row\.cover_paths\.filter\(p=>typeof p==='string'&&allowed\.has\(p\)\)/);
+ assert.match(runtime,/JSON\.stringify\(cover\.paths\)!==JSON\.stringify\(paths\)/);
+ assert.match(runtime,/if\(lowData\(\)\|\|!row/);
+ assert.match(js,/if\(!Array\.isArray\(signed\)\)return photoURLs\(paths\)/);
+ assert.match(js,/paths\.filter\(\(_,i\)=>!signed\[i\]\)/);
+ assert.match(js,/await photoURLs\(missing\)/);
+});
+
+
+test('first authorized news cover is preloaded only on home with data saver off',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/signed\[0\]&&!lowData\(\)&&\(location.hash===''\|\|location.hash==='#home'\)/);
+ assert.match(runtime,/hint.rel='preload';hint.as='image';hint.href=signed\[0\];hint.fetchPriority='high';hint.referrerPolicy='no-referrer'/);
+ assert.match(js,/im.referrerPolicy = 'no-referrer'/);
+});
+
+
+test('published home teaser adopts early image nodes without a duplicate repaint',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/function paintInitialTeaser\(row\)/);
+ assert.match(runtime,/initialConsumed\|\|initialTeaser\|\|lowData\(\)/);
+ assert.match(runtime,/target\.replaceChildren\(card\)/);
+ assert.match(runtime,/teaser\.row===row&&teaser\.card\.isConnected/);
+ assert.match(js,/if\(!prepared\)target\.replaceChildren\(\)/);
+ assert.match(js,/prepared\?\.items\[i\]\?\.im \|\| make\('img', a\)/);
+ assert.match(js,/if\(im\.src!==urls\[i\]\)/);
+ const early=runtime.slice(runtime.indexOf('function paintInitialTeaser('),runtime.indexOf('function takeInitialTeaser('));
+ assert.doesNotMatch(early,/innerHTML|insertAdjacentHTML|localStorage/);
+});
+
+test('private request bucket provisioning reconciles existing settings',()=>{
+ const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
+ assert.match(sql,/on conflict \(id\) do update set\s+public = false,\s+file_size_limit = excluded.file_size_limit,\s+allowed_mime_types = excluded.allowed_mime_types;/i);
+});
+test('main meta CSP and hosting CSP agree and navigation is not cached by configured edge',()=>{
+ const meta=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/i)[1];
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const csp=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.equal(csp,meta+"; frame-ancestors 'none'");
+ for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
+});
 
 test('royal home polish is screen-only and preserves public navigation and accessibility',()=>{
  const css=fs.readFileSync('portal.css','utf8');

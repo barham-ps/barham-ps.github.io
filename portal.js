@@ -32,29 +32,6 @@
   });
 
   // Palestinian civil time; only the greeting is displayed.
-  function familyGreeting(now) {
-    var hour = Number(new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Gaza', hour: '2-digit', hourCycle: 'h23'
-    }).format(now));
-    return (hour >= 5 && hour < 12 ? 'صباح الخير' :
-      hour >= 12 && hour < 17 ? 'نهارك سعيد' : 'مساء الخير') + '، أهلًا بك في بيتنا';
-  }
-  function updateFamilyGreeting() {
-    var greet = document.getElementById('greet');
-    if (!greet) return;
-    try {
-      var message = familyGreeting(new Date());
-      if (greet.textContent !== message) greet.textContent = message;
-    } catch (error) {
-      greet.textContent = 'أهلًا بك في بيتنا';
-    }
-  }
-  updateFamilyGreeting();
-  window.setInterval(updateFamilyGreeting, 15000);
-  window.addEventListener('pageshow', updateFamilyGreeting);
-  document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) updateFamilyGreeting();
-  });
   var views = [].slice.call(document.querySelectorAll('.view'));
   var hdr = $('#hdr'),
     btn = $('#menuBtn');
@@ -2095,26 +2072,27 @@
     window.addEventListener('hashchange', cleanup, {once:true});
   }
 
-  function newsGallery(parent, paths, title, cover) {
+  function newsGallery(parent, paths, title, cover, prepared=null) {
     if (!paths.length) return;
-    var g = make('div', parent);
+    var g = prepared?.gallery || make('div', parent);
     g.className = 'news-gallery' + (cover ? ' news-cover' : '');
     g.dataset.count = String(paths.length);
     var urls = [];
     const reduced=window.familyRuntime?.lowData()===true || navigator.onLine===false;
     if(reduced)g.hidden=true;
     var items = paths.map((path, i) => {
-      var a = make('button', g);
+      var a = prepared?.items[i]?.a || make('button', g);
       a.type = 'button';
       a.className = 'news-gallery-item';
       a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
-      var im = make('img', a);
+      var im = prepared?.items[i]?.im || make('img', a);
       im.alt = title + ' — صورة ' + (i + 1);
-      // The main hero is the high-priority content; below-the-fold news images are lazy.
-      const priority = false;
+      // The first home cover is a measured LCP candidate; other photos remain lazy.
+      const priority = parent.classList.contains('home-news-card') && i === 0;
       im.loading = priority ? 'eager' : 'lazy';
       im.fetchPriority = priority ? 'high' : 'low';
       im.decoding = 'async';
+      im.referrerPolicy = 'no-referrer';
       a.disabled = true;
       a.onclick = () => {
         var valid = urls.filter(Boolean);
@@ -2125,9 +2103,18 @@
         im
       };
     });
-    if (cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
+    if (!prepared && cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
       'gallery-hint';
-    const load = () => photoURLs(paths).then(result => {
+    const load = async () => {
+      const early=parent.classList.contains('home-news-card')?window.familyRuntime?.takeInitialCover(paths):null;
+      const signed=early?await early:null;
+      if(!Array.isArray(signed))return photoURLs(paths);
+      const missing=[...new Set(paths.filter((_,i)=>!signed[i]))];
+      if(!missing.length)return signed;
+      const fallback=await photoURLs(missing);
+      return paths.map((p,i)=>signed[i]||fallback[missing.indexOf(p)]||null);
+    };
+    const loadImages=()=>load().then(result => {
       if (!g.isConnected) return;
       urls = result;
       items.forEach(({
@@ -2135,7 +2122,7 @@
         im
       }, i) => {
         if (urls[i] && im.isConnected) {
-          im.src = urls[i];
+          if(im.src!==urls[i])im.src = urls[i];
           a.disabled = false;
         } else a.remove();
       });
@@ -2146,8 +2133,9 @@
     });
     if(reduced){
       const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
-      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
-    }else nearViewport(g, load);
+      if(prepared)parent.insertBefore(reveal,prepared.summary);
+      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();loadImages();};
+    }else nearViewport(g, loadImages, parent.classList.contains('home-news-card') && g.getBoundingClientRect().top <= window.innerHeight + 250);
   }
 
   async function loadPublicNews() {
@@ -2166,13 +2154,20 @@
         make('p', target, 'رابط الخبر غير صالح.');
         return;
       }
-      var query = client().from('family_news').select(
-        'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
-      var rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
-        ascending: false
-      }).limit(isHome ? 1 : 50)));
+      // Consume the single anonymous startup fetch, falling back to the existing SDK query.
+      const pending=isHome?window.familyRuntime?.takeInitialNews():null;
+      var rows=pending?await pending:null;
+      if(epoch!==newsEpoch||(location.hash||'#home')!==hash)return;
+      if(rows===null){
+        var query = client().from('family_news').select(
+          'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
+        rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
+          ascending: false
+        }).limit(isHome ? 1 : 50)));
+      }
       if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
-      target.replaceChildren();
+      const prepared=isHome&&rows.length?window.familyRuntime?.takeInitialTeaser(rows[0]):null;
+      if(!prepared)target.replaceChildren();
       if (!rows.length) {
         make('p', target, selected ? 'الخبر غير متاح.' : 'لا أخبار منشورة حاليًا.');
         if (selected) {
@@ -2182,6 +2177,7 @@
         return;
       }
       if (isHome) {
+        if(prepared){newsGallery(prepared.card,prepared.paths,rows[0].title,true,prepared);return;}
         var latest = rows[0],
           teaser = make('article', home);
         teaser.className = 'home-news-card';

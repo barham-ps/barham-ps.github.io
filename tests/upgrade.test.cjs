@@ -125,8 +125,8 @@ test('family foyer and member lounge preserve visitor and approved-member bounda
 });
 
 test('Palestine greeting uses exactly three phrases and updates without exposing time',()=>{
- const vm=require('node:vm'),js=read('portal.js');
- const source=js.slice(js.indexOf('  function familyGreeting('),js.indexOf('  var views ='));
+ const vm=require('node:vm'),js=read('runtime.js');
+ const source=js.slice(js.indexOf('  function familyGreeting('),js.indexOf('  const preferenceKey='));
  const greet={textContent:''};let interval,visibility,pageshow,hidden=false;
  let now='2026-11-25T02:59:59Z';
  class FakeDate extends Date{constructor(){super(now);}}
