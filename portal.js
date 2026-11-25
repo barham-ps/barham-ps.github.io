@@ -502,10 +502,11 @@
   function mountAdminReports(members){
     adminReports.replaceChildren();make('h2',adminReports,'تقارير العضوية');
     make('p',adminReports,'ملخص إجمالي من سجل العضويات المتاح للإدارة، دون تصدير الأسماء أو بيانات الاتصال.');
+    make('p',adminReports,'تاريخ ووقت إعداد التقرير: '+formatPortalTime(new Date()));
     const report=[['إجمالي العضويات',members.length],...Object.entries(statusLabels).map(([key,label])=>[label,members.filter(m=>m.status===key).length])];
     const table=make('table',adminReports);const header=make('tr',table);make('th',header,'المؤشر');make('th',header,'العدد');
     for(const [label,n] of report){const row=make('tr',table);make('td',row,label);make('td',row,new Intl.NumberFormat('ar-EG').format(n));}
-    action(adminReports,'تصدير تقرير CSV (Excel)',()=>{const csv='\ufeffالمؤشر,العدد\r\n'+report.map(([label,n])=>label+','+n).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='albarham-membership-report.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+    action(adminReports,'تصدير تقرير CSV (Excel)',()=>{const csv='\ufeffالمؤشر,العدد\r\n'+report.map(([label,n])=>label+','+n).join('\r\n')+'\r\n\r\nتاريخ ووقت الإصدار,"'+formatPortalTime(new Date()).replace(/"/g,'""')+'"\r\nالجهة المصدرة,إدارة آل برهم';const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='albarham-membership-report.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
   }
   // Private roster: use the existing MFA-protected administrative RPC, never public tables.
   async function readMemberDirectory(){
