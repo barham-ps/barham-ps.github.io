@@ -1,0 +1,56 @@
+name: Cloudflare production security
+on:
+  schedule:
+    - cron: '43 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-production-security
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify live HTTPS security policy and sensitive path isolation
+        env:
+          PORTAL_HOST: barham-ps-github-io.m0had-b0rh0m.workers.dev
+        run: |
+          python3 - <<'PY'
+          import http.client, os, ssl
+          host = os.environ["PORTAL_HOST"]
+          def probe(path):
+              conn = http.client.HTTPSConnection(host, timeout=15, context=ssl.create_default_context())
+              try:
+                  conn.request("GET", path, headers={"User-Agent": "PortalSecurityMonitor/1.0"})
+                  response = conn.getresponse()
+                  return response.status, {k.lower(): v for k,v in response.getheaders()}
+              finally:
+                  conn.close()
+          errors = []
+          for path in ("/", "/index.html"):
+              status, h = probe(path)
+              if status != 200:
+                  errors.append(f"{path}: HTTP {status}")
+              for key in ("content-security-policy", "strict-transport-security", "x-frame-options", "x-content-type-options", "referrer-policy", "permissions-policy", "cross-origin-opener-policy"):
+                  if not h.get(key):
+                      errors.append(f"{path}: missing {key}")
+              if "frame-ancestors 'none'" not in h.get("content-security-policy", ""):
+                  errors.append(f"{path}: missing frame isolation")
+              if h.get("x-frame-options", "").lower() != "deny":
+                  errors.append(f"{path}: framing policy mismatch")
+              if h.get("x-content-type-options", "").lower() != "nosniff":
+                  errors.append(f"{path}: MIME protection mismatch")
+              if h.get("access-control-allow-origin") == "*":
+                  errors.append(f"{path}: wildcard CORS requires review")
+              if "no-store" not in h.get("cache-control", "").lower():
+                  errors.append(f"{path}: missing no-store")
+          for path in ("/.git/config", "/.env", "/wrangler.jsonc", "/scripts/build-pages.sh"):
+              status, _ = probe(path)
+              if status not in (403, 404, 410):
+                  errors.append(f"{path}: unexpected HTTP {status}")
+          if errors:
+              raise SystemExit("\n".join(errors))
+          print("Live Cloudflare security baseline passed")
+          PY
