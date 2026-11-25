@@ -2108,7 +2108,11 @@
     const load = async () => {
       const early=parent.classList.contains('home-news-card')?window.familyRuntime?.takeInitialCover(paths):null;
       const signed=early?await early:null;
-      return signed&&signed.every(Boolean)?signed:photoURLs(paths);
+      if(!Array.isArray(signed))return photoURLs(paths);
+      const missing=[...new Set(paths.filter((_,i)=>!signed[i]))];
+      if(!missing.length)return signed;
+      const fallback=await photoURLs(missing);
+      return paths.map((p,i)=>signed[i]||fallback[missing.indexOf(p)]||null);
     };
     const loadImages=()=>load().then(result => {
       if (!g.isConnected) return;

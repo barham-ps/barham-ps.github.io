@@ -639,7 +639,9 @@ test('early cover signing is scoped to published news and falls back to the auth
  assert.match(runtime,/row\.cover_paths\.filter\(p=>typeof p==='string'&&allowed\.has\(p\)\)/);
  assert.match(runtime,/JSON\.stringify\(cover\.paths\)!==JSON\.stringify\(paths\)/);
  assert.match(runtime,/if\(lowData\(\)\|\|!row/);
- assert.match(js,/signed&&signed\.every\(Boolean\)\?signed:photoURLs\(paths\)/);
+ assert.match(js,/if\(!Array\.isArray\(signed\)\)return photoURLs\(paths\)/);
+ assert.match(js,/paths\.filter\(\(_,i\)=>!signed\[i\]\)/);
+ assert.match(js,/await photoURLs\(missing\)/);
 });
 
 
@@ -676,3 +678,14 @@ test('main meta CSP and hosting CSP agree and navigation is not cached by config
  for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
 });
 
+test('royal home polish is screen-only and preserves public navigation and accessibility',()=>{
+ const css=fs.readFileSync('portal.css','utf8');
+ const royal=css.slice(css.indexOf('/* Royal public home typography'));
+ assert.match(royal,/@media screen/);assert.match(royal,/--royal-ar:'Amiri'/);
+ assert.match(royal,/prefers-reduced-motion:reduce/);assert.match(royal,/data-low-data=true/);
+ assert.doesNotMatch(royal,/grid-template|position:fixed|display:none|#v-certificate/);
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/if\(lowData\(\)\|\|navigator\.onLine===false/);
+ assert.match(runtime,/family=Amiri:wght@700&display=optional/);
+ assert.match(runtime,/window\.addEventListener\('load',loadRoyalHeadingFont/);
+});
