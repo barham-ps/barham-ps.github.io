@@ -11,8 +11,6 @@
   ];
   var FEAT = [
     ['heritage','landmark','العائلة والتراث','التاريخ والشجرة والأرشيف'],
-    ['news','news','أخبار العائلة','الأخبار والإعلانات والتهاني'],
-    ['martyrs','heart','شهداء آل برهم','ذاكرة العائلة وسجل الشهداء الموثق'],
     ['community','heart','المجتمع العائلي','المبادرات والتواصل'],
     ['membership','shield','العضوية','الانضمام والتحقق من الشهادات']
   ];
@@ -43,7 +41,7 @@
 
   $('#features').innerHTML = FEAT.map(function(f) {
     return '<a class="card" href="' + (f[0]==='martyrs'?'./martyrs/':'#'+f[0]) + '"><div class="ic"><svg width="26" height="26"><use href="#i-' + f[
-      1] + '"/></svg></div><h3>' + f[2] + '</h3><p>' + f[3] + '</p><span class="more">استكشف القسم ←</span></a>'
+      1] + '"/></svg></div><h3>' + f[2] + '</h3><p>' + f[3] + '</p><span class="more" aria-hidden="true">←</span></a>'
   }).join('');
   if ($('#services')) $('#services').innerHTML = SERV.map(function(s, i) {
     return '<div class="card"><span class="chip c-ok">للأعضاء المعتمدين</span><h3>' + s[0] + '</h3><p>' + s[1] +
@@ -3306,27 +3304,28 @@
   dock.className = 'mobile-dock';
   dock.setAttribute('aria-label', 'التنقل السريع');
   [
-    ['home', 'الرئيسية', 'home'],
-    ['news', 'الأخبار', 'news'],
-    ['heritage', 'العائلة', 'landmark'],
-    ['account', 'حسابي', 'user']
+    ['home', 'الرئيسية', 'home', '#home'],
+    ['news', 'الأخبار', 'news', '#news'],
+    ['tree', 'الشجرة', 'network', './genealogy/'],
+    ['martyrs', 'الشهداء', 'heart', './martyrs/'],
+    ['account', 'دخول', 'user', '#login']
   ].forEach(x => {
     var l = make('a', dock);
-    l.href = '#' + x[0];
+    l.href = x[3];
+    l.dataset.dockRoute = x[0];
     l.innerHTML = '<svg width="22" height="22" aria-hidden="true"><use href="#i-' + x[2] + '"/></svg>';
     make('span', l, x[1]);
   });
   document.body.appendChild(dock);
+  const dockAccount = dock.querySelector('[data-dock-route="account"]');
 
   function markDock() {
     var r = (location.hash || '#home').slice(1).split('/')[0];
-    if (['login', 'register', 'reset', 'member-hub', 'member-services-admin', 'news-admin', 'martyrs-admin', 'admin', 'certificate',
-        'verify', 'membership', 'security', 'mfa'
-      ].includes(r)) r = 'account';
-    if (['history', 'tree', 'archive', 'stories'].includes(r)) r = 'heritage';
-    if (r === 'events' || r === 'community' || r === 'initiatives' || r === 'contact') r = 'news';
+    if (['login','register','reset','member-hub','member-services-admin','news-admin','martyrs-admin','admin','certificate','verify','membership','security','mfa','card'].includes(r)) r = 'account';
+    if (['history','heritage','archive','stories'].includes(r)) r = 'tree';
+    if (r === 'events') r = 'news';
     Array.from(dock.querySelectorAll('a')).forEach(a => {
-      if (a.getAttribute('href') === '#' + r) a.setAttribute('aria-current', 'page');
+      if (a.dataset.dockRoute === r) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
   }
@@ -3344,6 +3343,9 @@
     guestLogin.hidden = !!session;
     guestRegister.hidden = true;
     signedAccount.hidden = !session;
+    dockAccount.href = session ? '#account' : '#login';
+    dockAccount.querySelector('span').textContent = session ? 'حسابي' : 'دخول';
+    markDock();
     const primaryEntry = document.getElementById('family-primary-entry');
     const joinEntry = document.getElementById('family-join-entry');
     if(primaryEntry){primaryEntry.href=session?'#account':'#login';primaryEntry.textContent=session?'الانتقال إلى حسابي':'دخول الأعضاء';}

@@ -53,3 +53,15 @@ a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
  header a:focus-visible,footer a:focus-visible{outline-color:#f5e6b8}
 }
 @media screen and (max-width:500px){.public-card{border-radius:15px;padding:18px 15px}.public-card p,.public-card li{font-size:15px}.public-card h1{font-size:27px}.public-card h2{font-size:21px}}
+
+/* V5: public information pages remain script-free; respect device appearance. */
+@media screen and (prefers-color-scheme:light){
+ :root{color-scheme:light;--page-bg:#f7f5ed;--page-surface:#fffdf8;--page-gold:#795a27;--page-text:#16382d;--page-muted:#465b51;--page-line:#c7d2c8}
+ body{background:var(--page-bg)}
+ .public-card{border-color:var(--page-line);box-shadow:0 3px 14px #123b3010;background:var(--page-surface)}
+ .public-card nav a[aria-current=page]{color:var(--page-text);border-color:var(--page-gold)}
+ header,footer{background:#123b30;color:#f5e6b8}
+ header a,footer a{color:#f5e6b8}
+ .secondary-action{border-color:var(--page-line)}
+ .public-card a:focus-visible{outline-color:var(--page-gold)}
+}

@@ -54,7 +54,7 @@ test('public news starts without waiting for authentication and stale certificat
 test('visitor priorities are visible without authentication and print design remains separate',()=>{
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
  assert.match(h,/<nav class="visitor-entry"[\s\S]*?href="#news"[\s\S]*?href="\.\/genealogy\/"[\s\S]*?href="#history"/);
- assert.ok(tree.includes('portal.css?v=59')&&tree.includes('tree.css?v=5'));
+ assert.ok(tree.includes('portal.css?v=73')&&tree.includes('tree.css?v=5'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
 
@@ -142,4 +142,14 @@ test('Palestine greeting uses exactly three phrases and updates without exposing
  assert.match(hero,/غزة والضفة الغربية/);assert.doesNotMatch(hero,/بني سهيلة|خان يونس|<time\b/);
  assert.match(hero,/جذورٌ تجمعنا، وعهدٌ نحمله إلى الأجيال\./);
  assert.match(html,/id="family-transparency-title"/);
+});
+
+test('V73 theme and compact navigation preserve routes and private controls',()=>{
+ const html=read('index.html'),js=read('portal.js'),css=read('portal.css'),theme=read('footer.js');
+ const vm=require('node:vm');assert.doesNotThrow(()=>new vm.Script(theme));assert.doesNotThrow(()=>new vm.Script(js));
+ assert.match(html,/data-family-theme hidden/);assert.match(css,/:root\[data-theme="light"\]/);assert.match(css,/repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(js,/dockAccount\.href = session \? '#account' : '#login'/);
+ assert.match(html,/<details class="wrap family-transparency">/);
+ assert.match(theme,/barham-appearance-v1/);
+ assert.match(read('genealogy/index.html'),/data-family-theme/);assert.match(read('martyrs/index.html'),/data-family-theme/);
 });

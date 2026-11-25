@@ -1038,3 +1038,76 @@ html{padding-block:0!important;scroll-padding-top:0}
   #v-home .home-services #features .card p{font-size:13px}
   .family-trust-card{padding:15px}
 }
+
+/* V73: compact family portal, actual light/dark tokens, consistent touch controls. */
+@media screen {
+ :root[data-theme="light"]{
+  color-scheme:light;--bg:#f7f5ed;--surface:#fffdf8;--band:#edf2ec;--fg:#16382d;--fg2:#465b51;--line:#c7d2c8;
+  --green:#174738;--green-deep:#0b3025;--gold:#a88239;--gold-ink:#73571e;--gold-on-green:#f5e6b8;
+  --ok:#236446;--warn:#805213;--info:#245c79;
+  --glass-canvas:var(--bg);--glass-surface:linear-gradient(145deg,#fffdf8,#f7faf5);
+  --glass-border:#cad5c8;--glass-field:#fffdf8;--glass-shadow:0 3px 12px #123b3010;--glass-shine:none;
+ }
+ :root[data-theme="light"] :is(header.site,.mobile-dock,form.auth,.photo-dialog){background:var(--surface);color:var(--fg);backdrop-filter:none;-webkit-backdrop-filter:none}
+ :root[data-theme="light"] header.site :is(.brand b,.brand-ar){color:var(--green)}
+ :root[data-theme="light"] :is(.card h3,.ic,.family-utility-link>svg,.family-chevron,.family-trust-card h3,.family-trust-card a,.home-services #features .card h3,.home-services #features .card .ic,.family-section-heading .family-kicker,.member-kicker){color:var(--gold-ink)}
+ :root[data-theme="light"] :is(.band-green,.authside,.family-footer){background:linear-gradient(145deg,#0c3025,#174738);color:var(--on-green)}
+ :root[data-theme="light"] :is(.band-green,.authside) :is(.btn-ghost,.btn-line){color:#fff5dc;border-color:#c8b279;background:#ffffff0c}
+ :root[data-theme="light"] :is(.btn-dark,.hub-tabs .btn:not([aria-pressed=true])){background:var(--green);color:#fff;border-color:var(--green)}
+ :root[data-theme="light"] :is(.btn-ghost,.btn-line,.menu-btn){background:var(--surface);color:var(--fg);border-color:var(--line)}
+ :root[data-theme="light"] :is(input,textarea)::placeholder{color:#64776c}
+ :root[data-theme="light"] :is(a,button,input,select,textarea,summary):focus-visible{outline-color:#866622}
+ :root[data-theme="light"] :is(.home-news-card,.home-news-card h3,.home-news-card p,.home-news-card .more,.home-news-card a){color:#fff5dc}
+ :root[data-theme="light"] .home-news-card{background:#123b30;border-color:#b29b65}
+ :root[data-theme="light"] .family-footer .copy a{color:#f5e6b8}
+ :root[data-theme="light"] .mobile-dock a[aria-current=page],:root[data-theme="light"] .mobile-dock a[aria-current=page] svg{color:#174738}
+ :root[data-theme="light"] .mobile-dock a[aria-current=page]{background:#e5eee5}
+ .family-theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;min-height:44px;padding:6px 12px;border:1px solid var(--glass-border,var(--line));border-radius:11px;background:var(--surface);color:var(--fg);font:600 13px var(--body);white-space:nowrap;cursor:pointer}
+ .family-theme-toggle [data-theme-icon]{font:20px/1 system-ui,sans-serif;color:var(--gold-ink)}
+ .family-theme-toggle:hover,.menu-btn:hover,.btn:not(:disabled):hover{border-color:var(--gold);filter:brightness(1.04)}
+ .btn,.btn.sm,.menu-btn{min-height:44px;border-radius:11px;justify-content:center;text-align:center;white-space:normal}
+ .btn:disabled{opacity:.55;cursor:not-allowed}
+ .topline .wrap{padding-block:3px}
+ #v-home .home-intro>.wrap{padding-block:clamp(15px,2.5vw,30px)}
+ #v-home .family-welcome{padding:clamp(12px,2vw,24px);box-shadow:none;border-radius:16px;gap:18px}
+ #v-home .family-hero-copy h1{font-size:clamp(27px,4vw,44px);margin-block:4px}
+ #v-home .family-hero-copy .greet{padding:0;border:0;background:none;margin-bottom:2px}
+ #v-home .family-description{font-size:15px;line-height:1.7}
+ .family-entry-actions{margin-top:12px}
+ #v-home .visitor-title{margin-top:16px}
+ #v-home .visitor-entry a{min-height:48px;padding:8px 10px}
+ #v-home .home-news,#v-home .home-search-entry,#v-home .home-services,.family-transparency{margin-block:16px;padding-block:0}
+ .family-utility-link{min-height:54px;box-shadow:none;padding:10px 12px}
+ .family-transparency>summary{min-height:48px;padding:10px 14px;cursor:pointer;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-weight:600;color:var(--fg)}
+ .family-transparency[open] .family-trust-grid{margin-block-start:10px}
+ #v-home .home-services #features{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+ #v-home .home-services #features .card{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;text-align:start;gap:4px 9px;padding:12px;min-height:72px;border-radius:12px;box-shadow:none}
+ #v-home .home-services #features .card .ic{grid-row:1/3;width:36px;height:36px}
+ #v-home .home-services #features .card h3{grid-column:2;font-size:15px}
+ #v-home .home-services #features .card p{grid-column:2;font-size:12px}
+ #v-home .home-services #features .card .more{grid-column:3;grid-row:1/3;margin:0;color:var(--gold-ink)}
+ .mobile-dock{display:none}
+ @media(max-width:980px){
+  header.site .wrap{gap:8px;padding-block:8px}
+  header.site:not(.tree-header) .family-theme-toggle{margin-inline-start:auto}
+  header.site .menu-btn{margin-inline-start:0}
+ }
+ @media(max-width:700px){
+  body:not(.genealogy-page){padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+  body.genealogy-page{padding-bottom:0}
+  .topline{display:none}
+  header.site:not(.tree-header) .brand-motto{display:none}
+  header.site:not(.tree-header) .brand .mark{width:40px;height:40px}
+  #v-home .family-welcome{grid-template-columns:minmax(0,1fr)}
+  #v-home .family-hero-emblem{display:none}
+  #v-home .home-services #features{grid-template-columns:1fr}
+  .family-utility{gap:8px}
+  .mobile-dock{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;position:fixed;inset:auto 0 0;height:auto;min-height:62px;padding:4px max(5px,env(safe-area-inset-right,0px)) calc(4px + env(safe-area-inset-bottom,0px)) max(5px,env(safe-area-inset-left,0px));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -3px 12px #00160f20;z-index:40}
+  .mobile-dock a{height:auto;min-height:54px;min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:4px 1px;font-size:11px;font-weight:600;color:var(--fg2);border-radius:10px;line-height:1.4}
+  .mobile-dock a svg{width:21px;height:21px;color:inherit}
+  .mobile-dock a[aria-current=page]{background:var(--band);color:var(--gold-ink)}
+  .mobile-dock a[aria-current=page] svg{color:inherit}
+ }
+ @media(max-width:360px){.family-theme-toggle{padding-inline:9px}.family-theme-toggle [data-theme-label]{display:none}.family-utility{grid-template-columns:1fr}}
+ @media(prefers-reduced-motion:reduce){.family-theme-toggle,.btn,.mobile-dock a{transition:none;transform:none}}
+}
