@@ -1,4 +1,4 @@
-(()=>{const menu=document.querySelector('.region-nav');const nav=[...menu.querySelectorAll('[data-region]')];const panels=[...document.querySelectorAll('[data-panel]')];let active='gaza';function valid(id){return panels.some(p=>p.id===id)}function select(id,scroll=false){if(!valid(id))return;active=id;panels.forEach(p=>p.hidden=p.id!==id);nav.forEach(a=>{if(a.dataset.region===id)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current')});if(scroll){const rect=menu.getBoundingClientRect();if(rect.top<8||rect.bottom>window.innerHeight)menu.scrollIntoView({block:'start',behavior:'auto'});}}function sync(scroll=false){const id=location.hash.slice(1);if(valid(id))select(id,scroll);else if(!id)select('gaza',false);}select(valid(location.hash.slice(1))?location.hash.slice(1):'gaza');nav.forEach(a=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();const id=a.dataset.region;if(location.hash!=='#'+id)history.pushState(null,'','#'+id);select(id,true);}));window.addEventListener('hashchange',()=>sync(true));window.addEventListener('popstate',()=>sync(true));let opened=[];window.addEventListener('beforeprint',()=>{opened=[...document.querySelectorAll('.sources')].filter(d=>!d.open);opened.forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>opened.forEach(d=>d.open=false));document.getElementById('print-register')?.addEventListener('click',()=>window.print());})();
+(()=>{const menu=document.querySelector('.region-nav');const nav=[...menu.querySelectorAll('[data-region]')];const panels=[...document.querySelectorAll('[data-panel]')];let active='gaza';function valid(id){return panels.some(p=>p.id===id)}function select(id,scroll=false){if(!valid(id))return;active=id;panels.forEach(p=>p.hidden=p.id!==id);nav.forEach(a=>{if(a.dataset.region===id)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current')});if(scroll){const rect=menu.getBoundingClientRect();if(rect.top<8||rect.bottom>window.innerHeight)menu.scrollIntoView({block:'start',behavior:'auto'});}}function sync(scroll=false){const id=location.hash.slice(1);if(valid(id))select(id,scroll);else if(!id)select('gaza',false);}select(valid(location.hash.slice(1))?location.hash.slice(1):'gaza');nav.forEach(a=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||e.button!==0)return;e.preventDefault();const id=a.dataset.region;if(location.hash!=='#'+id)history.pushState(null,'','#'+id);select(id,true);}));window.addEventListener('hashchange',()=>sync(true));window.addEventListener('popstate',()=>sync(true));let opened=[];window.addEventListener('beforeprint',()=>{opened=[...document.querySelectorAll('.sources')].filter(d=>!d.open);opened.forEach(d=>d.open=true)});window.addEventListener('afterprint',()=>opened.forEach(d=>d.open=false));})();
 (async()=>{
  const el=(t,p,s,c)=>{const n=document.createElement(t);if(c)n.className=c;if(s!==undefined)n.textContent=s;p.append(n);return n;};
  const regions=['gaza','westbank'];
@@ -24,5 +24,38 @@
  }
  }
  filter();
- }catch{for(const region of regions){const s=document.getElementById(region);s.querySelector('.section-count').textContent='غير متاح';const list=s.querySelector('.honor-list');list.replaceChildren();el('p',list,'تعذر تحميل السجل الحالي.');const retry=el('button',list,'إعادة المحاولة','mem-retry');retry.type='button';retry.onclick=()=>location.reload();const history=el('a',list,'فتح النسخة التاريخية الثابتة');history.href='./Barham_Martyrs_Register.html';}}
+ }catch{for(const region of regions){const s=document.getElementById(region);s.querySelector('.section-count').textContent='غير متاح';const list=s.querySelector('.honor-list');list.replaceChildren();el('p',list,'تعذر تحميل السجل الحالي.');const retry=el('button',list,'إعادة المحاولة','mem-retry');retry.type='button';retry.onclick=()=>location.reload();}}
+})();
+
+/* The public memorial keeps its anonymous data client. Only this separate
+   session client checks the portal's existing authenticated admin role. */
+(()=>{
+ const actions=document.getElementById('memorial-admin-actions');
+ if(!actions||!window.supabase)return;
+ let revision=0;
+ function hide(){actions.hidden=true;actions.replaceChildren();}
+ hide();
+ try{
+  const auth=window.supabase.createClient('https://vfxxghfmkmgdqrczeowx.supabase.co','sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+  async function verify(){
+   const token=++revision;hide();
+   try{
+    const session=await auth.auth.getSession();
+    if(session.error||!session.data.session||token!==revision)return;
+    const result=await auth.rpc('family_is_admin');
+    if(token!==revision||result.error||result.data!==true)return;
+    const link=document.createElement('a');
+    link.href='../#martyrs-admin';
+    link.textContent='إدارة السجل والصور';
+    actions.replaceChildren(link);actions.hidden=false;
+   }catch{if(token===revision)hide();}
+  }
+  auth.auth.onAuthStateChange((event,session)=>{
+   ++revision;hide();
+   if(session)setTimeout(verify,0);
+  });
+  window.addEventListener('pageshow',verify);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')verify();else{++revision;hide();}});
+  verify();
+ }catch{hide();}
 })();
