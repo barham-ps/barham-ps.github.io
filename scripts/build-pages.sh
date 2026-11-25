@@ -19,3 +19,6 @@ cp martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/admin.js 
 # Public security transparency page (no private audit details).
 mkdir -p dist/trust
 cp trust/index.html dist/trust/
+
+mkdir -p dist/.well-known
+cp .well-known/security.txt dist/.well-known/

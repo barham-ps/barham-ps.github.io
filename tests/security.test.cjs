@@ -515,3 +515,16 @@ test('public trust center uses independent evidence links and does not claim acc
  assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp trust\/index\.html dist\/trust\//);
  for(const link of page.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g))assert.match(link[0],/rel="noopener noreferrer"/);
 });
+
+test('RFC 9116 disclosure and independent evidence links are shipped without third-party scripts',()=>{
+ const s=fs.readFileSync('.well-known/security.txt','utf8');
+ assert.match(s,/^Contact: mailto:/m);
+ assert.match(s,/^Canonical: https:\/\/barham-ps\.github\.io\/\.well-known\/security\.txt$/m);
+ const expires=Date.parse(s.match(/^Expires: (.+)$/m)[1]);
+ assert.ok(Number.isFinite(expires)&&expires>Date.now(),'Renew security.txt before expiry');
+ assert.match(fs.readFileSync('_config.yml','utf8'),/include:\s*\n\s*- \.well-known/);
+ assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp \.well-known\/security\.txt dist\/\.well-known\//);
+ const page=fs.readFileSync('trust/index.html','utf8');
+ for(const host of ['crt.sh','virustotal.com','developer.mozilla.org','45637767950']) assert.ok(page.includes(host));
+ assert.doesNotMatch(page,/<script\b|<iframe\b/i);
+});

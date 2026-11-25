@@ -14,3 +14,7 @@ class MonitorTests(unittest.TestCase):
     def test_only_public_paths(self):
         self.assertTrue(all(p.startswith("/") and "#" not in p and "?" not in p for p in monitor.PAGES))
         self.assertIn("/genealogy/",monitor.PAGES)
+
+    def test_trust_evidence_monitored(self):
+        self.assertIn("/trust/", monitor.PAGES)
+        self.assertIn("/.well-known/security.txt", monitor.PAGES)
