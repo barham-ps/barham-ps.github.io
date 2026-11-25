@@ -428,6 +428,11 @@
       }
     }
   }
+  // Load the administrative editor only after the server-side authorization check.
+  async function loadMemorialModule(){
+    if(!window.mountMemorialAdmin) await import('./martyrs/admin.js?v=3');
+    if(typeof window.mountMemorialAdmin!=='function') throw Error('Editor unavailable');
+  }
   async function loadPublicCMS(){
     cms.hidden=true;cms.replaceChildren();
     const auth=await client().rpc('family_is_admin');if(auth.error||auth.data!==true)return;
@@ -436,7 +441,9 @@
     dashboardLink(contentLinks,'#news-admin','الأخبار والإعلانات','تحرير ونشر الأخبار','news');
     dashboardLink(contentLinks,'#martyrs-admin','سجل الشهداء والصور','إدارة الأسماء والمعارض','heart');
     const privateLink=dashboardLink(contentLinks,'#member-services-admin','الأرشيف والمناسبات الخاصة','مواد مخصصة للأعضاء','archive');privateLink.dataset.adminService='content';
-    if(window.mountMemorialAdmin)window.mountMemorialAdmin(cms,client);
+    const editorSlot=make('div',cms);
+    const openEditor=make('button',editorSlot,'فتح محرر سجل الشهداء');openEditor.type='button';openEditor.className='btn btn-ghost';
+    openEditor.onclick=async()=>{openEditor.disabled=true;try{const a=await client().rpc('family_is_admin');if(a.error||a.data!==true||!editorSlot.isConnected)return;await loadMemorialModule();if(!editorSlot.isConnected||cms.hidden||location.hash!=='#admin')return;editorSlot.replaceChildren();window.mountMemorialAdmin(editorSlot,client,true);}catch{if(editorSlot.isConnected)openEditor.textContent='تعذر التحميل، أعد المحاولة';}finally{openEditor.disabled=false;}};
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
     const msg=make('p',cms);msg.setAttribute('role','status');const sectionLabel=make('label',cms,'القسم المراد تحريره');sectionLabel.className='f';const section=make('select',sectionLabel);
     for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}
@@ -1957,7 +1964,8 @@
       const q=await client().rpc('family_is_admin');
       if(token!==memorialEditorEpoch||location.hash!=='#martyrs-admin')return;
       if(q.error||q.data!==true){status.textContent='هذه الصفحة للإدارة المعتمدة بعد التحقق الثنائي.';return;}
-      if(!window.mountMemorialAdmin){status.textContent='تعذر تحميل محرر السجل. حدّث الصفحة.';return;}
+      await loadMemorialModule();
+      if(token!==memorialEditorEpoch||location.hash!=='#martyrs-admin')return;
       memorialEditorBody.replaceChildren();window.mountMemorialAdmin(memorialEditorBody,client,true);
     }catch{if(token===memorialEditorEpoch&&location.hash==='#martyrs-admin')status.textContent='تعذر الاتصال بالخدمة. حدّث الصفحة.';}
   }
@@ -2076,6 +2084,8 @@
     g.className = 'news-gallery' + (cover ? ' news-cover' : '');
     g.dataset.count = String(paths.length);
     var urls = [];
+    const reduced=window.familyRuntime?.lowData()===true || navigator.onLine===false;
+    if(reduced)g.hidden=true;
     var items = paths.map((path, i) => {
       var a = make('button', g);
       a.type = 'button';
@@ -2116,7 +2126,10 @@
       g.replaceChildren();
       make('p', g, 'تعذر تحميل الصور.');
     });
-    nearViewport(g, load, parent.classList.contains('home-news-card'));
+    if(reduced){
+      const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
+      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
+    }else nearViewport(g, load, parent.classList.contains('home-news-card'));
   }
 
   async function loadPublicNews() {
@@ -3451,7 +3464,7 @@
 
 ;
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=31').catch(() => {});
+  navigator.serviceWorker.register('./sw.js?v=32').catch(() => {});
 }
 let installPrompt;
 window.addEventListener('beforeinstallprompt', e => {

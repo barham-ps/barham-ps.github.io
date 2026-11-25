@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/release_verify.py'
+      - 'scripts/protocol_probe.sh'
+      - 'runtime.js'
       - '.github/workflows/live-release-evidence.yml'
   workflow_dispatch:
 permissions:
@@ -35,6 +37,9 @@ jobs:
       - name: Read public compression evidence
         if: always()
         run: python3 scripts/edge_probe.py --host barham-ps.github.io
+      - name: Verify Brotli body and HTTP3 evidence
+        if: always()
+        run: bash scripts/protocol_probe.sh
   local-static-baseline:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest

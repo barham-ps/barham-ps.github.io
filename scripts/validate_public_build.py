@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 
 ALLOWED = frozenset("""
-index.html portal.js footer.js portal.css icon.svg favicon.png barham-emblem.webp
+index.html portal.js runtime.js footer.js portal.css icon.svg favicon.png barham-emblem.webp
 manifest.webmanifest sw.js security-config.js captcha.js _headers robots.txt sitemap.xml
 public.css 404.html about/index.html history/index.html membership/index.html
 en/index.html en/history/index.html en/membership/index.html
