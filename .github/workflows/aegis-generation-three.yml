@@ -67,7 +67,10 @@ jobs:
           getent ahosts "$host" | sort -u
           timeout 20 openssl s_client -connect "$host:443" -servername "$host" -verify_hostname "$host" -verify_return_error </dev/null > "$RUNNER_TEMP/aegis-tls.txt" 2>&1
           openssl x509 -in "$RUNNER_TEMP/aegis-tls.txt" -noout -dates -checkend 604800
-          curl --fail --silent --show-error --max-time 20 --head "https://$host/" | grep -Ei '^(HTTP/|strict-transport-security:|content-security-policy:|x-content-type-options:)' || true
+          curl --fail --silent --show-error --max-time 20 --head "https://$host/" > "$RUNNER_TEMP/aegis-headers.txt"
+          grep -Ei '^(HTTP/|strict-transport-security:|content-security-policy:|x-content-type-options:)' "$RUNNER_TEMP/aegis-headers.txt"
+          getent ahosts "$host" | awk '{print $1}' | sort -u > "$RUNNER_TEMP/aegis-dns.txt"
+          test -s "$RUNNER_TEMP/aegis-dns.txt"
       - name: Blackbox and Omega - hash chained evidence and local decision
         if: always()
         env:
@@ -111,5 +114,8 @@ jobs:
         if: always()
         with:
           name: aegis-generation-three-evidence
-          path: ${{ runner.temp }}/aegis-evidence.json
+          path: |
+            ${{ runner.temp }}/aegis-evidence.json
+            ${{ runner.temp }}/aegis-dns.txt
+            ${{ runner.temp }}/aegis-headers.txt
           retention-days: 30
