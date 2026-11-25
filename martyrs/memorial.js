@@ -2,6 +2,7 @@
 (async()=>{
  const el=(t,p,s,c)=>{const n=document.createElement(t);if(c)n.className=c;if(s!==undefined)n.textContent=s;p.append(n);return n;};
  const regions=['gaza','westbank'];
+ function showPhoto(url,caption){const d=el('dialog',document.body,undefined,'memorial-photo-dialog');const close=el('button',d,'إغلاق ×');close.type='button';close.onclick=()=>d.close();const im=el('img',d);im.src=url;im.alt=caption;el('p',d,caption);d.addEventListener('close',()=>d.remove(),{once:true});d.showModal();close.focus();}
  try{
  const c=window.supabase.createClient('https://vfxxghfmkmgdqrczeowx.supabase.co','sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'memorial-public-only'}});
  const r=await c.from('family_martyrs').select('id,region,full_name,date_label,place,age_label,narrative,featured_caption,sort_order,sources').eq('published',true).order('sort_order').order('id');if(r.error)throw r.error;
@@ -9,12 +10,13 @@
  for(const [i,row] of rows.entries()){
  const article=el('article',list,undefined,'honor-record'+(row.featured_caption?' featured':''));el('div',article,new Intl.NumberFormat('ar',{minimumIntegerDigits:2}).format(i+1),'record-index').setAttribute('aria-hidden','true');const body=el('div',article,undefined,'record-content'),title=el('div',body,undefined,'record-title');
  if(row.featured_caption)el('span',title,row.featured_caption,'featured-caption');el('h3',title,row.full_name);if(row.date_label)el('time',title,row.date_label);const meta=el('div',body,undefined,'record-meta');if(row.place)el('span',meta,row.place);if(row.age_label)el('span',meta,row.age_label);if(row.narrative)el('p',body,row.narrative);if(row.sources){const d=el('details',body,undefined,'sources');el('summary',d,'المصادر والملاحظات');el('p',d,row.sources);}
- const d=el('details',body,undefined,'martyr-gallery');el('summary',d,'معرض الصور');const grid=el('div',d,undefined,'martyr-photos');let loaded=false;
- d.addEventListener('toggle',async()=>{if(!d.open||loaded)return;loaded=true;grid.replaceChildren();el('p',grid,'جارٍ التحميل…');try{
- const p=await c.from('family_martyr_photos').select('object_path,caption,position').eq('martyr_id',row.id).eq('published',true).order('position').limit(30);if(p.error)throw p.error;grid.replaceChildren();if(!p.data.length){el('p',grid,'لا توجد صور منشورة.');return;}
+ const d=el('details',body,undefined,'martyr-gallery');el('summary',d,'معرض الصور');const grid=el('div',d,undefined,'martyr-photos');let loadedUntil=0,loading=false;
+ d.addEventListener('toggle',async()=>{if(!d.open||loading||Date.now()<loadedUntil)return;loading=true;grid.replaceChildren();el('p',grid,'جارٍ التحميل…');try{
+ const p=await c.from('family_martyr_photos').select('object_path,caption,position').eq('martyr_id',row.id).eq('published',true).order('position').limit(30);if(p.error)throw p.error;grid.replaceChildren();if(!p.data.length){el('p',grid,'لا توجد صور منشورة.');loadedUntil=Date.now()+30000;return;}
  const bucket=c.storage.from('family-martyr-photos'), signed=await bucket.createSignedUrls(p.data.map(x=>x.object_path),300);if(signed.error)throw signed.error;
- for(const photo of p.data){const url=signed.data.find(x=>x.path===photo.object_path)?.signedUrl;if(!url)continue;const fig=el('figure',grid),a=el('a',fig);a.href=url;a.target='_blank';a.rel='noopener noreferrer';const im=el('img',a);im.alt=photo.caption||('صورة '+row.full_name);im.src=url;im.loading='lazy';im.decoding='async';if(photo.caption)el('figcaption',fig,photo.caption);}
- }catch{grid.replaceChildren();el('p',grid,'تعذر تحميل الصور. أغلق المعرض وأعد فتحه.');loaded=false;}});
+ for(const [index,photo] of p.data.entries()){const url=signed.data.find(x=>x.path===photo.object_path)?.signedUrl;if(!url)continue;const fig=el('figure',grid,undefined,index===0?'gallery-cover':undefined),a=el('a',fig);a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.addEventListener('click',async e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();const fresh=await bucket.createSignedUrl(photo.object_path,120);if(!fresh.error)showPhoto(fresh.data.signedUrl,photo.caption||row.full_name);else{grid.replaceChildren();el('p',grid,'الصورة غير متاحة الآن. أغلق المعرض وأعد فتحه.');loadedUntil=0;}});const im=el('img',a);im.alt=photo.caption||('صورة '+row.full_name);im.src=url;im.loading='lazy';im.decoding='async';if(photo.caption)el('figcaption',fig,photo.caption);}
+ loadedUntil=Date.now()+240000;
+ }catch{grid.replaceChildren();el('p',grid,'تعذر تحميل الصور. أغلق المعرض وأعد فتحه.');loadedUntil=0;}finally{loading=false;}});
  }
  }
  }catch{for(const region of regions){const s=document.getElementById(region);s.querySelector('.section-count').textContent='غير متاح';s.querySelector('.honor-list').textContent='تعذر تحميل السجل الحالي. حاول مجددًا.';}}

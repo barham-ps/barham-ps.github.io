@@ -120,10 +120,11 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="footer-signature"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
-  assert.equal(scripts.length,4);
+  assert.equal(scripts.length,5);
   assert.ok(scripts.every(x => x[0].includes('defer')));
   assert.ok(scripts[0][1].includes('supabase'));
-  assert.ok(scripts[3][1].includes('portal.js'));
+  assert.ok(scripts[3][1].includes('martyrs/admin.js'));
+  assert.ok(scripts[4][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);
   assert.match(css,/prefers-reduced-motion/);
