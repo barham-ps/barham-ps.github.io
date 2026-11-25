@@ -15,9 +15,19 @@ const base='http://127.0.0.1:8765/';
     await open('#'+route);await visible('#v-'+route);
     await noOverflow(route);
    }
-   await open('#home');await visible('#features');assert.deepEqual(await page.locator('#features > a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#heritage','#news','./martyrs/','#community','#membership']);
+   await open('#home');await visible('#features');assert.deepEqual(await page.locator('#features > a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#heritage','#community','#membership']);
    assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history','./martyrs/']);
    assert.ok(await page.locator('.visitor-entry a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
+   await visible('[data-family-theme]');
+   await page.emulateMedia({colorScheme:'light'});
+   await page.evaluate(()=>{localStorage.removeItem('barham-appearance-v1');});await page.reload();await visible('[data-family-theme]');
+   assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+   const glass=()=>page.locator('#features > a').first().evaluate(e=>({bg:getComputedStyle(e).backgroundColor,opacity:getComputedStyle(e).opacity}));
+   assert.deepEqual(await glass(),{bg:'rgba(18, 61, 49, 0.74)',opacity:'1'});
+   await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
+   assert.deepEqual(await glass(),{bg:'rgba(255, 253, 248, 0.74)',opacity:'1'});
+   await page.reload();await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+   if(width<=700){await visible('.mobile-dock');assert.equal(await page.locator('.mobile-dock a').count(),5);assert.equal(await page.locator('.mobile-dock a[aria-current=page]').getAttribute('href'),'#home');assert.equal(await page.locator('[data-dock-route=account]').getAttribute('href'),'#login');}
    await visible('.family-welcome');await visible('#family-primary-entry');await visible('#family-join-entry');
    assert.equal(await page.locator('#family-primary-entry').getAttribute('href'),'#login');
    assert.equal(await page.locator('#family-join-entry').getAttribute('href'),'#register');
@@ -34,7 +44,7 @@ const base='http://127.0.0.1:8765/';
    for(const slug of ['about','history','membership','en','en/history','en/membership']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
-   await open('martyrs/');await visible('#gaza');await visible('#memorial-search');
+   await open('martyrs/');await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await visible('#gaza');await visible('#memorial-search');
    await page.locator('#memorial-search').fill('اختبار');await noOverflow('memorial search');
    await page.locator('#memorial-search').clear();
    assert.equal(await page.locator('#westbank').isVisible(),false);
@@ -53,7 +63,7 @@ const base='http://127.0.0.1:8765/';
    await page.locator('#v-verify input').press('Enter');
    assert.match(await page.locator('#v-verify .verify-result').textContent(),/أدخل رقم العضوية/);
    await noOverflow('verification');
-   await open('genealogy/');await visible('#visual-panel');
+   await open('genealogy/');await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await visible('#visual-panel');
    assert.equal(await page.locator('#family-tree .branch').count(),367);
    assert.equal(await page.locator('#focus-title').textContent(),'عائلة برهم');
    await page.locator('.chart-children .visual-card').first().click();

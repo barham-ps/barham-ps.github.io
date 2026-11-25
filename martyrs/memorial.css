@@ -169,3 +169,33 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
   .region-nav a {font-size:.9rem;padding-inline:9px}
   .region-nav a svg {display:none}
 }
+
+/* V10: keep the memorial's distinct identity in both reading modes. */
+@media screen{
+ .family-theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;min-width:44px;border:1px solid var(--edge);border-radius:10px;background:var(--navy);color:var(--ivory);font:600 13px/1.4 'IBM Plex Sans Arabic',sans-serif;padding:6px 10px;cursor:pointer}
+ .family-theme-toggle [data-theme-icon]{font-size:20px;line-height:1;color:var(--gold)}
+ :root[data-theme="light"]{color-scheme:light;--night:#f6f3ec;--navy:#fffdf8;--gold:#795a27;--gold-light:#735621;--muted:#536071;--ivory:#253448;--edge:#c7c1b0;--glass:#fffdf8;--control-text:#253448;--control-line:#c7c1b0;--control-hover:#e9e6dc}
+ :root[data-theme="light"] body{background:#f6f3ec;color:var(--ivory)}
+ :root[data-theme="light"] :is(.mem-top,.hero-frame,.mem-footer,.memorial-photo-dialog,.memorial-photo-dialog button){background:var(--navy);color:var(--ivory);box-shadow:none;backdrop-filter:none}
+ :root[data-theme="light"] :is(h1,.hero-sub,.verse span,.mem-period,.record-content p,.featured h3,.mem-note p,.region-nav a,.region-nav a[aria-current="true"],.sources summary::after,.martyr-gallery summary::after,.mem-search input){color:var(--ivory);text-shadow:none}
+ :root[data-theme="light"] .region-nav a[aria-current="true"]{background:#eae6d8;border-color:var(--gold)}
+ :root[data-theme="light"] .region-nav a svg{color:var(--gold)}
+ :root[data-theme="light"] .mem-search input{background:var(--navy)}
+ :root[data-theme="light"] .mem-search input::placeholder{color:var(--muted)}
+ :root[data-theme="light"] :is(a,button,summary,input):focus-visible{outline-color:var(--gold)}
+ @media(max-width:500px){.top-inner{padding-inline:12px;gap:6px;flex-wrap:wrap}.mem-brand{gap:7px}.mem-brand img{width:36px;height:36px}.family-theme-toggle [data-theme-label]{display:none}}
+}
+
+/* V11 — medium glass for both memorial reading modes, preserving the navy/gold identity. */
+@media screen{
+ :root{--mem-glass:rgba(17,26,44,.74);--mem-chrome:rgba(8,11,19,.76)}
+ :root[data-theme="light"]{--mem-glass:rgba(255,253,248,.74);--mem-chrome:rgba(255,253,248,.76)}
+ :root[data-theme="light"] body{background:radial-gradient(ellipse at 10% 12%,#e1e7ef,transparent 55%),radial-gradient(ellipse at 95% 60%,#e9dfca,transparent 48%),#f6f3ec}
+ @supports ((backdrop-filter:blur(10px)) or (-webkit-backdrop-filter:blur(10px))){
+  :root[data-theme] :is(.hero-frame,.honor-record,.honor-record:last-child,.mem-note){background:var(--mem-glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  :root[data-theme] .mem-top{background:var(--mem-chrome);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ }
+ @media(prefers-reduced-transparency:reduce){
+  :root[data-theme] :is(.hero-frame,.honor-record,.honor-record:last-child,.mem-note,.mem-top){background:var(--navy);backdrop-filter:none;-webkit-backdrop-filter:none}
+ }
+}
