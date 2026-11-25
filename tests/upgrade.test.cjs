@@ -149,7 +149,7 @@ test('Palestine greeting uses exactly three phrases and updates without exposing
 test('V73 theme and compact navigation preserve routes and private controls',()=>{
  const html=read('index.html'),js=read('portal.js'),css=read('portal.css'),theme=read('footer.js');
  const vm=require('node:vm');assert.doesNotThrow(()=>new vm.Script(theme));assert.doesNotThrow(()=>new vm.Script(js));
- assert.match(html,/data-family-theme hidden/);assert.match(css,/:root\[data-theme="light"\]/);assert.match(css,/repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(html,/data-family-theme disabled/);assert.match(css,/:root\[data-theme="light"\]/);assert.match(css,/repeat\(5,minmax\(0,1fr\)\)/);
  assert.match(js,/dockAccount\.href = session \? '#account' : '#login'/);
  assert.doesNotMatch(html,/<details class="wrap family-transparency">/);
  assert.match(theme,/barham-appearance-v1/);

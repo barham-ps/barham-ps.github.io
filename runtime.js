@@ -44,7 +44,15 @@
     node.textContent='قياس محلي لهذه الزيارة فقط — LCP: '+lcp+'؛ CLS: '+cls+'؛ أخطاء المتصفح: '+metrics.errors+'؛ العمليات المرفوضة غير المعالجة: '+metrics.rejections+'. لا تُرسل هذه البيانات إلى أي خادم.';
     node.hidden=false;
   });
-  render();
+  // Webfonts are noncritical for the static home shell. Load only on a secondary route, never in data-saving mode.
+  function loadRouteFonts(){
+    const hash=location.hash;
+    if(!hash||hash==='#home'||lowData()||document.getElementById('route-fonts'))return;
+    const link=document.createElement('link');link.id='route-fonts';link.rel='stylesheet';link.href='https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=optional';document.head.appendChild(link);
+  }
+  window.addEventListener('hashchange',loadRouteFonts);
+  window.addEventListener('family-network-change',loadRouteFonts);
+  render();loadRouteFonts();
   if(toggle)toggle.disabled=false;
   const diagnosticButton=document.getElementById('local-diagnostics');
   if(diagnosticButton)diagnosticButton.disabled=false;

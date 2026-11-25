@@ -122,11 +122,15 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,6);
   assert.ok(scripts.every(x => x[0].includes('defer')));
-  assert.ok(scripts[0][1].includes('supabase'));
-  assert.ok(scripts[3][1].includes('runtime.js'));
+  assert.ok(scripts[0][1].includes('security-config.js'));
+  assert.ok(scripts[4][1].includes('supabase'));
+  assert.match(html, /<nav class="main" id="nav"[^>]*><a /);
+  assert.match(html, /<nav class="mobile-dock"[^>]*><a /);
+  assert.doesNotMatch(html, /<link[^>]*rel="stylesheet"[^>]*fonts\.googleapis/);
+  assert.ok(scripts[2][1].includes('runtime.js'));
   assert.ok(!scripts.some(x=>x[1].includes('martyrs/admin.js')));
   assert.match(js,/await import\('\.\/martyrs\/admin\.js\?v=3'\)/);
-  assert.ok(scripts[4][1].includes('footer.js'));
+  assert.ok(scripts[3][1].includes('footer.js'));
   assert.ok(scripts[5][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);

@@ -53,4 +53,5 @@
   });
   apply();
   button.hidden=false;
+  button.disabled=false;
 })();
