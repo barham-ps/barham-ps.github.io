@@ -368,3 +368,19 @@ test('Gaza timestamps distinguish original certificate issuance and exported cop
  assert.match(js,/تاريخ ووقت إعداد النسخة/);
  assert.match(js,/directory-signature/);
 });
+
+test('download PDF is a byte-correct local file and retry links are revoked',async()=>{
+ const source=js.slice(js.indexOf('function jpegPdf('),js.indexOf('function certificatePdf('));
+ const pdf=vm.runInNewContext(source+';jpegPdf',{Blob,TextEncoder});
+ const file=pdf(new Uint8Array([255,216,255,217]),1240,1754);
+ assert.equal(file.type,'application/pdf');
+ const data=Buffer.from(await file.arrayBuffer()),str=data.toString('latin1');
+ assert.ok(str.startsWith('%PDF-1.4'));
+ const start=Number(str.match(/startxref\n(\d+)/)[1]);assert.equal(str.slice(start,start+4),'xref');
+ const rows=str.slice(start).split('\n').slice(3,8);
+ rows.forEach((row,i)=>assert.equal(str.slice(Number(row.slice(0,10)),Number(row.slice(0,10))+7),(i+1)+' 0 obj'));
+ assert.match(js,/تنزيل الشهادة PDF/);
+ assert.match(js,/saveDownload\(certificatePdf\(box\)/);
+ assert.match(js,/window\.addEventListener\('hashchange',clearDownloads\)/);
+ assert.match(js,/clearDownloads\(\);\n    \$\('#change-password'\)/);
+});
