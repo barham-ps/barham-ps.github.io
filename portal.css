@@ -1253,3 +1253,11 @@ html{padding-block:0!important;scroll-padding-top:0}
  @media(prefers-reduced-transparency:reduce){:root #v-home .family-welcome{background:#123b30}:root #v-home .home-news-card{background:#123b30}:root[data-theme] :is(header.site,.mobile-dock){background:var(--surface)}}
  html[data-low-data=true] #v-home .family-welcome{background-color:#123b30;background-image:none}
 }
+
+/* V84: avoid initial decorative animation and stabilize public shell without changing the palette. */
+@media screen{
+ #v-home .home-intro::after{animation:none!important}
+ #v-home .family-hero-copy .greet{min-block-size:1.7em;max-inline-size:100%;line-height:1.7}
+ #home-latest-news{overflow-anchor:none}
+ #home-latest-news .news-gallery-item{aspect-ratio:16/10;min-width:0}
+}

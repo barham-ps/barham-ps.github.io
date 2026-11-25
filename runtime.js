@@ -1,6 +1,31 @@
 /* No telemetry transport, cookies, identifiers, URL collection or error text. */
 (function(){
   'use strict';
+  // Paint-time greeting, independent of the remote account SDK.
+  function familyGreeting(now) {
+    var hour = Number(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Gaza', hour: '2-digit', hourCycle: 'h23'
+    }).format(now));
+    return (hour >= 5 && hour < 12 ? 'صباح الخير' :
+      hour >= 12 && hour < 17 ? 'نهارك سعيد' : 'مساء الخير') + '، أهلًا بك في بيتنا';
+  }
+  function updateFamilyGreeting() {
+    var greet = document.getElementById('greet');
+    if (!greet) return;
+    try {
+      var message = familyGreeting(new Date());
+      if (greet.textContent !== message) greet.textContent = message;
+    } catch (error) {
+      greet.textContent = 'أهلًا بك في بيتنا';
+    }
+  }
+  updateFamilyGreeting();
+  window.setInterval(updateFamilyGreeting, 15000);
+  window.addEventListener('pageshow', updateFamilyGreeting);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) updateFamilyGreeting();
+  });
+
   const preferenceKey='barham-low-data-v1';
   const connection=navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   let choice=null;
@@ -33,7 +58,21 @@
   window.addEventListener('online',update);
   window.addEventListener('offline',update);
   try { if(connection && typeof connection.addEventListener==='function') connection.addEventListener('change',update); } catch {}
-  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false});
+  // Public anonymous read only. RLS still applies; do not persist, cache, or forward auth tokens.
+  let initialNews=null;
+  const home=location.hash===''||location.hash==='#home';
+  if(home&&navigator.onLine!==false){
+    const url=new URL('https://vfxxghfmkmgdqrczeowx.supabase.co/rest/v1/family_news');
+    url.search=new URLSearchParams({select:'id,title,body,category,image_path,image_paths,cover_paths,created_at',published:'eq.true',order:'created_at.desc',limit:'1'}).toString();
+    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),5000);
+    initialNews=fetch(url,{method:'GET',headers:{apikey:'sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',Accept:'application/json'},credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal}).then(async response=>{
+      if(!response.ok)throw Error('Public news unavailable');
+      const rows=await response.json();if(!Array.isArray(rows)||rows.length>1||rows.some(r=>!r||typeof r.id!=='string'||typeof r.title!=='string'||typeof r.body!=='string'))throw Error('Invalid public news');
+      return rows;
+    }).catch(()=>null).finally(()=>clearTimeout(timeout));
+  }
+  function takeInitialNews(){const pending=initialNews;initialNews=null;return pending;}
+  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false,takeInitialNews});
   const toggle=document.getElementById('bandwidth-toggle');
   toggle?.addEventListener('click',()=>{choice=lowData()?'off':'on';try{localStorage.setItem(preferenceKey,choice);}catch{}update();});
   document.getElementById('local-diagnostics')?.addEventListener('click',()=>{

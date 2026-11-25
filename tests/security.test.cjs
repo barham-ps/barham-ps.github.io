@@ -607,3 +607,15 @@ test('balanced glass changes only surface alpha and preserves accessible fallbac
  assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
 });
+
+
+test('early public news request is anonymous, RLS-filtered, bounded and not persisted',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/\/rest\/v1\/family_news/);
+ assert.match(runtime,/published:'eq.true',order:'created_at.desc',limit:'1'/);
+ assert.match(runtime,/credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer'/);
+ assert.match(runtime,/setTimeout\(\(\)=>controller.abort\(\),5000\)/);
+ assert.match(runtime,/initialNews=null;return pending/);
+ assert.match(js,/if\(rows===null\)/);
+ assert.match(js,/if\(epoch!==newsEpoch\|\|\(location.hash\|\|'#home'\)!==hash\)return/);
+});
