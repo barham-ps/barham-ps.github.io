@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   const config = window.FAMILY_SECURITY_CONFIG || {};
+  const conflictingProviders = Boolean(config.hcaptchaSiteKey && config.turnstileSiteKey);
   const provider = config.hcaptchaSiteKey ? 'hcaptcha' : 'turnstile';
   const key = config.hcaptchaSiteKey || config.turnstileSiteKey || '';
   const getApi = () => window[provider];
@@ -20,6 +21,7 @@
     return loading;
   }
   async function prepare(form) {
+    if (conflictingProviders) throw Error('Invalid CAPTCHA configuration');
     if (!key || !form || states.has(form)) return;
     const state = { id: null, token: '', ready: null };
     states.set(form, state);
@@ -31,13 +33,16 @@
         sitekey: key, theme: provider === 'hcaptcha' ? 'light' : 'auto', ...(provider === 'turnstile' ? {language:'ar'} : {}),
         callback: token => { state.token = token; },
         'expired-callback': () => { state.token = ''; },
-        'error-callback': () => { state.token = ''; }
+        'error-callback': () => { state.token = ''; },
+        'timeout-callback': () => { state.token = ''; }
       });
     });
     try { await state.ready; } catch (e) { container.remove(); states.delete(form); throw e; }
   }
   async function token(form) {
+    if (conflictingProviders) throw Error('Invalid CAPTCHA configuration');
     if (!key) return undefined;
+    if (!form) throw Error('CAPTCHA form unavailable');
     await prepare(form);
     const state = states.get(form);
     await state.ready;

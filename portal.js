@@ -1024,8 +1024,10 @@
       if (loginPasskey.disabled) return;
       loginPasskey.disabled = true;
       try {
-        const z = await client().auth.signInWithPasskey();
-        if (z.error) throw z.error;
+        const auth = client().auth;
+        if (typeof auth.signInWithPasskey !== 'function') throw Error('Passkey SDK unavailable');
+        const z = await auth.signInWithPasskey();
+        if (z.error || !z.data?.session) throw z.error || Error('No verified session');
         location.hash = 'account';
       } catch (_) { show('#l-msg', 'تعذر الدخول بمفتاح المرور. يمكنك الدخول بالطريقة المعتادة.', 1); }
       finally { loginPasskey.disabled = false; }
@@ -1037,7 +1039,11 @@
       try {
         const level = ok(await client().auth.mfa.getAuthenticatorAssuranceLevel());
         if (level.nextLevel === 'aal2' && level.currentLevel !== 'aal2') { location.hash = 'mfa'; return; }
-        const z = await client().auth.registerPasskey();
+        const auth = client().auth;
+        const verified = await auth.getUser();
+        if (verified.error || !verified.data.user?.email_confirmed_at || verified.data.user.is_anonymous === true) throw Error('Confirmed identity required');
+        if (typeof auth.registerPasskey !== 'function') throw Error('Passkey SDK unavailable');
+        const z = await auth.registerPasskey();
         if (z.error) throw z.error;
         alert('تم تسجيل مفتاح المرور. احتفظ بطريقة استعادة الحساب.');
       } catch (_) { alert('تعذر تسجيل مفتاح المرور. تحقق من إعدادات المصادقة والجهاز.'); }

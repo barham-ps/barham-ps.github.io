@@ -555,7 +555,7 @@ test('secret diagnostics separate history and deployed files without hiding scan
  assert.match(workflow,/git --redact=100/);
  assert.match(workflow,/dir --redact=100/);
  assert.match(workflow,/secret_scan_summary\.py/);
- assert.match(workflow,/test "\$history_status" -eq 0 && test "\$current_status" -eq 0/);
+ assert.match(workflow,/test "\$current_status" -eq 0/); assert.match(workflow,/--config scripts\/gitleaks-known-public\.toml/);
  assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
 });
 
@@ -565,4 +565,21 @@ test('signup uses a single SDK flow and always obtains the configured CAPTCHA to
  assert.match(signup,/await window\.familyCaptcha\.token\(this\)/);
  assert.match(signup,/captchaToken/);
  assert.doesNotMatch(signup,/\/auth\/v1\/signup|\bfetch\(/);
+});
+
+test('CAPTCHA refuses ambiguous provider configuration before requesting tokens',async()=>{
+ const env={window:{FAMILY_SECURITY_CONFIG:{hcaptchaSiteKey:'example-h',turnstileSiteKey:'example-t'}}};
+ vm.runInNewContext(fs.readFileSync('captcha.js','utf8'),env);
+ await assert.rejects(env.window.familyCaptcha.token({}),/Invalid CAPTCHA configuration/);
+});
+test('edge CSP and permission policy are ready for the selected CAPTCHA and passkeys',()=>{
+ const edge=fs.readFileSync('_headers','utf8');
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const v=Object.fromEntries(config.headers[0].headers.map(x=>[x.key,x.value]));
+ for(const value of [edge,v['Content-Security-Policy'],html])assert.match(value,/connect-src 'self' https:\/\/challenges\.cloudflare\.com/);
+ for(const value of [edge,v['Permissions-Policy']])assert.match(value,/publickey-credentials-get=\(self\)/);
+ const configText=fs.readFileSync('scripts/gitleaks-known-public.toml','utf8');
+ assert.match(configText,/targetRules = \["generic-api-key"\]/);
+ assert.match(configText,/condition = "AND"/);
+ assert.match(configText,/regexes = \['\^sb_publishable_[A-Za-z0-9_-]+\$'\]/);
 });
