@@ -854,3 +854,8 @@ html{padding-block:0!important;scroll-padding-top:0}
 .brand .mark.family-emblem{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
 .brand .mark.family-emblem img{display:block;width:100%;height:100%;object-fit:contain}
 .footer-seal img{display:block;width:56px;height:56px;object-fit:contain}
+
+/* V55: automatic month beneath the existing gold English wordmark. */
+.family-footer .footer-date{display:flex;align-items:center;justify-content:center;gap:11px;color:#d3b77c;font:500 clamp(11px,2.6vw,13px)/1.5 Georgia,'Times New Roman',serif;letter-spacing:.23em;text-transform:uppercase}
+.family-footer .footer-date::before,.family-footer .footer-date::after{content:"";width:clamp(20px,5vw,34px);height:1px;background:linear-gradient(90deg,transparent,#bda166)}
+.family-footer .footer-date::after{transform:scaleX(-1)}

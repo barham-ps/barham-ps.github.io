@@ -117,7 +117,7 @@ test('password exposure screen sends only the padded hash prefix and rejects kno
 
 test('release keeps footer identity and deferred scripts in dependency order', () => {
   assert.match(html, /class="footer-wordmark" lang="ar">آل برهم/);
-  assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham 2026/);
+  assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="footer-signature"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,4);
@@ -383,4 +383,18 @@ test('download PDF is a byte-correct local file and retry links are revoked',asy
  assert.match(js,/saveDownload\(certificatePdf\(box\)/);
  assert.match(js,/window\.addEventListener\('hashchange',clearDownloads\)/);
  assert.match(js,/clearDownloads\(\);\n    \$\('#change-password'\)/);
+});
+
+test('footer automatically changes month and year at Gaza calendar boundaries',()=>{
+ const source=js.slice(js.indexOf('function footerDateParts('),js.indexOf('function updateFooterDate('));
+ const parts=vm.runInNewContext(source+';footerDateParts');
+ const before=parts(new Date('2026-12-31T21:59:59Z'));
+ const after=parts(new Date('2026-12-31T22:00:00Z'));
+ assert.equal(before.year,'2026');assert.equal(before.month,'December');assert.equal(before.iso,'2026-12');
+ assert.equal(after.year,'2027');assert.equal(after.month,'January');assert.equal(after.iso,'2027-01');
+ assert.equal(parts(new Date('2027-01-31T22:00:00Z')).month,'February');
+ assert.equal((html.match(/data-footer-year/g)||[]).length,2);
+ assert.match(html,/<time id="footer-month" datetime="\d{4}-\d{2}">/);
+ assert.match(js,/setInterval\(updateFooterDate,30000\)/);
+ assert.match(js,/visibilitychange/);
 });
