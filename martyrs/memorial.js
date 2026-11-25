@@ -1,0 +1,1 @@
+document.getElementById('print-register')?.addEventListener('click',()=>window.print());
