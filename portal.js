@@ -987,6 +987,26 @@
     make('p', card, 'تُعرض المواعيد بتوقيت غزة. هذه القائمة للأعضاء المعتمدين فقط.');
   }
 
+  const requestFilesBucket='family-request-files';
+  async function prepareRequestFile(file){
+    if(!file)return null;
+    if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)||file.size>10485760)throw Error('اختر صورة أو PDF بحجم لا يتجاوز ١٠ ميجابايت.');
+    return checkArchiveFile(file);
+  }
+  async function uploadRequestFile(row,uid,file){
+    return ok(await client().storage.from(requestFilesBucket).upload(uid+'/'+row.id,file,{contentType:file.type,upsert:false}));
+  }
+  function requestDownload(parent,row,uid){
+    action(parent,'تنزيل المرفق',async function(){
+      this.disabled=true;
+      try{
+        const file=ok(await client().storage.from(requestFilesBucket).download(uid+'/'+row.id));
+        const ext=file.type==='application/pdf'?'.pdf':file.type==='image/jpeg'?'.jpg':'.bin';
+        const url=URL.createObjectURL(file),link=document.createElement('a');link.href=url;link.download='albarham-request-'+row.id+ext;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+      }catch(e){alert('المرفق غير متاح أو لم يكتمل رفعه. تحقق من صلاحية الوصول.');}
+      finally{this.disabled=false;}
+    });
+  }
   async function loadHub() {
     hubNavigate=null;
     hubBody.replaceChildren();
@@ -1297,12 +1317,16 @@
             rb = field(rf, 'التفاصيل', 'body', 'textarea', 3000);
           rt.required = rb.required = true;
           rt.minLength = 3; rb.minLength = 5;
+          const attachment=field(rf,'مرفق اختياري (صورة أو PDF حتى ١٠ ميجابايت)','request-attachment','file');
+          attachment.accept='image/jpeg,image/png,image/webp,application/pdf';
+          make('p',rf,'المرفق خاص بصاحب الطلب والإدارة، ولا يُنشر تلقائيًا. تُعاد معالجة الصور لتقليل الحجم. لا تُرسل وثائق حساسة دون ضرورة.').className='hint';
           var send = make('button', rf, 'إرسال طلب جديد');
           send.type = 'submit'; send.className = 'btn btn-gold';
           var requestMsg = make('p', rf); requestMsg.setAttribute('role','status'); requestMsg.setAttribute('aria-live','polite');
           var list = make('div', req); list.className = 'request-history';
           var states = {pending:'قيد المراجعة',accepted:'مقبول',declined:'مرفوض',completed:'مكتمل'};
           var mine = [];
+          const uploadedHere=new Set();
           function drawRequests(){
             list.replaceChildren();
             make('h3',list,'سجل طلباتي — '+new Intl.NumberFormat('ar-EG').format(mine.length));
@@ -1313,6 +1337,14 @@
               if(x.created_at)make('time',card,new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'})).dateTime=x.created_at;
               make('p',card,x.body).className='request-body';
               make('p',card,'رد الإدارة: '+(x.reply||'لا رد بعد'));
+              if(x.attachment_requested){
+                requestDownload(card,x,uid);
+                if(x.status==='pending'&&!uploadedHere.has(x.id)){
+                  const retry=make('details',card);make('summary',retry,'استكمال رفع المرفق عند الحاجة');const input=field(retry,'اختر الملف','retry-attachment','file');input.accept=attachment.accept;
+                  const msg=make('p',retry);msg.setAttribute('role','status');
+                  action(retry,'رفع المرفق',async function(){if(!input.files[0]){msg.textContent='اختر الملف أولًا.';return;}this.disabled=true;try{const file=await prepareRequestFile(input.files[0]);await uploadRequestFile(x,uid,file);uploadedHere.add(x.id);drawRequests();requestMsg.textContent='تم رفع المرفق.';}catch(e){msg.textContent='تعذر الرفع أو يوجد مرفق محفوظ مسبقًا. جرّب زر التنزيل للتحقق.';}finally{this.disabled=false;}});
+                }
+              }
             }
           }
           async function refreshRequests(){
@@ -1329,8 +1361,14 @@
             if(title.length<3||body.length<5){requestMsg.textContent='اكتب عنوانًا من ٣ أحرف على الأقل وتفاصيل من ٥ أحرف على الأقل.';return;}
             send.disabled=true;requestMsg.textContent='جارٍ إرسال طلبك…';
             try{
-              const created=ok(await client().from('family_member_requests').insert({user_id:uid,kind,title,body}).select('id,kind,title,body,status,reply,created_at').single());
+              let file=null;
+              try{file=await prepareRequestFile(attachment.files[0]);}catch(e){requestMsg.textContent=e.message||'ملف غير صالح.';return;}
+              const created=ok(await client().from('family_member_requests').insert({user_id:uid,kind,title,body,attachment_requested:!!file}).select('id,kind,title,body,status,reply,created_at,attachment_requested').single());
               mine=[created,...mine.filter(x=>x.id!==created.id)];
+              if(file){
+                try{await uploadRequestFile(created,uid,file);uploadedHere.add(created.id);}
+                catch(e){drawRequests();rf.reset();requestMsg.textContent='تم حفظ الطلب، لكن لم يتأكد رفع المرفق. استخدم استكمال الرفع في سجل الطلبات دون إعادة إرسال الطلب.';return;}
+              }
               drawRequests();rf.reset();
               requestMsg.textContent='تم إرسال الطلب بنجاح. يمكنك الآن إرسال طلب آخر.';
             }catch(err){
@@ -1406,6 +1444,7 @@
         if(x.created_at)make('p',c,'تاريخ الإرسال: '+new Date(x.created_at).toLocaleString('ar-EG',{timeZone:'Asia/Gaza'}));
         const stateText=make('p',c,'الحالة: '+(states[x.status]||x.status));
         make('p', c, x.body).className='request-body';
+        if(x.attachment_requested){make('p',c,'مرفق خاص بالطلب؛ يُنزّل للمراجعة ولا يُنشر تلقائيًا.');requestDownload(c,x,x.user_id);}
         const record={el:entry,kind:x.kind,status:x.status,text:[x.title,x.body,kinds[x.kind],states[x.status],person?.full_name,person?.membership_number,person?.email,person?.phone,person?.whatsapp].filter(Boolean).join(' ')};records.push(record);
         var f = make('form', c),
           st = selectField(f, 'القرار', 'status', states),
