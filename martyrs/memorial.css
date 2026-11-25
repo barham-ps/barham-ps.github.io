@@ -81,3 +81,91 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
 .martyr-gallery summary{min-height:44px;display:list-item;font-weight:600}.martyr-photos{grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))}.martyr-photos a{display:block;min-height:44px}.martyr-photos a:focus-visible,.memorial-photo-dialog button:focus-visible{outline:2px solid var(--gold-light);outline-offset:3px}.martyr-photos img{object-fit:contain;background:rgba(0,0,0,.22)}.gallery-cover{grid-column:1/-1}.gallery-cover img{aspect-ratio:auto;max-height:380px}.memorial-photo-dialog{width:min(92vw,900px);max-height:90vh;overflow:auto;border:1px solid var(--gold);border-radius:14px;padding:12px;background:#172233;color:#fff;box-sizing:border-box}.memorial-photo-dialog::backdrop{background:rgba(0,0,0,.82)}.memorial-photo-dialog img{display:block;max-width:100%;max-height:68vh;object-fit:contain;margin:10px auto}.memorial-photo-dialog button{min-height:44px;padding:8px 16px;color:inherit;background:#26364b;border:1px solid var(--gold);border-radius:8px;cursor:pointer}.memorial-photo-dialog p{text-align:center;overflow-wrap:anywhere}
 
 .mem-search{margin-block:0 24px;display:grid;gap:7px}.mem-search label{color:var(--gold-light);font-weight:600}.mem-search input{font:inherit;color:var(--ivory);background:rgba(255,255,255,.035);border:1px solid var(--edge);border-radius:10px;padding:10px 14px;min-height:44px;width:100%;box-sizing:border-box}.mem-search input:focus-visible,.mem-retry:focus-visible{outline:2px solid var(--gold-light);outline-offset:3px}.mem-search p{margin:0;color:var(--muted)}.honor-record[hidden]{display:none!important}.mem-retry{font:inherit;min-height:44px;color:var(--gold-light);background:transparent;border:1px solid var(--edge);border-radius:8px;padding:8px 16px;cursor:pointer}@media print{.mem-search,.mem-retry{display:none!important}.honor-record[hidden]{display:grid!important}}
+
+/* Accessible translucent memorial controls — clear hierarchy and touch targets. */
+@media screen {
+  :root {
+    --control-text:#fff5df;
+    --control-line:rgba(240,218,176,.55);
+    --control-glass:rgba(237,224,196,.075);
+    --control-hover:rgba(237,224,196,.15);
+  }
+  .region-nav {gap:12px;margin-bottom:26px}
+  .region-nav a {
+    min-height:64px;padding:13px 18px;gap:10px;
+    border:1px solid var(--control-line);border-radius:12px;
+    background:linear-gradient(145deg,rgba(240,218,176,.10),rgba(240,218,176,.035));
+    color:var(--control-text);font-size:1.06rem;font-weight:600;
+    text-align:start;line-height:1.5;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  }
+  .region-nav a span {min-width:0}
+  .region-nav a svg {width:19px;height:19px;opacity:1;color:#f0dab0;stroke-width:2;flex:none}
+  .region-nav a[aria-current="true"] {
+    background:linear-gradient(145deg,rgba(220,193,138,.28),rgba(220,193,138,.11));
+    color:#fff9ec;border-color:#e8cb90;font-weight:700;
+    box-shadow:inset 0 -3px 0 #e8cb90,inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .mem-back,.mem-actions a,.mem-actions button,.mem-retry,.memorial-photo-dialog button,
+  .sources summary,.martyr-gallery summary {
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    min-height:46px;padding:9px 15px;max-width:100%;
+    border:1px solid var(--control-line);border-radius:10px;
+    background:var(--control-glass);color:var(--control-text);
+    font-family:inherit;font-size:.95rem;font-weight:600;line-height:1.55;
+    text-decoration:none;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .mem-back {white-space:nowrap;flex:none}
+  .mem-back span {margin-inline-start:0}
+  #memorial-admin-actions {margin:0 0 12px}
+  #memorial-admin-actions a {width:100%;background:rgba(220,193,138,.15);border-color:#d9bb80}
+  .sources,.martyr-gallery {margin-block:10px}
+  .sources summary,.martyr-gallery summary {
+    width:100%;justify-content:space-between;text-align:start;list-style:none;
+  }
+  .sources summary::-webkit-details-marker,.martyr-gallery summary::-webkit-details-marker {display:none}
+  .sources summary::after,.martyr-gallery summary::after {
+    content:"+";display:grid;place-items:center;flex:none;width:23px;height:23px;
+    border-radius:6px;background:rgba(220,193,138,.12);color:#fff1d3;
+    font-size:1.18rem;line-height:1;font-weight:600;
+  }
+  .sources[open] summary,.martyr-gallery[open] summary {
+    border-color:#e8cb90;background:rgba(220,193,138,.15);
+  }
+  .sources[open] summary::after,.martyr-gallery[open] summary::after {content:"−"}
+  .sources[open]>p,.martyr-gallery[open] .martyr-photos {margin-block-start:10px}
+  .mem-search label {color:var(--control-text);font-size:1rem}
+  .mem-search input {
+    min-height:50px;border-color:var(--control-line);
+    background:rgba(255,255,255,.065);font-size:1rem;
+  }
+  .mem-search input::placeholder {color:#bfc6d5;opacity:1}
+  .mem-search p:empty {display:none}
+  .mem-retry {margin-block-start:8px;width:fit-content}
+  .region-nav a:focus-visible,.mem-back:focus-visible,.mem-actions a:focus-visible,
+  .mem-actions button:focus-visible,.sources summary:focus-visible,.martyr-gallery summary:focus-visible,
+  .mem-retry:focus-visible,.memorial-photo-dialog button:focus-visible,.mem-search input:focus-visible {
+    outline:2px solid #fff0c9;outline-offset:3px;
+  }
+  .region-nav a:active,.mem-back:active,.mem-actions a:active,.mem-actions button:active,
+  .sources summary:active,.martyr-gallery summary:active,.mem-retry:active,
+  .memorial-photo-dialog button:active {border-color:#fff0c9;background:rgba(220,193,138,.23)}
+}
+@media screen and (hover:hover) and (pointer:fine) {
+  .region-nav a:hover,.mem-back:hover,.mem-actions a:hover,.mem-actions button:hover,
+  .sources summary:hover,.martyr-gallery summary:hover,.mem-retry:hover,
+  .memorial-photo-dialog button:hover {background:var(--control-hover);border-color:#f0dab0}
+  .region-nav a[aria-current="true"]:hover {background:rgba(220,193,138,.30)}
+}
+@media screen and (max-width:600px) {
+  .region-nav {gap:9px;margin-bottom:22px}
+  .region-nav a {min-height:60px;font-size:.96rem;padding:10px 11px;gap:5px}
+  .region-nav a svg {width:15px;height:15px}
+  .mem-back {font-size:.88rem;padding-inline:11px}
+  .sources summary,.martyr-gallery summary {font-size:.92rem;padding:9px 11px}
+}
+@media screen and (max-width:350px) {
+  .region-nav a {font-size:.9rem;padding-inline:9px}
+  .region-nav a svg {display:none}
+}
