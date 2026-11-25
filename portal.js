@@ -2740,10 +2740,10 @@
       }
       var factors = ok(await client().auth.mfa.listFactors()),
         level = ok(await client().auth.mfa.getAuthenticatorAssuranceLevel());
-      var verified = factors.totp || [];
+      var verified = (factors.totp || []).filter(x => x.status === 'verified');
 
-      function verifyForm(factorId) {
-        var f = make('form', mfaBody),
+      function verifyForm(factorId, target = mfaBody) {
+        var f = make('form', target),
           code = field(f, 'رمز التطبيق (6 أرقام)', 'code', 'text', 6);
         code.required = true;
         code.inputMode = 'numeric';
@@ -2766,10 +2766,20 @@
       if (verified.length) {
         make('p', mfaBody, level.currentLevel === 'aal2' ? 'التحقق الثنائي مفعّل وهذه الجلسة مؤكدة.' :
           'أدخل الرمز من تطبيق المصادقة للمتابعة.');
-        if (level.currentLevel !== 'aal2') verifyForm(verified[0].id);
+        if (level.currentLevel !== 'aal2') {
+          if (verified.length === 1) verifyForm(verified[0].id);
+          else {
+            const choices=make('div',mfaBody);
+            const target=make('div',mfaBody);
+            for (const [i,factor] of verified.entries()) action(choices,'عامل المصادقة '+(i+1),()=>{
+              target.replaceChildren();
+              verifyForm(factor.id,target);
+            });
+          }
+        }
         return;
       }
-      make('p', mfaBody, 'أضف تطبيق مصادقة مثل Google Authenticator. احتفظ بمفتاح الاسترداد الخاص بك في مكان آمن.');
+      make('p', mfaBody, 'أضف تطبيق مصادقة مثل Google Authenticator. احتفظ ببيانات إعداد تطبيق المصادقة في مكان آمن ومنفصل، ورتّب طريقة استرداد الحساب مع الإدارة. لا تشارك مفتاح المصادقة مع أحد.');
       var enroll = action(mfaBody, 'إعداد التحقق الثنائي', async () => {
         enroll.disabled = true;
         try {
@@ -2836,6 +2846,11 @@
     if(!d.auth_latest_at)make('p',alerts,'لا توجد سجلات مصادقة متاحة في قاعدة البيانات؛ لا يعني ذلك أن محاولات الدخول معدومة.');
     if(!checks.length)make('p',alerts,'شغّل فحص الحماية للحصول على نتائج موثقة.');
     for(const x of checks.filter(x=>x.state==='fail'||x.state==='warn')){const row=make('p',alerts,(scanNames[x.id]?.[0]||x.id)+' — '+(x.state==='fail'?'خلل':'تنبيه'));row.className=x.state;}
+    const attachmentCounts=Object.fromEntries((Array.isArray(d.attachments)?d.attachments:[]).map(x=>[x.state,Math.max(0,Number(x.total)||0)]));
+    if(attachmentCounts.blocked)make('p',alerts,'تنبيه: مرفقات محظورة — '+securityCount(attachmentCounts.blocked)).className='fail';
+    if(attachmentCounts.awaiting_scanner||attachmentCounts.error)make('p',alerts,'تنبيه تشغيلي: مرفقات بانتظار الفحص أو تعذر فحصها — '+securityCount((attachmentCounts.awaiting_scanner||0)+(attachmentCounts.error||0))).className='warn';
+    const recovery=(Array.isArray(d.auth_actions)?d.auth_actions:[]).filter(x=>['password_recovery_requested','user_recovery_requested'].includes(x.action)).reduce((n,x)=>n+(Number(x.total)||0),0);
+    if(recovery>=10)make('p',alerts,'مؤشر للمراجعة: '+securityCount(recovery)+' حدث استعادة حساب في ٧ أيام. لا يثبت ذلك وجود هجوم.').className='warn';
     const daily=Array.isArray(d.daily_activity)?d.daily_activity:[];
     const chart=make('div',target);chart.className='soc-chart';
     make('h3',chart,'نشاط آخر سبعة أيام · توقيت غزة');
@@ -2852,7 +2867,7 @@
     for(const x of d.auth_actions||[]){const row=make('div',auth);row.className='scan-result';make('span',row,authNames[x.action]||'أخرى');make('strong',row,securityCount(x.total));}
     if(!(d.auth_actions||[]).length)make('p',auth,'لا أحداث متاحة في الفترة؛ افحص إعداد سجل Auth عند المزود.');
     const files=make('div',target);files.className='soc-detail';make('h3',files,'مراقبة عزل المرفقات');
-    const states={clean:'اجتاز الفحص',pending:'قيد الفحص',awaiting_scanner:'بانتظار محرك الفحص',infected:'مصاب',rejected:'مرفوض',error:'تعذر الفحص',not_requested:'غير مطلوب'};
+    const states={clean:'اجتاز الفحص',pending:'قيد الفحص',awaiting_scanner:'بانتظار محرك الفحص',blocked:'محظور',infected:'مصاب',rejected:'مرفوض',error:'تعذر الفحص',not_requested:'غير مطلوب'};
     for(const x of d.attachments||[]){const row=make('div',files);row.className='scan-result';make('span',row,states[x.state]||'حالة أخرى');make('strong',row,securityCount(x.total));}
     if(!(d.attachments||[]).length)make('p',files,'لا مرفقات مطلوبة مسجلة.');
   }
