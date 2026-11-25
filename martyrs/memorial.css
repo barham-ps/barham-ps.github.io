@@ -15,3 +15,63 @@ body{background:radial-gradient(ellipse at 13% 19%,rgba(88,109,167,.27),transpar
 .featured .record-index{background:transparent}
 .subtle-download{font-size:.78rem;font-weight:400;color:var(--muted)}
 }
+
+/* Refined two-region navigation and consistent memorial typography. */
+@media screen {
+.hero-frame,.mem-wrap,.top-inner{max-width:960px}
+.hero-frame{border-radius:12px;padding-block:30px 27px}
+.mem-hero{padding-bottom:20px}
+.mem-wrap{padding-top:0}
+.region-nav{position:relative;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 28px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.region-nav a{position:relative;display:flex;flex-direction:row;justify-content:space-between;align-items:center;min-width:0;min-height:60px;padding:12px 18px;gap:8px;border:1px solid rgba(220,193,138,.36);border-radius:10px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.008));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:1rem;line-height:1.45;color:#e3d6ba}
+.region-nav a svg{flex:none;opacity:.68;transform:rotate(180deg)}
+.region-nav a[aria-current="true"]{background:linear-gradient(145deg,rgba(220,193,138,.085),rgba(255,255,255,.012));border-color:#dcc18a;color:#fff5dc;box-shadow:inset 0 -2px 0 #dcc18a}
+.region-nav a[aria-current="true"] svg{opacity:1}
+.region-nav a:hover{border-color:#f0dab0}
+.section-heading{align-items:center;min-width:0;margin-bottom:16px;padding-bottom:14px}
+.section-heading>div{min-width:0}
+.section-count{white-space:normal;text-align:end;flex:none;max-width:35%}
+.honor-list{border:0;border-radius:0;overflow:visible;display:grid;gap:12px;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.honor-record,.honor-record:last-child{border:1px solid rgba(220,193,138,.23);border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:21px 22px;gap:16px;min-width:0}
+.honor-record.featured{border-color:rgba(220,193,138,.59);padding-block:24px}
+.record-content{min-width:0}
+.record-title{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:4px 12px}
+.record-title h3{font-size:clamp(1.45rem,2.5vw,1.85rem);overflow-wrap:anywhere}
+.featured h3{font-size:clamp(1.7rem,3.5vw,2.3rem)}
+.featured-caption{grid-column:1/-1;margin:0 0 4px}
+.record-title time{font-variant-numeric:tabular-nums;white-space:normal}
+.record-meta{gap:6px 10px;margin:7px 0 9px}
+.record-meta span+span:before{margin-inline-end:10px}
+.sources{margin-top:9px}
+.sources summary{display:inline-flex;align-items:center;gap:7px;min-height:38px;list-style:none;padding:5px 0;cursor:pointer}
+.sources summary::-webkit-details-marker{display:none}
+.sources summary:after{content:"+";font-size:1.05em;color:var(--gold)}
+.sources[open] summary:after{content:"−"}
+.source-links{padding:2px 0 6px;border-top:1px solid var(--edge);margin:0}
+.provenance{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 15px}
+.provenance p{flex:1 1 280px}
+.provenance .subtle-download{min-height:44px;display:inline-flex;align-items:center;margin:0;color:var(--gold-light)}
+}
+@media screen and (max-width:600px){
+.mem-hero{padding:14px 12px 16px}
+.hero-frame{padding:22px 12px 20px}
+h1{font-size:clamp(2.5rem,10vw,3.7rem)}
+.hero-mark{width:64px}
+.mem-wrap{padding-inline:12px}
+.region-nav{gap:8px;margin-bottom:23px}
+.region-nav a{font-size:.86rem;min-height:54px;padding:9px 10px;gap:5px}
+.region-nav a svg{width:13px;height:13px}
+.section-heading h2{font-size:clamp(1.55rem,6vw,2rem)}
+.section-count{font-size:.68rem}
+.honor-list{gap:10px}
+.honor-record,.honor-record:last-child{grid-template-columns:32px minmax(0,1fr);gap:10px;padding:15px 12px}
+.honor-record.featured{padding-block:19px}
+.record-title{grid-template-columns:minmax(0,1fr)}
+.record-title time{margin:0;font-size:.82rem}
+.record-meta{font-size:.77rem;gap:4px 8px}
+.record-meta span+span:before{margin-inline-end:8px}
+.record-title h3{font-size:1.43rem}
+.featured h3{font-size:1.7rem}
+.record-content p{font-size:.89rem}
+}
+@media screen and (max-width:350px){.region-nav a{font-size:.78rem;padding:8px 7px}.region-nav a svg{display:none}.honor-record,.honor-record:last-child{padding-inline:10px}}
