@@ -1,0 +1,38 @@
+name: AEGIS NEURAL independent
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '13 9 * * 2'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aegis-neural-independent.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independent neural check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,statistics,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/workflows/aegis-absolute.yml/runs?status=completed&per_page=30'
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=20) as f: runs=json.load(f)['workflow_runs']
+          from datetime import datetime
+          def seconds(r): return (datetime.fromisoformat(r['updated_at'].replace('Z','+00:00'))-datetime.fromisoformat(r['run_started_at'].replace('Z','+00:00'))).total_seconds()
+          v=[seconds(r) for r in runs if r['conclusion']=='success']
+          if len(v)<6: print('Insufficient historical baseline; no anomaly verdict')
+          else:
+           m=statistics.median(v[1:]); mad=statistics.median(abs(x-m) for x in v[1:])
+           print('Duration anomaly:',abs(v[0]-m)>max(60,6*mad))
+          print('Recent non-success count:',sum(r['conclusion']!='success' for r in runs))
+          PY
