@@ -120,10 +120,11 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="footer-signature"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
-  assert.equal(scripts.length,4);
+  assert.equal(scripts.length,5);
   assert.ok(scripts.every(x => x[0].includes('defer')));
   assert.ok(scripts[0][1].includes('supabase'));
-  assert.ok(scripts[3][1].includes('portal.js'));
+  assert.ok(scripts[3][1].includes('martyrs/admin.js'));
+  assert.ok(scripts[4][1].includes('portal.js'));
   const css = fs.readFileSync('portal.css','utf8');
   assert.match(css,/--glass-surface:/);
   assert.match(css,/prefers-reduced-motion/);
@@ -284,7 +285,7 @@ test('simplified navigation uses one tree entry and preserves historical content
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
  const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
- assert.equal(Array.from(features.matchAll(/\['[^']+','[^']+','[^']+','[^']+'\]/g)).length,4);
+ assert.deepEqual(Array.from(features.matchAll(/\['([^']+)','[^']+','[^']+','[^']+'\]/g), m=>m[1]),['heritage','news','martyrs','community','membership']);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);

@@ -8,7 +8,7 @@ import time
 
 HOST = "barham-ps.github.io"
 PAGES = {"/": "آل برهم", "/about/": "عن البوابة", "/history/": "تاريخ العائلة",
-         "/genealogy/": "شجرة العائلة", "/en/": "Barham", "/robots.txt": "Sitemap:",
+         "/genealogy/": "شجرة العائلة", "/martyrs/": "شهداء آل برهم", "/en/": "Barham", "/robots.txt": "Sitemap:",
          "/sitemap.xml": "<urlset"}
 MAX_BYTES = 400_000
 

@@ -469,6 +469,7 @@
     const contentLinks=make('div',cms);contentLinks.className='row dashboard-content-links';
     dashboardLink(contentLinks,'#news-admin','الأخبار والإعلانات','تحرير ونشر الأخبار','news');
     const privateLink=dashboardLink(contentLinks,'#member-services-admin','الأرشيف والمناسبات الخاصة','مواد مخصصة للأعضاء','archive');privateLink.dataset.adminService='content';
+    if(window.mountMemorialAdmin)window.mountMemorialAdmin(cms,client);
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
     const msg=make('p',cms);msg.setAttribute('role','status');const sectionLabel=make('label',cms,'القسم المراد تحريره');sectionLabel.className='f';const section=make('select',sectionLabel);
     for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}

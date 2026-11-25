@@ -953,3 +953,6 @@ html{padding-block:0!important;scroll-padding-top:0}
 .visitor-entry a{min-width:0;text-align:center;line-height:1.5}
 @media(max-width:640px){.visitor-entry{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:420px}.visitor-entry a{flex-direction:row;min-height:51px;font-size:13px;padding:8px 5px;gap:6px}}
 @media(max-width:340px){.visitor-entry a{font-size:11px;gap:4px}}
+
+/* Memorial administration: responsive, inherits portal theme. */
+.memorial-admin-list{display:flex;flex-wrap:wrap;gap:8px;margin-block:12px}.memorial-admin-list button{max-width:100%;white-space:normal;text-align:start}.memorial-admin-gallery{margin-block:16px}.memorial-admin-gallery input[type=file]{max-width:100%;margin-block:8px}.memorial-admin-gallery>button{margin:4px}.memorial-admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin-block:14px}.memorial-admin-grid article{display:grid;gap:8px;min-width:0}.memorial-admin-grid img{width:100%;height:180px;object-fit:contain;border-radius:10px;background:rgba(0,0,0,.12)}.memorial-admin-grid label{display:grid;gap:4px}.memorial-admin-grid input:not([type=checkbox]){max-width:100%;min-width:0}.memorial-admin-grid button{min-height:44px}
