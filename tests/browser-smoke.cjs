@@ -26,7 +26,11 @@ const base='http://127.0.0.1:8765/';
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
    const glass=()=>page.locator('#v-home .family-welcome').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,opacity:getComputedStyle(e).opacity}));
    assert.equal((await glass()).opacity,'1');
+   // Public navigation keeps readable foregrounds without underlying news bleeding through.
+   if(width<=700){const dock=page.locator('body>.mobile-dock');assert.equal(await dock.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(8, 44, 35)');}
+   for(const id of ['bandwidth-toggle','local-diagnostics','local-diagnostics-result','network-status'])assert.equal(await page.locator('#'+id).count(),0);
    await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
+   if(width<=700)assert.equal(await page.locator('body>.mobile-dock').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 253, 248)');
    assert.equal((await glass()).opacity,'1');
 
    // V75 regression: computed text colors on actual account markup (no login or data access).
