@@ -415,18 +415,50 @@
 
   var cms = make('div', admin); cms.className='card'; cms.hidden=true;
   var sectionsCMS={history:'تاريخ العائلة',tree:'شجرة العائلة',archive:'الأرشيف والحكايات'};
+  // Bound public content requests and batch short-lived image URLs.
+  const publicCMSPageSize=24;
+  let publicCMSEpoch=0;
   async function renderPublicCMS(){
-    const requested=location.hash.slice(1);
-    for(const [key,label] of Object.entries(sectionsCMS)){
-      if(key!==requested)continue;
-      const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host) continue;
-      let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
-      const q=await client().from('family_public_content').select('id,title,body,image_path,created_at').eq('section',key).eq('published',true).order('created_at',{ascending:false});
-      if(q.error){if(!panel.childElementCount){const note=make('p',panel,'تعذر تحميل المحتوى المنشور.');note.className='portal-loading';action(panel,'إعادة المحاولة',()=>{panel.replaceChildren();renderPublicCMS().catch(()=>{});});}continue;}panel.replaceChildren();
-      for(const item of q.data){const card=make('article',panel);card.className='card';make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
-        if(item.image_path){const signed=await client().storage.from('family-public-content').createSignedUrl(item.image_path,300);if(!signed.error){const im=make('img',card);im.src=signed.data.signedUrl;im.alt=item.title;im.loading='lazy';im.style.maxWidth='100%';}}
-      }
+    const epoch=++publicCMSEpoch, key=location.hash.slice(1);
+    if(!Object.prototype.hasOwnProperty.call(sectionsCMS,key))return;
+    const host=document.querySelector('#v-'+key+' .sec .wrap'); if(!host)return;
+    let panel=host.querySelector('.public-cms'); if(!panel){panel=make('div',host);panel.className='public-cms grid';}
+    const current=()=>epoch===publicCMSEpoch&&location.hash==='#'+key;
+    panel.replaceChildren();
+    let offset=0, busy=false;
+    const status=make('p',panel,'جارٍ تحميل المحتوى…'); status.setAttribute('role','status');
+    const more=action(panel,'عرض المزيد',loadPage);more.hidden=true;
+    async function loadPage(){
+      if(busy||!current())return;
+      busy=true;more.disabled=true;status.textContent='جارٍ تحميل المحتوى…';
+      try{
+        const q=await client().from('family_public_content').select('id,title,body,image_path,created_at')
+          .eq('section',key).eq('published',true).order('created_at',{ascending:false}).order('id',{ascending:false})
+          .range(offset,offset+publicCMSPageSize-1);
+        if(!current())return;
+        if(q.error)throw q.error;
+        const rows=q.data||[], images=[];
+        for(const item of rows){
+          const card=make('article',panel);card.className='card';panel.insertBefore(card,status);
+          make('h3',card,item.title);const p=make('p',card,item.body);p.style.whiteSpace='pre-wrap';
+          if(item.created_at)make('time',card,formatPortalTime(item.created_at)).dateTime=item.created_at;
+          if(item.image_path)images.push({card,path:item.image_path,title:item.title});
+        }
+        offset+=rows.length;more.hidden=rows.length<publicCMSPageSize;more.textContent='عرض المزيد';
+        status.textContent=offset===0?'لا يوجد محتوى منشور حاليًا.':'';
+        if(images.length){
+          try{
+            const signed=await client().storage.from('family-public-content').createSignedUrls([...new Set(images.map(i=>i.path))],300);
+            if(!current())return;
+            if(signed.error)throw signed.error;
+            const urls=new Map((signed.data||[]).filter(i=>i.signedUrl).map(i=>[i.path,i.signedUrl]));
+            for(const i of images){const url=urls.get(i.path);if(!url)continue;const im=make('img',i.card);im.src=url;im.alt=i.title;im.loading='lazy';im.decoding='async';im.style.maxWidth='100%';}
+          }catch{if(current())status.textContent='تعذر تحميل بعض الصور. المحتوى النصي متاح.';}
+        }
+      }catch{if(current()){status.textContent='تعذر تحميل المحتوى المنشور.';more.hidden=false;more.textContent='إعادة المحاولة';}}
+      finally{if(current()){busy=false;more.disabled=false;}}
     }
+    await loadPage();
   }
   async function loadPublicCMS(){
     cms.hidden=true;cms.replaceChildren();
@@ -466,8 +498,6 @@
     }
     if(cmsRecords.length){const filter=make('div',cms);cms.insertBefore(filter,cmsRecords[0].el);attachSearch(filter,'بحث في المحتوى المحفوظ',cmsRecords);}
   }
-  renderPublicCMS().catch(()=>{});
-
   function switchAdminPanel(key){
     activeAdminPanel=key;
     adminDirectory.hidden=key!=='directory';
