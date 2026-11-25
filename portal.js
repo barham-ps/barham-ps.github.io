@@ -2989,6 +2989,21 @@
     });
     headerBtn.className = 'btn btn-dark';
     const updateInfrastructure = mountInfrastructureStatus(parent);
+    const production=section(parent,'المراقبة الخارجية للموقع المنشور');
+    make('p',production,'فحص اصطناعي للصفحات العامة وشهادة TLS كل ست ساعات تقريبًا عبر GitHub Actions، دون حسابات أو تتبع الزوار. قد تتأخر الجدولة؛ التحذيرات لا تعني توقف الموقع.');
+    const prodMsg=make('p',production,'لم تُقرأ نتيجة الفحص بعد.');prodMsg.setAttribute('role','status');
+    const prodButton=action(production,'قراءة آخر فحص خارجي',async()=>{
+      prodButton.disabled=true;prodMsg.textContent='جارٍ قراءة النتيجة…';
+      try{
+        const response=await fetch('https://api.github.com/repos/barham-ps/barham-ps.github.io/actions/workflows/production-monitor.yml/runs?branch=main&per_page=1',{credentials:'omit',cache:'no-store'});
+        if(!response.ok)throw Error('Unavailable');
+        const item=(await response.json()).workflow_runs?.[0];
+        if(!item){prodMsg.textContent='لا يوجد تشغيل مسجل بعد.';return;}
+        const state=item.status==='completed'?(item.conclusion==='success'?'اجتاز فحص التوفر الأساسي؛ راجع التحذيرات':item.conclusion==='failure'?'فشل الفحص؛ راجع السجل':'لم يُؤكد النجاح'):'الفحص قيد التنفيذ';
+        prodMsg.textContent=state+' — '+formatPortalTime(item.updated_at||item.created_at);
+      }catch(_){prodMsg.textContent='تعذر التحقق من سجل المراقبة الخارجية.';}finally{prodButton.disabled=false;}
+    });prodButton.className='btn btn-gold';
+    const prodLink=make('a',production,'سجل المراقبة الخارجية');prodLink.href='https://github.com/barham-ps/barham-ps.github.io/actions/workflows/production-monitor.yml';prodLink.target='_blank';prodLink.rel='noopener noreferrer';prodLink.className='btn btn-ghost';
     var gh = section(parent, 'نتائج فحص الكود في GitHub');
     var ghMsg = make('p', gh, 'يمكنك قراءة آخر نتيجة متاحة للفرع الرئيسي من سجل GitHub Actions.');
     ghMsg.setAttribute('role', 'status');

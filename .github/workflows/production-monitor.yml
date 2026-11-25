@@ -1,0 +1,25 @@
+name: Public portal availability and TLS
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/production_monitor.py'
+      - '.github/workflows/production-monitor.yml'
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: public-portal-health
+  cancel-in-progress: false
+jobs:
+  public-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check published public pages and TLS
+        run: python3 scripts/production_monitor.py
