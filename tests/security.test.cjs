@@ -447,3 +447,30 @@ test('email recovery accepts only a verified recovery session and matches the ex
  assert.match(js,/persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'family-password-recovery'/);
  assert.match(js,/تغيير كلمة المرور برمز البريد/);
 });
+
+
+test('recovery restricts requests to the confirmed account, rejects mismatched identity and expires proof',async()=>{
+ const src=js.slice(js.indexOf('  function createPasswordRecovery('),js.indexOf("  var reset = newView('reset'"));
+ let now=1000;const create=vm.runInNewContext(src+';createPasswordRecovery',{Date:{now:()=>now}});
+ let sends=[],writes=0,verifiedUser={id:'member-a',email:'a@example.invalid'},sessionUser={id:'member-a',email:'a@example.invalid'};
+ const auth={resetPasswordForEmail:async email=>{sends.push(email);return {data:{}}},verifyOtp:async()=>({data:{user:verifiedUser,session:{user:sessionUser}}}),getSession:async()=>({data:{session:{user:sessionUser}}}),getUser:async()=>({data:{user:sessionUser}}),updateUser:async()=>{writes++;return {data:{}}}};
+ const flow=create(auth,async()=>'',()=>true);
+ flow.bindAccount({id:'member-a',email:'a@example.invalid'});
+ await assert.rejects(flow.request('b@example.invalid',{}),/البريد المسجل/);assert.equal(sends.length,0);
+ await flow.request('a@example.invalid',{});assert.deepEqual(sends,['a@example.invalid']);
+ await assert.rejects(flow.verify('b@example.invalid','123456'),/البريد المسجل/);
+ verifiedUser={id:'member-b',email:'a@example.invalid'};sessionUser=verifiedUser;
+ await assert.rejects(flow.verify('a@example.invalid','123456'),/تعذر التحقق/);
+ assert.equal(flow.acceptLink({user:verifiedUser}),false);
+ verifiedUser={id:'member-a',email:'a@example.invalid'};sessionUser=verifiedUser;
+ await flow.verify('a@example.invalid','123456');now+=600001;
+ await assert.rejects(flow.save('password','password'),/انتهت مهلة/);assert.equal(writes,0);
+ await flow.verify('a@example.invalid','123456');
+ sessionUser={id:'member-a',email:'changed@example.invalid'};
+ await assert.rejects(flow.save('password','password'),/انتهت جلسة/);assert.equal(writes,0);
+ sessionUser=verifiedUser;await flow.verify('a@example.invalid','123456');
+ assert.equal(await flow.save('password','password'),'member-a');assert.equal(writes,1);
+ assert.match(js,/resetInput\.readOnly=Boolean\(recoveryAccount\)/);
+ assert.match(js,/recoveryAccount\?recoveryAccount\.email:resetInput\.value\.trim\(\)/);
+ assert.match(js,/email_confirmed_at/);
+});
