@@ -1,0 +1,28 @@
+name: AEGIS PRISM independent
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '3 9 * * 2'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aegis-prism-independent.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independent prism check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sh scripts/build-pages.sh
+          python3 scripts/validate_public_build.py dist
+          find dist -type f -name '*.js' -exec sh -c 'for f do node --check "$f" || exit 1; done' sh {} +
+          node --test tests/security.test.cjs tests/upgrade.test.cjs
