@@ -25,3 +25,17 @@ test('English and Arabic public pages are reciprocal, indexable and built',()=>{
  }
  assert.ok(read('index.html').includes('href="./en/"'));
 });
+
+test('public discovery preserves synchronized releases and private genealogy boundaries',()=>{
+ const h=read('index.html'),build=read('scripts/build-pages.sh'),sitemap=read('sitemap.xml');
+ assert.equal(h.match(/portal\.css\?v=(\d+)/)[1],h.match(/portal\.js\?v=(\d+)/)[1]);
+ assert.ok(build.includes('favicon.png'));assert.ok(build.includes('404.html'));
+ assert.ok(read('404.html').includes('noindex, follow'));
+ for(const p of ['about','history','membership','en','en/history','en/membership']){
+  const page=read(p+'/index.html');assert.ok(page.includes('property="og:image"'));assert.ok(page.includes('property="og:image:alt"'));assert.ok(page.includes('hreflang="x-default"'));
+ }
+ assert.ok(read('genealogy/index.html').includes('name="robots" content="noindex"'));
+ assert.ok(!sitemap.includes('/genealogy/'));
+ assert.ok(h.includes('href="./history/"')&&h.includes('href="./membership/"'));
+ assert.ok(h.includes('https://wa.me/?text='));
+});

@@ -74,6 +74,7 @@
   var hdr = $('#hdr'),
     btn = $('#menuBtn');
 
+  const publicHomeTitle=document.title;
   function route() {
     var r = (location.hash || '#home').slice(1) || 'home';
     if (r.startsWith('verify/')) r = 'verify';
@@ -82,7 +83,7 @@
     views.forEach(function(v) {
       v.hidden = v !== el
     });
-    document.title = (el.dataset.title && r !== 'home' ? el.dataset.title + ' | ' : '') + 'آل برهم';
+    document.title = r==='home' ? publicHomeTitle : (el.dataset.title ? el.dataset.title + ' | ' : '') + 'آل برهم';
     [].forEach.call(nav.children, function(a) {
       if (a.dataset.r === r || (a.dataset.r === 'news' && r === 'events') || (a.dataset.r === 'heritage' && ['history', 'archive', 'tree', 'stories'].includes(
           r)) || (a.dataset.r === 'community' && ['initiatives', 'contact'].includes(r)) || (a.dataset
@@ -853,7 +854,7 @@
     new QRCode(qrNode,{text:verify.href,width:196,height:196,correctLevel:QRCode.CorrectLevel.M});
     const qr=qrNode.querySelector('canvas');
     if(!qr||!qr.width)throw Error('Certificate QR unavailable');
-    round(153,1238,232,232,9,'#ffffff');ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,171,1256,196,196);ctx.imageSmoothingEnabled=true;
+    round(149,1233,240,240,9,'#ffffff');ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,173,1257,192,192);ctx.imageSmoothingEnabled=true;
     text('رابط التحقق الإلكتروني',center,1522,27,white,true,'center');
     text(verify.href,center,1558,22,blue,false,'center','ltr',1080,'Arial');
     text(read('.certificate-copy-time'),center,1598,23,muted,false,'center','rtl',1080);

@@ -859,3 +859,7 @@ html{padding-block:0!important;scroll-padding-top:0}
 .family-footer .footer-date{display:flex;align-items:center;justify-content:center;gap:11px;color:#d3b77c;font:500 clamp(11px,2.6vw,13px)/1.5 Georgia,'Times New Roman',serif;letter-spacing:.23em;text-transform:uppercase}
 .family-footer .footer-date::before,.family-footer .footer-date::after{content:"";width:clamp(20px,5vw,34px);height:1px;background:linear-gradient(90deg,transparent,#bda166)}
 .family-footer .footer-date::after{transform:scaleX(-1)}
+
+/* V57: Keep keyboard focus and anchor navigation clear of sticky chrome. */
+@media screen{html{scroll-padding-top:110px;scroll-padding-bottom:88px}.footer-links a{min-height:44px;display:inline-flex;align-items:center;justify-content:center}#v-certificate .md-fields strong{overflow-wrap:anywhere}#v-certificate .md-auth>*{min-width:0}}
+@media screen and (max-width:700px){html{scroll-padding-top:112px}#v-certificate .md-qr a{overflow-wrap:anywhere}}
