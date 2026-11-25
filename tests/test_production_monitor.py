@@ -18,3 +18,6 @@ class MonitorTests(unittest.TestCase):
     def test_trust_evidence_monitored(self):
         self.assertIn("/trust/", monitor.PAGES)
         self.assertIn("/.well-known/security.txt", monitor.PAGES)
+
+    def test_security_txt_fallback_monitored(self):
+        self.assertIn("/security.txt", monitor.PAGES)

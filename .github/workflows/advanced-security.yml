@@ -25,7 +25,14 @@ jobs:
           curl --fail --silent --show-error --location --max-time 90 https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz -o "$work/tool.tar.gz"
           echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  $work/tool.tar.gz" | sha256sum --check -
           tar -xzf "$work/tool.tar.gz" -C "$work" gitleaks
-          "$work/gitleaks" git --redact=100 --no-banner --exit-code 1 --log-opts="--all" .
+          history_status=0
+          current_status=0
+          "$work/gitleaks" git --redact=100 --no-banner --exit-code 1 --log-opts="--all" --report-format json --report-path "$work/history.json" . || history_status=$?
+          sh scripts/build-pages.sh
+          "$work/gitleaks" dir --redact=100 --no-banner --exit-code 1 --report-format json --report-path "$work/public.json" dist || current_status=$?
+          # Log only counts and validated rule categories, never matched text, paths or commit identifiers.
+          python3 scripts/secret_scan_summary.py "$work/history.json" "$work/public.json"
+          test "$history_status" -eq 0 && test "$current_status" -eq 0
   dependency-inventory:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -1,5 +1,14 @@
 name: Public portal availability and TLS
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'trust/**'
+      - '.well-known/**'
+      - 'security.txt'
+      - 'scripts/production_monitor.py'
+      - '.github/workflows/production-monitor.yml'
+      - '_config.yml'
   workflow_run:
     workflows: ['pages build and deployment']
     types: [completed]
@@ -16,10 +25,16 @@ jobs:
   public-health:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Check published public pages and TLS
-        run: python3 scripts/production_monitor.py
+        run: |
+          # A bounded retry handles Pages propagation; persistent failures remain failures.
+          for attempt in 1 2 3; do
+            if python3 scripts/production_monitor.py; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          exit 1

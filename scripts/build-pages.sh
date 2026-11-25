@@ -22,3 +22,6 @@ cp trust/index.html dist/trust/
 
 mkdir -p dist/.well-known
 cp .well-known/security.txt dist/.well-known/
+
+# RFC 9116 legacy discovery fallback, in addition to the canonical location.
+cp .well-known/security.txt dist/security.txt

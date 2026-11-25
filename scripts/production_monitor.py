@@ -10,7 +10,7 @@ import time
 
 HOST = "barham-ps.github.io"
 PAGES = {"/": "آل برهم", "/trust/": "مركز الثقة والأمان الرقمي",
-         "/.well-known/security.txt": "Contact: mailto:", "/about/": "عن البوابة", "/history/": "تاريخ العائلة",
+         "/.well-known/security.txt": "Contact: mailto:", "/security.txt": "Contact: mailto:", "/about/": "عن البوابة", "/history/": "تاريخ العائلة",
          "/genealogy/": "شجرة العائلة", "/martyrs/": "شهداء آل برهم", "/en/": "Barham", "/robots.txt": "Sitemap:",
          "/sitemap.xml": "<urlset", "/membership/": "العضوية الإلكترونية",
          "/en/history/": "Barham", "/en/membership/": "Barham",
@@ -74,7 +74,7 @@ def main():
                                 "certificate_issuer": dict(pair for group in cert.get("issuer", ()) for pair in group)})
         except Exception as exc:
             failures.append(path + ": " + type(exc).__name__)
-    for path in ["/database/verify_access.sql", "/scripts/production_monitor.py", "/tests/security.test.cjs", "/supabase/functions/scan-request-attachment/index.ts"]:
+    for path in ["/database/verify_access.sql", "/scripts/production_monitor.py", "/tests/security.test.cjs", "/supabase/functions/scan-request-attachment/index.ts", "/isms/README.md"]:
         try:
             status, _, _, elapsed, _ = get(path, args.host)
             results.append({"path": path, "status": status, "milliseconds": elapsed, "excluded": status == 404})

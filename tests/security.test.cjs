@@ -549,3 +549,12 @@ test('ISO readiness is clearly distinct from accredited certification',()=>{
  assert.match(fs.readFileSync('_config.yml','utf8'),/\n\s*- isms\n/);
  assert.doesNotMatch(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp[^\n]+isms\//);
 });
+
+test('secret diagnostics separate history and deployed files without hiding scanner failures',()=>{
+ const workflow=fs.readFileSync('.github/workflows/advanced-security.yml','utf8');
+ assert.match(workflow,/git --redact=100/);
+ assert.match(workflow,/dir --redact=100/);
+ assert.match(workflow,/secret_scan_summary\.py/);
+ assert.match(workflow,/test "\$history_status" -eq 0 && test "\$current_status" -eq 0/);
+ assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
+});
