@@ -1,0 +1,40 @@
+name: AEGIS ATLAS independent
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '8 9 * * 2'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aegis-atlas-independent.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independent atlas check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sh scripts/build-pages.sh
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          from scripts.validate_public_build import validate
+          p=Path('dist')
+          validate(p)
+          rows=[dict(path=str(f.relative_to(p)),size=f.stat().st_size,sha256=hashlib.sha256(f.read_bytes()).hexdigest()) for f in sorted(p.rglob('*')) if f.is_file()]
+          Path('atlas-inventory.json').write_text(json.dumps(rows,indent=2))
+          print('Public assets:',len(rows))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-public-inventory
+          path: atlas-inventory.json
+          retention-days: 30
