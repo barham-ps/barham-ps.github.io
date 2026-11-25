@@ -48,8 +48,12 @@ jobs:
             bash scripts/pqc-probe.sh
           else
             echo 'PQC unavailable on runner; production PQC unverified'
-            docker pull ubuntu:26.04
-            docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -v "$PWD/scripts/pqc-probe.sh:/probe.sh:ro" ubuntu:26.04 bash /probe.sh
+            image=ubuntu@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+            docker pull "$image"
+            work=$(mktemp -d)
+            printf 'FROM %s\nRUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*\n' "$image" > "$work/Dockerfile"
+            docker build -t aegis-pqc-local "$work"
+            docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -v "$PWD/scripts/pqc-probe.sh:/probe.sh:ro" aegis-pqc-local bash /probe.sh
           fi
       - name: Antidote - dependency vulnerability audit
         id: antidote
