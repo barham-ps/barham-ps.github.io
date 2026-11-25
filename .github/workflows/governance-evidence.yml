@@ -1,0 +1,38 @@
+name: Governance and recovery evidence
+on:
+  schedule:
+    - cron: '15 4 * * 1'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'SECURITY-GOVERNANCE.md'
+      - '.github/workflows/governance-evidence.yml'
+      - 'wrangler.jsonc'
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate governance and privacy baseline
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          doc = Path('SECURITY-GOVERNANCE.md').read_text()
+          for key in ('27001','27701','CSF 2.0','CIS Controls','ASVS','API Security','800-207','SLSA'):
+              assert key in doc, key
+          assert json.loads(Path('wrangler.jsonc').read_text())['observability']['logs']['invocation_logs'] is False
+          PY
+      - name: Synthetic backup and security regression
+        run: |
+          bash -n scripts/backup-object-lock.sh
+          bash tests/backup-smoke.sh
+          node --test tests/security.test.cjs tests/upgrade.test.cjs
+      - name: Evidence scope
+        if: always()
+        run: echo 'Tests do not establish certification or external backup retention.'
