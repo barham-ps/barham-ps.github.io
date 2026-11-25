@@ -118,7 +118,7 @@ test('password exposure screen sends only the padded hash prefix and rejects kno
 test('release keeps footer identity and deferred scripts in dependency order', () => {
   assert.match(html, /class="footer-wordmark" lang="ar">آل برهم/);
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
-  assert.match(html, /class="footer-signature"/);
+  assert.match(html, /class="site family-footer compact-footer"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,6);
   assert.ok(scripts.every(x => x[0].includes('defer')));
@@ -285,11 +285,9 @@ test('five member groups cover all eight services without duplication',()=>{
 test('simplified navigation uses one tree entry and preserves historical content routing',()=>{
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
- const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
- assert.deepEqual(Array.from(features.matchAll(/\['([^']+)','[^']+','[^']+','[^']+'\]/g), m=>m[1]),['heritage','community','membership']);
- const visitor=html.match(/<nav class="visitor-entry"[\s\S]*?<\/nav>/)[0];
- assert.match(visitor,/href="#news"/);
- assert.match(visitor,/href="\.\/martyrs\/"/);
+ assert.doesNotMatch(html, /id="features"|<nav class="visitor-entry"/);
+ assert.match(js,/\['tree', 'شجرة العائلة'\]/);
+ assert.match(html,/class="footer-links" aria-label="روابط البوابة المساندة"/);
  assert.match(js,/\['news', 'الأخبار', 'news', '#news'\]/);
  assert.match(js,/\['martyrs', 'الشهداء', 'heart', '\.\/martyrs\/'\]/);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
@@ -401,7 +399,7 @@ test('footer automatically changes month and year at Gaza calendar boundaries',(
  assert.equal(before.year,'2026');assert.equal(before.month,'December');assert.equal(before.iso,'2026-12');
  assert.equal(after.year,'2027');assert.equal(after.month,'January');assert.equal(after.iso,'2027-01');
  assert.equal(parts(new Date('2027-01-31T22:00:00Z')).month,'February');
- assert.equal((html.match(/data-footer-year/g)||[]).length,2);
+ assert.equal((html.match(/data-footer-year/g)||[]).length,1);
  assert.match(html,/<time id="footer-month" datetime="\d{4}-\d{2}">/);
  assert.match(footer,/setInterval\(updateFooterDate,30000\)/);
  assert.match(footer,/visibilitychange/);

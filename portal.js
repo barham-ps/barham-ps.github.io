@@ -4,16 +4,13 @@
   var NAV = [
     ['home', 'الرئيسية'],
     ['news', 'الأخبار'],
+    ['tree', 'شجرة العائلة'],
     ['martyrs', 'الشهداء'],
     ['heritage', 'العائلة والتراث'],
     ['community', 'المجتمع العائلي'],
     ['membership', 'العضوية والتحقق']
   ];
-  var FEAT = [
-    ['heritage','landmark','العائلة والتراث','التاريخ والشجرة والأرشيف'],
-    ['community','heart','المجتمع العائلي','المبادرات والتواصل'],
-    ['membership','shield','العضوية','الانضمام والتحقق من الشهادات']
-  ];
+
   var SERV = [
     ['الهوية والملف', 'البطاقة الرقمية والشهادة والملف الشخصي.'],
     ['العائلة والكفاءات', 'سجل القرابات ودليل المهن الاختياري.'],
@@ -36,13 +33,10 @@
     }
   });
   nav.innerHTML = NAV.map(function(n) {
-    return '<a href="' + (n[0]==='martyrs'?'./martyrs/':'#'+n[0]) + '" data-r="' + n[0] + '">' + n[1] + '</a>'
+    return '<a href="' + (n[0]==='martyrs'?'./martyrs/':n[0]==='tree'?'./genealogy/':'#'+n[0]) + '" data-r="' + n[0] + '">' + n[1] + '</a>'
   }).join('');
 
-  $('#features').innerHTML = FEAT.map(function(f) {
-    return '<a class="card" href="' + (f[0]==='martyrs'?'./martyrs/':'#'+f[0]) + '"><div class="ic"><svg width="26" height="26"><use href="#i-' + f[
-      1] + '"/></svg></div><h3>' + f[2] + '</h3><p>' + f[3] + '</p><span class="more" aria-hidden="true">←</span></a>'
-  }).join('');
+
   if ($('#services')) $('#services').innerHTML = SERV.map(function(s, i) {
     return '<div class="card"><span class="chip c-ok">للأعضاء المعتمدين</span><h3>' + s[0] + '</h3><p>' + s[1] +
       '</p></div>'

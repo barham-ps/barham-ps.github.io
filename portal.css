@@ -1195,3 +1195,30 @@ html{padding-block:0!important;scroll-padding-top:0}
   :root[data-theme="light"] :is(.mcard,.lux-verse-box){background:#123b30}
  }
 }
+
+/* V76 — one primary navigation, a news-led home and compact support footer. */
+@media screen {
+  #v-home .home-intro>.wrap{padding-block:clamp(12px,2vw,24px)}
+  #v-home .home-news{margin-block:16px 24px}
+  .home-fallback{display:flex;flex-wrap:wrap;gap:8px;margin-block-start:12px;color:#f5e6b8}
+  .home-fallback a{color:inherit}
+  footer.site.compact-footer{padding:0!important;border-top:1px solid #bda166}
+  .compact-footer .footer-identity{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;padding-block:10px 4px}
+  .compact-footer .footer-seal{margin:0;min-width:44px;min-height:44px}
+  .compact-footer .footer-seal img{width:32px;height:32px}
+  .compact-footer .footer-wordmark{font-size:21px;line-height:1.4}
+  .compact-footer .footer-english{font-size:15px;letter-spacing:.02em;white-space:nowrap}
+  .compact-footer .footer-date{font-size:10px;letter-spacing:.04em;gap:0}
+  .compact-footer .footer-date::before,.compact-footer .footer-date::after{display:none}
+  footer.site.compact-footer .copy{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;padding-block:4px 12px;border:0}
+  .compact-footer .footer-links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 5px;width:100%;margin:0}
+  footer.site.compact-footer .footer-links a{display:inline-flex;min-height:44px;align-items:center;justify-content:center;padding:0 7px;font-size:12px;line-height:1.4;color:#f5e6b8;white-space:nowrap;text-decoration:underline;text-decoration-color:#c8ad7470;text-underline-offset:4px}
+  .compact-footer .footer-copyright{font-size:11px;color:#d4e5de}
+  @media(max-width:700px){
+    header.site.open nav.main a:is([data-r="home"],[data-r="news"],[data-r="tree"],[data-r="martyrs"]){display:none}
+    header.site.open .acts{display:none}
+    #v-home #family-primary-entry[href="#account"]{display:none}
+    #v-home .family-entry-actions:not(:has(a:not([hidden]):not([href="#account"]))){display:none}
+  }
+  @media(min-width:1201px){#v-home #family-primary-entry[href="#account"]{display:none}#v-home .family-entry-actions:not(:has(a:not([hidden]):not([href="#account"]))){display:none}}
+}

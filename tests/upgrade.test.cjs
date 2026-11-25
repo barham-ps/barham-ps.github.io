@@ -53,7 +53,9 @@ test('public news starts without waiting for authentication and stale certificat
 
 test('visitor priorities are visible without authentication and print design remains separate',()=>{
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
- assert.match(h,/<nav class="visitor-entry"[\s\S]*?href="#news"[\s\S]*?href="\.\/genealogy\/"[\s\S]*?href="#history"/);
+ assert.doesNotMatch(h,/<nav class="visitor-entry"|id="features"/);
+ assert.match(h,/<nav class="home-fallback"[\s\S]*?href="\.\/genealogy\/"/);
+ assert.match(read('portal.js'),/\['tree', 'شجرة العائلة'\]/);
  assert.ok(tree.includes('portal.css?v=75')&&tree.includes('tree.css?v=7'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
@@ -112,7 +114,7 @@ test('family foyer and member lounge preserve visitor and approved-member bounda
  const h=read('index.html'),js=read('portal.js'),css=read('portal.css');
  assert.match(h, /id="family-primary-entry" href="#login"/);
  assert.match(h, /id="family-join-entry" href="#register"/);
- assert.match(h, /class="family-utility-link" href="#verify"/);
+ assert.match(h, /<a href="#verify">التحقق من العضوية<\/a>/);
  assert.ok(h.includes('family-join-steps'));
  assert.ok(js.includes("primaryEntry.href=session?'#account':'#login'"));
  assert.ok(js.includes('if(joinEntry)joinEntry.hidden=!!session'));
@@ -138,10 +140,10 @@ test('Palestine greeting uses exactly three phrases and updates without exposing
  hidden=false;visibility();assert.equal(greet.textContent,'مساء الخير'+suffix);
  now='2026-07-15T09:00:00Z';interval();assert.equal(greet.textContent,'نهارك سعيد'+suffix);
  now='2026-07-15T14:00:00Z';interval();assert.equal(greet.textContent,'مساء الخير'+suffix);
- const html=read('index.html'),hero=html.slice(html.indexOf('class="family-welcome"'),html.indexOf('class="visitor-title"'));
+ const html=read('index.html'),hero=html.slice(html.indexOf('class="family-welcome"'),html.indexOf('class="wrap home-news"'));
  assert.match(hero,/غزة والضفة الغربية/);assert.doesNotMatch(hero,/بني سهيلة|خان يونس|<time\b/);
  assert.match(hero,/جذورٌ تجمعنا، وعهدٌ نحمله إلى الأجيال\./);
- assert.match(html,/id="family-transparency-title"/);
+ assert.match(html,/class="footer-links" aria-label="روابط البوابة المساندة"/);
 });
 
 test('V73 theme and compact navigation preserve routes and private controls',()=>{
@@ -149,7 +151,7 @@ test('V73 theme and compact navigation preserve routes and private controls',()=
  const vm=require('node:vm');assert.doesNotThrow(()=>new vm.Script(theme));assert.doesNotThrow(()=>new vm.Script(js));
  assert.match(html,/data-family-theme hidden/);assert.match(css,/:root\[data-theme="light"\]/);assert.match(css,/repeat\(5,minmax\(0,1fr\)\)/);
  assert.match(js,/dockAccount\.href = session \? '#account' : '#login'/);
- assert.match(html,/<details class="wrap family-transparency">/);
+ assert.doesNotMatch(html,/<details class="wrap family-transparency">/);
  assert.match(theme,/barham-appearance-v1/);
  assert.match(read('genealogy/index.html'),/data-family-theme/);assert.match(read('martyrs/index.html'),/data-family-theme/);
 });

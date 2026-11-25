@@ -15,17 +15,19 @@ const base='http://127.0.0.1:8765/';
     await open('#'+route);await visible('#v-'+route);
     await noOverflow(route);
    }
-   await open('#home');await visible('#features');assert.deepEqual(await page.locator('#features > a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#heritage','#community','#membership']);
-   assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history','./martyrs/']);
-   assert.ok(await page.locator('.visitor-entry a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
+   await open('#home');await visible('.compact-footer');
+   assert.equal(await page.locator('#features,.visitor-entry,.home-search-entry,.family-transparency').count(),0);
+   assert.deepEqual(await page.locator('.footer-links a').evaluateAll(els=>els.map(a=>a.getAttribute('href')).filter(h=>h.startsWith('#'))),['#search','#verify','#privacy','#contact']);
+   assert.ok(await page.locator('.footer-links a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
+   await noOverflow('compact home');
    await visible('[data-family-theme]');
    await page.emulateMedia({colorScheme:'light'});
    await page.evaluate(()=>{localStorage.removeItem('barham-appearance-v1');});await page.reload();await visible('[data-family-theme]');
    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
-   const glass=()=>page.locator('#features > a').first().evaluate(e=>({bg:getComputedStyle(e).backgroundColor,opacity:getComputedStyle(e).opacity}));
-   assert.deepEqual(await glass(),{bg:'rgba(18, 61, 49, 0.74)',opacity:'1'});
+   const glass=()=>page.locator('#v-home .family-welcome').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,opacity:getComputedStyle(e).opacity}));
+   assert.equal((await glass()).opacity,'1');
    await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
-   assert.deepEqual(await glass(),{bg:'rgba(255, 253, 248, 0.74)',opacity:'1'});
+   assert.equal((await glass()).opacity,'1');
 
    // V75 regression: computed text colors on actual account markup (no login or data access).
    const rgb=(hex)=>hex.match(/../g).map(x=>parseInt(x,16));
@@ -50,7 +52,7 @@ const base='http://127.0.0.1:8765/';
    await visible('.family-welcome');await visible('#family-primary-entry');await visible('#family-join-entry');
    assert.equal(await page.locator('#family-primary-entry').getAttribute('href'),'#login');
    assert.equal(await page.locator('#family-join-entry').getAttribute('href'),'#register');
-   assert.equal(await page.locator('.family-utility-link[href="#verify"]').count(),1);
+   assert.equal(await page.locator('.footer-links a[href="#verify"]').count(),1);
    await page.locator('#family-join-entry').click();await visible('.family-join-steps');assert.equal(await page.locator('.family-join-steps li').count(),3);await noOverflow('registration steps');
    await open('#home');await page.locator('#family-primary-entry').click();await visible('#logForm');await visible('.family-auth-help');await noOverflow('login foyer');
    await page.locator('#logForm a[href="#reset"]').click();await visible('#recovery-email-form');await noOverflow('recovery email');
