@@ -32,7 +32,7 @@
   function update(){render();window.dispatchEvent(new Event('family-network-change'));}
   window.addEventListener('online',update);
   window.addEventListener('offline',update);
-  connection?.addEventListener?.('change',update);
+  try { if(connection && typeof connection.addEventListener==='function') connection.addEventListener('change',update); } catch {}
   window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false});
   const toggle=document.getElementById('bandwidth-toggle');
   toggle?.addEventListener('click',()=>{choice=lowData()?'off':'on';try{localStorage.setItem(preferenceKey,choice);}catch{}update();});

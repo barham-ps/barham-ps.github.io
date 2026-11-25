@@ -24,7 +24,11 @@ jobs:
           npx playwright install --with-deps ${{ matrix.browser }}
       - name: Verify isolated browser behavior
         run: |
-          python3 -m http.server 8765 --bind 127.0.0.1 --directory dist >/tmp/portal-http.log 2>&1 &
-          trap 'kill $!' EXIT
-          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          tls=$(mktemp -d)
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 -keyout "$tls/key.pem" -out "$tls/cert.pem" >/dev/null 2>&1
+          python3 tests/local_https.py "$tls/cert.pem" "$tls/key.pem" >/tmp/portal-https.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true; rm -rf -- "$tls"' EXIT
+          for i in $(seq 1 20); do curl -kfsS https://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          curl -kfsS https://127.0.0.1:8765/runtime.js >/dev/null
           node tests/network-browser.cjs ${{ matrix.browser }}

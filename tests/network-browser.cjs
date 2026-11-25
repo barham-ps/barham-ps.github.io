@@ -1,15 +1,18 @@
 "use strict";
 const assert=require('node:assert/strict');
 const playwright=require('playwright');
-const base='http://127.0.0.1:8765/';
+const base='https://127.0.0.1:8765/';
 (async()=>{
  const type=process.argv[2];
  assert.ok(['chromium','firefox','webkit'].includes(type));
  const browser=await playwright[type].launch();
  try{
-  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',ignoreHTTPSErrors:true});
   const page=await context.newPage();
   let adminLoads=0;
+  // Local synthetic browser diagnostics only; never record remote URLs or credentials.
+  page.on('pageerror',e=>console.error('Browser exception:',e.name,e.message.slice(0,200)));
+  page.on('requestfailed',r=>{const u=new URL(r.url());if(u.hostname==='127.0.0.1')console.error('Local request failed:',u.protocol,u.pathname,r.failure()?.errorText);});
   await page.route('**/martyrs/admin.js*',r=>{adminLoads++;return r.abort();});
   await page.route('**/*.supabase.co/**',r=>r.abort());
   await page.addInitScript(()=>{try{if(localStorage.getItem('barham-low-data-v1')===null)localStorage.setItem('barham-low-data-v1','off');}catch{}});
