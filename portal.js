@@ -2072,7 +2072,12 @@
     });
     if (cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
       'gallery-hint';
-    const load = () => photoURLs(paths).then(result => {
+    const load = async () => {
+      const early=parent.classList.contains('home-news-card')?window.familyRuntime?.takeInitialCover(paths):null;
+      const signed=early?await early:null;
+      return signed&&signed.every(Boolean)?signed:photoURLs(paths);
+    };
+    const loadImages=()=>load().then(result => {
       if (!g.isConnected) return;
       urls = result;
       items.forEach(({
@@ -2091,8 +2096,8 @@
     });
     if(reduced){
       const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
-      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
-    }else nearViewport(g, load, parent.classList.contains('home-news-card') && g.getBoundingClientRect().top <= window.innerHeight + 250);
+      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();loadImages();};
+    }else nearViewport(g, loadImages, parent.classList.contains('home-news-card') && g.getBoundingClientRect().top <= window.innerHeight + 250);
   }
 
   async function loadPublicNews() {

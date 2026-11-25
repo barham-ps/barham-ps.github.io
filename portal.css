@@ -1290,3 +1290,12 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
  }
  @media(prefers-reduced-transparency:reduce){:root[data-theme=dark] #hdr{background:#03251c}:root[data-theme=light] #hdr{background:#fffdf8}}
 }
+
+/* Reserve a real news-preview slot before the asynchronous card arrives. Keep the
+   footer in normal flow and avoid moving it when the first cover is inserted. */
+@media screen{
+ #home-latest-news{min-block-size:clamp(420px,calc(240px + 40vw),660px)}
+ #home-latest-news>.portal-loading{margin:0;padding-block:12px}
+ #home-latest-news .home-news-card .news-gallery-item img{width:100%;aspect-ratio:16/10;height:auto;object-fit:contain}
+ html[data-low-data=true] #home-latest-news{min-block-size:300px}
+}

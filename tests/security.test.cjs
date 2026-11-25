@@ -628,3 +628,13 @@ test('public homepage has no network controls or diagnostic result markup',()=>{
  assert.match(runtime,/document\.documentElement\.dataset\.lowData/);
  assert.doesNotMatch(runtime,/PerformanceObserver|local-diagnostics/);
 });
+
+
+test('early cover signing is scoped to published news and falls back to the authorized SDK',()=>{
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/storage\/v1\/object\/sign\/family-news/);
+ assert.match(runtime,/row\.cover_paths\.filter\(p=>typeof p==='string'&&allowed\.has\(p\)\)/);
+ assert.match(runtime,/JSON\.stringify\(cover\.paths\)!==JSON\.stringify\(paths\)/);
+ assert.match(runtime,/if\(lowData\(\)\|\|!row/);
+ assert.match(js,/signed&&signed\.every\(Boolean\)\?signed:photoURLs\(paths\)/);
+});
