@@ -1,0 +1,42 @@
+name: AEGIS Guardian
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '29 5 * * 1'
+permissions:
+  contents: read
+jobs:
+  guardian:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Inspect workflow trust boundaries
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          errors = []
+          for p in sorted(Path('.github/workflows').glob('*.y*ml')):
+              for n, line in enumerate(p.read_text().splitlines(), 1):
+                  if re.match(r'^\s*(?:-\s*)?pull_request_target\s*:', line):
+                      errors.append(f'{p}:{n}: privileged pull request trigger requires review')
+                  if re.match(r'^\s*permissions:\s*write-all\s*(?:#.*)?$', line):
+                      errors.append(f'{p}:{n}: unrestricted write permissions')
+                  m = re.match(r'^\s*(?:-\s*)?uses:\s*["\x27]?([^\s"\x27#]+)', line)
+                  if m:
+                      action = m.group(1)
+                      if not action.startswith(('./','docker://')) and not re.search(r'@[0-9a-fA-F]{40}$', action):
+                          errors.append(f'{p}:{n}: action not pinned to full commit SHA')
+                      if action.startswith('docker://') and not re.search(r'@sha256:[0-9a-fA-F]{64}$', action):
+                          errors.append(f'{p}:{n}: container action not pinned to digest')
+          if errors:
+              raise SystemExit('\n'.join(errors))
+          print('Workflow trust boundary policy passed')
+          PY
