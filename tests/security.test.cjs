@@ -399,7 +399,7 @@ test('footer automatically changes month and year at Gaza calendar boundaries',(
  assert.equal((html.match(/data-footer-year/g)||[]).length,2);
  assert.match(html,/<time id="footer-month" datetime="\d{4}-\d{2}">/);
  assert.match(footer,/setInterval\(updateFooterDate,30000\)/);
- assert.match(js,/visibilitychange/);
+ assert.match(footer,/visibilitychange/);
 });
 
 test('security operations center uses admin-only aggregate records and scoped refresh',()=>{
