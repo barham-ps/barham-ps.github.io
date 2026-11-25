@@ -15,14 +15,23 @@ const base='http://127.0.0.1:8765/';
     await open('#'+route);await visible('#v-'+route);
     await noOverflow(route);
    }
-   await open('#home');await visible('#features');assert.equal(await page.locator('#features > a').count(),4);
-   assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history']);
+   await open('#home');await visible('#features');assert.deepEqual(await page.locator('#features > a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#heritage','#news','./martyrs/','#community','#membership']);
+   assert.deepEqual(await page.locator('.visitor-entry a').evaluateAll(els=>els.map(a=>a.getAttribute('href'))),['#news','./genealogy/','#history','./martyrs/']);
    assert.ok(await page.locator('.visitor-entry a').evaluateAll(els=>els.every(a=>a.getBoundingClientRect().height>=44)));
    await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
    await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
    for(const slug of ['about','history','membership','en','en/history','en/membership']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
+   await open('martyrs/');await visible('#gaza');
+   assert.equal(await page.locator('#westbank').isVisible(),false);
+   await page.locator('[data-region="westbank"]').click();await visible('#westbank');
+   assert.equal(await page.locator('#gaza').isVisible(),false);
+   assert.equal(await page.locator('[data-region="westbank"]').getAttribute('aria-current'),'true');
+   await page.goBack();await visible('#gaza');
+   await open('martyrs/#westbank');await visible('#westbank');
+   await noOverflow('memorial');
+   const download=await page.request.get(base+'martyrs/Barham_Martyrs_Register.html');assert.equal(download.status(),200);
    await open('#verify');await visible('#v-verify');
    await page.locator('#v-verify input').fill('invalid');
    await page.locator('#v-verify input').press('Enter');

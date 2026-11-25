@@ -11,3 +11,7 @@ done
 # Publish the genealogy viewer and its static assets.
 mkdir -p dist/genealogy
 cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.js genealogy/gaza.json dist/genealogy/
+
+# Publish the memorial section and its downloadable register.
+mkdir -p dist/martyrs
+cp martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/Barham_Martyrs_Register.html dist/martyrs/

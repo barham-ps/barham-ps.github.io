@@ -57,3 +57,14 @@ test('visitor priorities are visible without authentication and print design rem
  assert.ok(tree.includes('portal.css?v=59')&&tree.includes('tree.css?v=5'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
+
+
+test('memorial section is linked and included in the deployable build',()=>{
+ const assets=['index.html','memorial.css','memorial.js','Barham_Martyrs_Register.html'];
+ const html=read('index.html'), memorial=read('martyrs/index.html');
+ assert.ok(html.includes('href="./martyrs/"'));
+ assert.ok(memorial.includes('href="./Barham_Martyrs_Register.html"'));
+ assert.ok(memorial.includes('./memorial.css')&&memorial.includes('./memorial.js'));
+ require('node:child_process').execFileSync('sh',['scripts/build-pages.sh']);
+ for(const asset of assets)assert.deepEqual(fs.readFileSync('dist/martyrs/'+asset),fs.readFileSync('martyrs/'+asset),asset);
+});

@@ -284,7 +284,7 @@ test('simplified navigation uses one tree entry and preserves historical content
  const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
  assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
  const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
- assert.equal(Array.from(features.matchAll(/\['[^']+','[^']+','[^']+','[^']+'\]/g)).length,4);
+ assert.deepEqual(Array.from(features.matchAll(/\['([^']+)','[^']+','[^']+','[^']+'\]/g), m=>m[1]),['heritage','news','martyrs','community','membership']);
  assert.match(js,/collection\(heritage, \[\s*\['history'/);
  const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
  assert.match(cms,/set section='history'/);
