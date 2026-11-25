@@ -294,7 +294,7 @@ test('public search excludes private member data and admin CSV contains aggregat
  assert.match(search,/from\('family_news'\)[\s\S]*?eq\('published',true\)/);
  assert.match(search,/from\('family_public_content'\)[\s\S]*?eq\('published',true\)/);
  assert.doesNotMatch(search,/from\('member_applications'|from\('family_member_requests'|from\('family_profiles'|from\('family_member_notices'/);
- const report=js.slice(js.indexOf('function mountAdminReports'),js.indexOf('async function loadAdmin'));
+ const report=js.slice(js.indexOf('function mountAdminReports'),js.indexOf('async function readMemberDirectory'));
  assert.match(report,/members\.filter\(m=>m\.status===key\)\.length/);
  assert.doesNotMatch(report,/\.full_name|\.email|\.phone|\.whatsapp/);
  assert.match(js,/p\.checked = item \? item\.published : false/);
@@ -341,4 +341,30 @@ test('member registry search, filtering and ordering use only the selected datas
  assert.equal(sort(fixture,'','approved','name').length,1);
  assert.equal(sort(fixture,'','all','recent')[0].status,'under_review');
  assert.equal(sort(fixture,'','all','number').length,2);
+});
+
+test('attachment quarantine is enforced by server policies and only the configured engine may release it',()=>{
+ const sql=fs.readFileSync('database/request_attachment_quarantine.sql','utf8');
+ assert.match(sql,/as restrictive for select to authenticated/);
+ assert.match(sql,/attachment_scan_status='clean'/);
+ assert.match(sql,/revoke insert \(attachment_scan_status,attachment_scanned_at,attachment_scan_note,attachment_sha256\)/);
+ assert.match(sql,/attachment_scan_status='pending' and r.attachment_sha256 is null/);
+ const edge=fs.readFileSync('supabase/functions/scan-request-attachment/index.ts','utf8');
+ assert.match(edge,/caller\.auth\.getUser\(\)/);
+ assert.match(edge,/caller\.from\("family_member_requests"\)/);
+ assert.match(edge,/status="awaiting_scanner"/);
+ assert.match(edge,/verdict\.sha256!==hash\|\|verdict\.engine!=="ClamAV"/);
+ assert.match(edge,/if\(verdict\.status==="clean"\)\{status="clean"/);
+ assert.match(js,/download\.disabled=row\.attachment_scan_status!=='clean'/);
+ assert.match(js,/functions\.invoke\('scan-request-attachment'/);
+});
+test('Gaza timestamps distinguish original certificate issuance and exported copy',()=>{
+ const source=js.slice(js.indexOf('function formatPortalTime'),js.indexOf('var statusLabels'));
+ const fmt=vm.runInNewContext(source+';formatPortalTime');
+ assert.match(source,/timeZone:'Asia\/Gaza'/);
+ assert.match(fmt('2026-11-25T12:34:00Z'),/توقيت غزة/);
+ assert.equal(fmt(null),'غير متاح');
+ assert.match(js,/var issued = formatPortalTime\(d\.issued_at\)/);
+ assert.match(js,/تاريخ ووقت إعداد النسخة/);
+ assert.match(js,/directory-signature/);
 });
