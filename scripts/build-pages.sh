@@ -3,7 +3,7 @@ set -eu
 mkdir -p dist
 # Fail before publication if a previous build left unexpected files.
 python3 scripts/validate_public_build.py --allow-incomplete dist
-cp index.html portal.js footer.js portal.css icon.svg favicon.png barham-emblem.webp manifest.webmanifest sw.js security-config.js captcha.js _headers dist/
+cp index.html portal.js runtime.js footer.js portal.css icon.svg favicon.png barham-emblem.webp manifest.webmanifest sw.js security-config.js captcha.js _headers dist/
 cp robots.txt sitemap.xml public.css 404.html dist/
 for page in about history membership en en/history en/membership; do
   mkdir -p "dist/$page"
