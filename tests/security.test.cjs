@@ -619,3 +619,12 @@ test('early public news request is anonymous, RLS-filtered, bounded and not pers
  assert.match(js,/if\(rows===null\)/);
  assert.match(js,/if\(epoch!==newsEpoch\|\|\(location.hash\|\|'#home'\)!==hash\)return/);
 });
+
+
+test('public homepage has no network controls or diagnostic result markup',()=>{
+ assert.doesNotMatch(html,/id="(?:bandwidth-toggle|local-diagnostics|local-diagnostics-result|network-status)"/);
+ const runtime=fs.readFileSync('runtime.js','utf8');
+ assert.match(runtime,/connection\?\.saveData/);
+ assert.match(runtime,/document\.documentElement\.dataset\.lowData/);
+ assert.doesNotMatch(runtime,/PerformanceObserver|local-diagnostics/);
+});

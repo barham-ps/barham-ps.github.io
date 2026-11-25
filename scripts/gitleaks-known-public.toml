@@ -7,9 +7,6 @@ useDefault = true
 description = "Exact existing Supabase publishable client key in portal.js and runtime.js only"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['(^|/)(portal|runtime)\.js
-regexTarget = "secret"
-regexes = ['^sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw$']
-]
+paths = ['(^|/)(portal|runtime)\.js$']
 regexTarget = "secret"
 regexes = ['^sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw$']
