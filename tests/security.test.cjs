@@ -315,3 +315,30 @@ test('request attachments are private, immutable and tied to a saved request',()
  assert.ok(req.indexOf('const created=ok(await client()')<req.indexOf('await uploadRequestFile(created,uid,file)'));
  assert.match(req,/دون إعادة إرسال الطلب/);
 });
+
+test('private member directory uses admin-gated paged RPC and contains requested fields',()=>{
+ const directory=js.slice(js.indexOf('async function readMemberDirectory'),js.indexOf('async function loadAdmin'));
+ assert.match(directory,/rpc\('family_is_admin'\)/);
+ assert.match(directory,/rpc\('family_admin_list'\)[\s\S]*?\.range\(start,start\+size-1\)/);
+ for(const key of ['full_name','membership_number','email','phone','status'])assert.ok(directory.includes("['"+key+"',"));
+ assert.match(directory,/const fresh=await readMemberDirectory\(\)/);
+ assert.match(directory,/window\.print\(\)/);
+ assert.doesNotMatch(directory,/localStorage|sessionStorage|innerHTML|fetch\(/);
+ assert.match(js,/guardPrivate\(loadMemberDirectory\)/);
+ assert.match(js,/directoryEpoch\+\+;adminDirectory\.replaceChildren\(\)/);
+ const css=fs.readFileSync('portal.css','utf8');
+ assert.match(css,/@page memberRegistry\{size:A4 landscape/);
+ assert.match(css,/body\.printing-member-directory>\*:not\(#member-directory-print\)\{display:none!important\}/);
+ assert.match(css,/#member-directory-print thead\{display:table-header-group\}/);
+});
+test('member registry search, filtering and ordering use only the selected dataset',()=>{
+ const source=js.slice(js.indexOf('function sortedMemberDirectory'),js.indexOf('function memberDirectoryTable'));
+ const normalize=js.slice(js.indexOf('function normalizeSearch'),js.indexOf('function attachSearch'));
+ const sort=vm.runInNewContext(normalize+source+';sortedMemberDirectory');
+ const fixture=[{full_name:'أحمد تجريبي',membership_number:'AB-0002',email:'test2@example.invalid',phone:'+970000000002',status:'approved',submitted_at:'2025-01-01'},{full_name:'باسم تجريبي',membership_number:null,email:'test1@example.invalid',phone:'+970000000001',status:'under_review',submitted_at:'2025-02-01'}];
+ assert.equal(sort(fixture,'احمد','all','name').length,1);
+ assert.equal(sort(fixture,'٠٠٠٢','all','number')[0].membership_number,'AB-0002');
+ assert.equal(sort(fixture,'','approved','name').length,1);
+ assert.equal(sort(fixture,'','all','recent')[0].status,'under_review');
+ assert.equal(sort(fixture,'','all','number').length,2);
+});
