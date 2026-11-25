@@ -55,7 +55,7 @@ test('visitor priorities are visible without authentication and print design rem
  const h=read('index.html'),css=read('portal.css'),tree=read('genealogy/index.html');
  assert.doesNotMatch(h,/<nav class="visitor-entry"|id="features"/);
  assert.match(h,/<nav class="home-fallback"[\s\S]*?href="\.\/genealogy\/"/);
- assert.match(read('portal.js'),/\['tree', 'شجرة العائلة'\]/);
+ assert.match(h,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
  assert.ok(tree.includes('portal.css?v=75')&&tree.includes('tree.css?v=7'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
@@ -76,7 +76,7 @@ test('memorial section is linked and included in the deployable build',()=>{
  for(const asset of assets)assert.deepEqual(fs.readFileSync('dist/martyrs/'+asset),fs.readFileSync('martyrs/'+asset),asset);
 });
 
-test('memorial photo storage is private and limited to 30 slots per record',()=>{const sql=read('database/family_martyrs.sql');assert.match(sql,/position between 1 and 30/);assert.match(sql,/unique\(martyr_id,position\)/);assert.match(sql,/family_martyr_photos enable row level security/);assert.match(sql,/'family-martyr-photos','family-martyr-photos',false,5242880/);assert.match(sql,/p\.published and m\.published/);assert.ok(read('portal.js').includes('window.mountMemorialAdmin(cms,client)'));assert.ok(read('martyrs/memorial.js').includes('createSignedUrls'));require('node:child_process').execFileSync(process.execPath,['--check','martyrs/admin.js']);require('node:child_process').execFileSync(process.execPath,['--check','martyrs/memorial.js']);});
+test('memorial photo storage is private and limited to 30 slots per record',()=>{const sql=read('database/family_martyrs.sql');assert.match(sql,/position between 1 and 30/);assert.match(sql,/unique\(martyr_id,position\)/);assert.match(sql,/family_martyr_photos enable row level security/);assert.match(sql,/'family-martyr-photos','family-martyr-photos',false,5242880/);assert.match(sql,/p\.published and m\.published/);assert.ok(read('portal.js').includes('window.mountMemorialAdmin(editorSlot,client,true)'));assert.ok(read('martyrs/memorial.js').includes('createSignedUrls'));require('node:child_process').execFileSync(process.execPath,['--check','martyrs/admin.js']);require('node:child_process').execFileSync(process.execPath,['--check','martyrs/memorial.js']);});
 
 test('launch routes memorial admin through session and MFA guard and exposes public navigation',()=>{const js=read('portal.js'),html=read('martyrs/index.html'),editor=read('martyrs/admin.js');assert.ok(js.includes("if (nh === '#martyrs-admin') guardPrivate(loadMemorialEditor)"));assert.ok(js.includes("'news-admin', 'martyrs-admin', 'mfa'"));assert.ok(js.includes("'#news-admin', '#martyrs-admin', '#certificate'"));assert.ok(js.includes('memorialEditorBody.replaceChildren();memorialEditorEpoch++'));assert.ok(!html.includes('href="../#martyrs-admin"'));
  assert.match(html, /id="memorial-admin-actions" hidden/);
@@ -156,11 +156,11 @@ test('V73 theme and compact navigation preserve routes and private controls',()=
  assert.match(read('genealogy/index.html'),/data-family-theme/);assert.match(read('martyrs/index.html'),/data-family-theme/);
 });
 
-test('V74 moderate background glass and original default theme',()=>{
+test('V83 moderate background glass and original default theme',()=>{
  const css=read('portal.css'),footer=read('footer.js');
  assert.match(footer,/const theme=choice\|\|'dark'/);
- assert.match(css,/--glass-card:rgba\(18,61,49,\.74\)/);
- assert.match(css,/--glass-card:rgba\(255,253,248,\.74\)/);
- assert.match(css,/--glass-blur:10px/);
+ assert.match(css,/--glass-card:rgba\(18,61,49,\.82\)/);
+ assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
+ assert.match(css,/--glass-blur:8px/);
  for(const path of ['portal.css','genealogy/tree.css','martyrs/memorial.css','public.css'])assert.match(read(path),/prefers-reduced-transparency:reduce/);
 });

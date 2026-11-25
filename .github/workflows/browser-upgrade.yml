@@ -6,6 +6,7 @@ on:
       - 'index.html'
       - 'portal.css'
       - 'portal.js'
+      - 'runtime.js'
       - 'footer.js'
       - 'public.css'
       - 'about/**'
@@ -14,10 +15,19 @@ on:
       - 'genealogy/**'
       - 'tests/browser-smoke.cjs'
       - 'scripts/build-pages.sh'
+      - 'scripts/validate_public_build.py'
       - '.github/workflows/browser-upgrade.yml'
       - 'martyrs/**'
   pull_request:
     paths:
+      - 'index.html'
+      - 'portal.js'
+      - 'runtime.js'
+      - 'footer.js'
+      - 'security-config.js'
+      - 'captcha.js'
+      - 'scripts/build-pages.sh'
+      - 'scripts/validate_public_build.py'
       - 'portal.css'
       - 'public.css'
       - 'genealogy/**'
@@ -48,3 +58,7 @@ jobs:
           node tests/browser-smoke.cjs
           CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")" npx lighthouse http://127.0.0.1:8765/about/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse.json --quiet
           node -e "const r=require('/tmp/lighthouse.json'); console.log(JSON.stringify(Object.fromEntries(Object.entries(r.categories).map(([k,v])=>[k,v.score])),null,2))"
+          CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")" npx lighthouse http://127.0.0.1:8765/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=/tmp/lighthouse-home.json --quiet
+          node -e "const r=require('/tmp/lighthouse-home.json'); console.log(JSON.stringify({page:'home',scores:Object.fromEntries(Object.entries(r.categories).map(([k,v])=>[k,v.score])),lcp_ms:r.audits['largest-contentful-paint'].numericValue,cls:r.audits['cumulative-layout-shift'].numericValue,tbt_ms:r.audits['total-blocking-time'].numericValue},null,2))"
+          node tests/lighthouse-diagnostics.cjs /tmp/lighthouse-home.json
+          node -e "const r=require('/tmp/lighthouse-home.json'); if(r.categories.accessibility.score<0.95 || r.categories.performance.score<0.50 || r.audits['cumulative-layout-shift'].numericValue>0.25) {console.error('Home regression budget failed');process.exit(1)}; if(r.categories.performance.score<0.95 || r.audits['largest-contentful-paint'].numericValue>2500 || r.audits['cumulative-layout-shift'].numericValue>0.1) console.log('::warning::Target CWV or Lighthouse score not met')"

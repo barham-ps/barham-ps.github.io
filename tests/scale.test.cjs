@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 test('public CMS bounds reads, preserves published filtering and batches signed images',async()=>{
  const js=fs.readFileSync('portal.js','utf8');
- const source=js.slice(js.indexOf('  const publicCMSPageSize='),js.indexOf('  async function loadPublicCMS(){'));
+ const source=js.slice(js.indexOf('  const publicCMSPageSize='),js.indexOf('  // Load the administrative editor only after'));
  const calls=[],ranges=[],signed=[];
  function node(){return {children:[],appendChild(n){this.children.push(n)},insertBefore(n,b){this.children.splice(this.children.indexOf(b),0,n)},replaceChildren(){this.children=[]},setAttribute(){},style:{}}}
  const panel=node(),host={querySelector:()=>panel};
