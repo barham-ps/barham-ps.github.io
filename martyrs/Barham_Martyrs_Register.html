@@ -15,10 +15,70 @@ body{background:radial-gradient(ellipse at 13% 19%,rgba(88,109,167,.27),transpar
 .featured .record-index{background:transparent}
 .subtle-download{font-size:.78rem;font-weight:400;color:var(--muted)}
 }
+
+/* Refined two-region navigation and consistent memorial typography. */
+@media screen {
+.hero-frame,.mem-wrap,.top-inner{max-width:960px}
+.hero-frame{border-radius:12px;padding-block:30px 27px}
+.mem-hero{padding-bottom:20px}
+.mem-wrap{padding-top:0}
+.region-nav{position:relative;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 28px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.region-nav a{position:relative;display:flex;flex-direction:row;justify-content:space-between;align-items:center;min-width:0;min-height:60px;padding:12px 18px;gap:8px;border:1px solid rgba(220,193,138,.36);border-radius:10px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.008));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:1rem;line-height:1.45;color:#e3d6ba}
+.region-nav a svg{flex:none;opacity:.68;transform:rotate(180deg)}
+.region-nav a[aria-current="true"]{background:linear-gradient(145deg,rgba(220,193,138,.085),rgba(255,255,255,.012));border-color:#dcc18a;color:#fff5dc;box-shadow:inset 0 -2px 0 #dcc18a}
+.region-nav a[aria-current="true"] svg{opacity:1}
+.region-nav a:hover{border-color:#f0dab0}
+.section-heading{align-items:center;min-width:0;margin-bottom:16px;padding-bottom:14px}
+.section-heading>div{min-width:0}
+.section-count{white-space:normal;text-align:end;flex:none;max-width:35%}
+.honor-list{border:0;border-radius:0;overflow:visible;display:grid;gap:12px;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.honor-record,.honor-record:last-child{border:1px solid rgba(220,193,138,.23);border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:21px 22px;gap:16px;min-width:0}
+.honor-record.featured{border-color:rgba(220,193,138,.59);padding-block:24px}
+.record-content{min-width:0}
+.record-title{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:4px 12px}
+.record-title h3{font-size:clamp(1.45rem,2.5vw,1.85rem);overflow-wrap:anywhere}
+.featured h3{font-size:clamp(1.7rem,3.5vw,2.3rem)}
+.featured-caption{grid-column:1/-1;margin:0 0 4px}
+.record-title time{font-variant-numeric:tabular-nums;white-space:normal}
+.record-meta{gap:6px 10px;margin:7px 0 9px}
+.record-meta span+span:before{margin-inline-end:10px}
+.sources{margin-top:9px}
+.sources summary{display:inline-flex;align-items:center;gap:7px;min-height:38px;list-style:none;padding:5px 0;cursor:pointer}
+.sources summary::-webkit-details-marker{display:none}
+.sources summary:after{content:"+";font-size:1.05em;color:var(--gold)}
+.sources[open] summary:after{content:"−"}
+.source-links{padding:2px 0 6px;border-top:1px solid var(--edge);margin:0}
+.provenance{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 15px}
+.provenance p{flex:1 1 280px}
+.provenance .subtle-download{min-height:44px;display:inline-flex;align-items:center;margin:0;color:var(--gold-light)}
+}
+@media screen and (max-width:600px){
+.mem-hero{padding:14px 12px 16px}
+.hero-frame{padding:22px 12px 20px}
+h1{font-size:clamp(2.5rem,10vw,3.7rem)}
+.hero-mark{width:64px}
+.mem-wrap{padding-inline:12px}
+.region-nav{gap:8px;margin-bottom:23px}
+.region-nav a{font-size:.86rem;min-height:54px;padding:9px 10px;gap:5px}
+.region-nav a svg{width:13px;height:13px}
+.section-heading h2{font-size:clamp(1.55rem,6vw,2rem)}
+.section-count{font-size:.68rem}
+.honor-list{gap:10px}
+.honor-record,.honor-record:last-child{grid-template-columns:32px minmax(0,1fr);gap:10px;padding:15px 12px}
+.honor-record.featured{padding-block:19px}
+.record-title{grid-template-columns:minmax(0,1fr)}
+.record-title time{margin:0;font-size:.82rem}
+.record-meta{font-size:.77rem;gap:4px 8px}
+.record-meta span+span:before{margin-inline-end:8px}
+.record-title h3{font-size:1.43rem}
+.featured h3{font-size:1.7rem}
+.record-content p{font-size:.89rem}
+}
+@media screen and (max-width:350px){.region-nav a{font-size:.78rem;padding:8px 7px}.region-nav a svg{display:none}.honor-record,.honor-record:last-child{padding-inline:10px}}
 </style></head><body><a href="#content" class="mem-skip">انتقل إلى المحتوى</a>
 <header class="mem-top"><div class="top-inner"><a class="mem-brand" href="https://barham-ps.github.io/#home"><img src="https://barham-ps.github.io/barham-emblem.webp" alt="" width="48" height="48"><span><b>آل برهم</b><small>البوابة العائلية</small></span></a><a href="https://barham-ps.github.io/#home" class="mem-back">الرئيسية <span aria-hidden="true">←</span></a></div></header>
 <main id="content"><section class="mem-hero"><div class="hero-frame"><div class="hero-mark" aria-hidden="true"><svg viewBox="0 0 120 64" fill="none"><path d="M8 32h34m36 0h34M60 8v48M47 32 60 19l13 13-13 13-13-13Z" stroke="currentColor" stroke-width="1"/><circle cx="60" cy="32" r="20" stroke="currentColor" stroke-opacity=".4"/><path d="m60 26 6 6-6 6-6-6 6-6Z" fill="currentColor"/></svg></div><p class="mem-kicker">ذاكرة العائلة · عهد الوفاء</p><h1>شهداء آل برهم</h1><p class="hero-sub">غابوا عن أعيننا، وما غابوا عن قلوبنا.</p><div class="verse"><p>إِنَّا لِلَّهِ وَإِنَّا إِلَيْهِ رَاجِعُونَ</p><span>اللهم ارحمهم رحمةً واسعة، واغفر لهم، واجعل مثواهم الجنة، واربط على قلوب أهلهم بالصبر والسكينة.</span></div><p class="mem-period">السجل التاريخي الأولي <span>·</span> ١٩٠٠ — ٢٠٢٦</p></div></section>
-<div class="mem-wrap"><nav class="region-nav" aria-label="أقسام سجل الشهداء"><a href="#gaza" data-region="gaza"><small>٠١</small><span>شهداء غزة</span></a><a href="#westbank" data-region="westbank"><small>٠٢</small><span>شهداء الضفة</span></a></nav>
+<div class="mem-wrap"><nav class="region-nav" aria-label="أقسام سجل الشهداء"><a href="#gaza" data-region="gaza"><span>شهداء غزة</span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="M7 4.5 12.5 10 7 15.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a><a href="#westbank" data-region="westbank"><span>شهداء الضفة الغربية</span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="M7 4.5 12.5 10 7 15.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></a></nav>
 <section id="gaza" class="mem-section" data-panel><header class="section-heading"><div><p class="section-label">فلسطين · قطاع غزة</p><h2>شهداء قطاع غزة</h2></div><span class="section-count">١٠ أسماء في السجل</span></header><div class="honor-list"><article class="honor-record featured"><div class="record-index" aria-hidden="true">٠١</div><div class="record-content"><div class="record-title"><span class="featured-caption">في صدارة سجل شهداء غزة</span><h3>الشهيد منير إبراهيم برهم</h3><time>٣ يناير ٢٠٠٨</time></div><div class="record-meta"><span>الزنة قرب بني سهيلا، خان يونس</span><span>٢٠ أو ٢٢ عامًا</span></div><p>استشهد عام ٢٠٠٨ أثناء تصديه للاحتلال الإسرائيلي، بحسب الرواية العائلية.</p><details class="sources" open><summary>مصادر التوثيق</summary><div class="source-links"><a href="https://www.mezan.org/post/580" target="_blank" rel="noopener noreferrer">مركز الميزان ↗</a><a href="https://pal48.ps/ar/martyrs/5321/منير-إبراهيم-أحمد-برهم" target="_blank" rel="noopener noreferrer">فلسطيننا ↗</a></div></details></div></article>
 <article class="honor-record"><div class="record-index" aria-hidden="true">٠٢</div><div class="record-content"><div class="record-title"><h3>حسين سليم حسن برهم</h3><time>١٠ مارس ٢٠١٢</time></div><div class="record-meta"><span>عبسان الكبيرة، خان يونس</span><span>٥٢ عامًا</span></div><p>استشهد جراء قصف إسرائيلي شرق خان يونس.</p><details class="sources" open><summary>مصادر التوثيق</summary><div class="source-links"><a href="https://info.wafa.ps/pages/details/32553" target="_blank" rel="noopener noreferrer">وفا ↗</a></div></details></div></article>
 <article class="honor-record"><div class="record-index" aria-hidden="true">٠٣</div><div class="record-content"><div class="record-title"><h3>كرم إبراهيم عطية برهم</h3><time>٢١ يوليو ٢٠١٤</time></div><div class="record-meta"><span>بني سهيلا، خان يونس</span><span>٢٥ عامًا</span></div><p>استشهد في القصف الإسرائيلي خلال حرب ٢٠١٤. ورد الاسم الثالث أيضًا «عبد الرحمن»؛ يحتاج إلى تأكيد عائلي.</p><details class="sources" open><summary>مصادر التوثيق</summary><div class="source-links"><a href="https://pal48.ps/ar/martyrs/8413/كرم-إبراهيم-عبد-الرحمن-برهم" target="_blank" rel="noopener noreferrer">فلسطيننا ↗</a><a href="https://www.nad.ps/sites/default/files/pmg.daily_.sitrep.arabic.22.07.14.pdf" target="_blank" rel="noopener noreferrer">دائرة شؤون المفاوضات ↗</a></div></details></div></article>
