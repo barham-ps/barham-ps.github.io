@@ -1,0 +1,50 @@
+name: AEGIS independent integrity
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 1'
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify public artifact isolation and source byte integrity
+        run: |
+          sh scripts/build-pages.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          root = Path('dist')
+          for p in sorted(root.rglob('*')):
+              if not p.is_file():
+                  continue
+              rel = p.relative_to(root)
+              source = Path('.well-known/security.txt') if str(rel) == 'security.txt' else rel
+              assert source.is_file() and not source.is_symlink(), str(rel)
+              assert hashlib.sha256(p.read_bytes()).digest() == hashlib.sha256(source.read_bytes()).digest(), str(rel)
+          print('Public release matches source bytes')
+          PY
+      - name: Check executable assets and security regressions
+        run: |
+          find dist -type f -name '*.js' -exec node --check {} \;
+          node --test tests/security.test.cjs tests/upgrade.test.cjs
+      - name: Verify no untracked files enter public build
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          for p in Path('dist').rglob('*'):
+              if p.is_file():
+                  rel = str(p.relative_to('dist'))
+                  source = '.well-known/security.txt' if rel == 'security.txt' else rel
+                  subprocess.run(['git','ls-files','--error-unmatch','--',source],check=True,stdout=subprocess.DEVNULL)
+          PY
