@@ -838,3 +838,14 @@ html{padding-block:0!important;scroll-padding-top:0}
  #member-directory-print .directory-print-footer{display:block!important;margin-top:12px;padding-top:7px;border-top:1px solid #c4a45b;color:#54645c;font-size:8pt;break-inside:avoid}
  #member-directory-print .directory-print-footer p{margin:2px 0}
 }
+
+/* V52 — institutional signatures and unified dated document records. */
+.attachment-scan-state{padding:10px 12px;border-inline-start:3px solid var(--gold);background:var(--band);border-radius:6px;overflow-wrap:anywhere}
+.certificate-copy-time{font-size:11px;text-align:center;color:inherit;margin:5px 0 0}
+.directory-signature{margin-inline-start:auto;width:max-content;max-width:100%;text-align:center;padding:8px 18px;border-top:1px solid #c4a45b}
+.directory-signature strong{display:block;font-family:Amiri,serif;font-style:italic;font-size:20px;color:#123b30}
+.directory-signature small{display:block;font-size:10px;color:#54645c}
+@media print{
+ #member-directory-print .directory-signature{break-inside:avoid}
+ #v-certificate .certificate-copy-time{font-size:8pt;line-height:1.4}
+}
