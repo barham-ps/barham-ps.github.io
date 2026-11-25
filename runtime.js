@@ -19,7 +19,8 @@
       greet.textContent = 'أهلًا بك في بيتنا';
     }
   }
-  updateFamilyGreeting();
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateFamilyGreeting,{once:true});
+  else updateFamilyGreeting();
   window.setInterval(updateFamilyGreeting, 15000);
   window.addEventListener('pageshow', updateFamilyGreeting);
   document.addEventListener('visibilitychange', function() {

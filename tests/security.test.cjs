@@ -115,13 +115,16 @@ test('password exposure screen sends only the padded hash prefix and rejects kno
   assert.equal(await check('test-password',async()=>({ok:true,text:async()=>'<html>'}),cryptoApi),'unavailable');
 });
 
-test('release keeps footer identity and deferred scripts in dependency order', () => {
+test('release starts small public runtime before CSS and keeps account scripts deferred in dependency order', () => {
   assert.match(html, /class="footer-wordmark" lang="ar">آل برهم/);
   assert.match(html, /class="footer-english" lang="en" dir="ltr">Albarham <span data-footer-year>\d{4}<\/span>/);
   assert.match(html, /class="site family-footer compact-footer"/);
   const scripts = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g));
   assert.equal(scripts.length,6);
-  assert.ok(scripts.every(x => x[0].includes('defer')));
+  assert.ok(!scripts[0][0].includes('defer'));
+  assert.ok(scripts.slice(1).every(x => x[0].includes('defer')));
+  assert.ok(html.indexOf(scripts[0][0]) < html.indexOf('<link rel="stylesheet" href="./portal.css'));
+  assert.match(fs.readFileSync('runtime.js','utf8'),/document\.addEventListener\('DOMContentLoaded',updateFamilyGreeting,\{once:true\}\)/);
   assert.ok(scripts[0][1].includes('runtime.js'));
   assert.ok(scripts[1][1].includes('footer.js'));
   assert.ok(scripts[2][1].includes('supabase'));
