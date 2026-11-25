@@ -1240,7 +1240,7 @@ html{padding-block:0!important;scroll-padding-top:0}
  #home-latest-news{min-block-size:160px}
  #home-latest-news .home-news-card{contain:layout paint}
  #home-latest-news .home-news-card .news-gallery-item img{display:block;width:100%;aspect-ratio:16/10;height:auto;object-fit:contain;background:var(--band)}
- @supports(content-visibility:auto){.compact-footer{content-visibility:auto;contain-intrinsic-size:auto 145px}}
+ /* The small footer is often in the first mobile viewport; use its true size from the start. */
 }
 
 /* V83 balanced glass: background alpha only, no layout, typography or certificate changes. */
@@ -1252,4 +1252,13 @@ html{padding-block:0!important;scroll-padding-top:0}
  :root[data-theme] :is(header.site,.mobile-dock){backdrop-filter:none;-webkit-backdrop-filter:none}
  @media(prefers-reduced-transparency:reduce){:root #v-home .family-welcome{background:#123b30}:root #v-home .home-news-card{background:#123b30}:root[data-theme] :is(header.site,.mobile-dock){background:var(--surface)}}
  html[data-low-data=true] #v-home .family-welcome{background-color:#123b30;background-image:none}
+}
+
+/* V84 — avoid late decorative repaints, retain V83 emerald/gold glass and actual content. */
+@media screen{
+ :root[data-home-route=true] #v-home .home-intro::after{animation:none;background:linear-gradient(115deg,transparent 30%,rgba(232,210,160,.06) 50%,transparent 70%)}
+ #home-latest-news{overflow-anchor:none}
+ #home-latest-news:has(>.portal-loading){min-block-size:160px}
+ #v-home .news-gallery-item{aspect-ratio:16/10;min-inline-size:0}
+ #v-home .news-gallery-item img{height:100%;width:100%;object-fit:contain}
 }

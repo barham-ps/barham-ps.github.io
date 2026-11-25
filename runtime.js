@@ -33,7 +33,29 @@
   window.addEventListener('online',update);
   window.addEventListener('offline',update);
   try { if(connection && typeof connection.addEventListener==='function') connection.addEventListener('change',update); } catch {}
-  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false});
+  // One in-flight anonymous request for exactly the existing published-news projection.
+  // Never use session tokens, cookies, localStorage records or private data for this path.
+  let initialNews=null, newsAbort=null;
+  function prefetchHomeNews(){
+    if(location.hash!==''&&location.hash!=='#home')return;
+    if(navigator.onLine===false||typeof fetch!=='function'||typeof AbortController!=='function')return;
+    newsAbort=new AbortController();
+    const controller=newsAbort;
+    const timeout=setTimeout(()=>controller.abort(),7000);
+    const url=new URL('https://vfxxghfmkmgdqrczeowx.supabase.co/rest/v1/family_news');
+    url.search=new URLSearchParams({select:'id,title,body,category,image_path,image_paths,cover_paths,created_at',published:'eq.true',order:'created_at.desc',limit:'1'}).toString();
+    initialNews=fetch(url,{method:'GET',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',headers:{apikey:'sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',Accept:'application/json'},signal:controller.signal})
+      .then(async response=>{
+        if(!response.ok)return null;
+        const rows=await response.json();
+        if(!Array.isArray(rows)||rows.length>1||rows.some(x=>!x||typeof x.id!=='string'||typeof x.title!=='string'||typeof x.body!=='string'))return null;
+        return rows;
+      }).catch(()=>null).finally(()=>{clearTimeout(timeout);if(newsAbort===controller)newsAbort=null;});
+  }
+  prefetchHomeNews();
+  window.addEventListener('hashchange',()=>{if(location.hash!==''&&location.hash!=='#home'){if(newsAbort)newsAbort.abort();initialNews=null;}});
+  function takeInitialNews(){const pending=initialNews;initialNews=null;return pending;}
+  window.familyRuntime=Object.freeze({lowData,online:()=>navigator.onLine!==false,takeInitialNews});
   const toggle=document.getElementById('bandwidth-toggle');
   toggle?.addEventListener('click',()=>{choice=lowData()?'off':'on';try{localStorage.setItem(preferenceKey,choice);}catch{}update();});
   document.getElementById('local-diagnostics')?.addEventListener('click',()=>{

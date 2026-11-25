@@ -607,3 +607,15 @@ test('balanced glass changes only surface alpha and preserves accessible fallbac
  assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
 });
+
+
+test('early home news request is anonymous, bounded, published-only and consumed once',()=>{
+ const rt=fs.readFileSync('runtime.js','utf8');
+ assert.match(rt,/\/rest\/v1\/family_news/);
+ assert.match(rt,/published:'eq.true',order:'created_at.desc',limit:'1'/);
+ assert.match(rt,/method:'GET',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer'/);
+ assert.match(rt,/function takeInitialNews\(\)\{const pending=initialNews;initialNews=null;return pending;\}/);
+ assert.match(js,/const early=isHome\?window\.familyRuntime\?\.takeInitialNews/);
+ assert.match(js,/if\(rows===null\)\{[\s\S]*?\.eq\('published', true\)/);
+ assert.doesNotMatch(rt,/Authorization:|authorization:|access_token/);
+});

@@ -2134,11 +2134,17 @@
         make('p', target, 'رابط الخبر غير صالح.');
         return;
       }
-      var query = client().from('family_news').select(
-        'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
-      var rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
-        ascending: false
-      }).limit(isHome ? 1 : 50)));
+      // Consume the anonymous early request once; fall back to the original RLS-protected query.
+      const early=isHome?window.familyRuntime?.takeInitialNews?.():null;
+      var rows=early?await early:null;
+      if(epoch!==newsEpoch||(location.hash||'#home')!==hash)return;
+      if(rows===null){
+        var query = client().from('family_news').select(
+          'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
+        rows=ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
+          ascending: false
+        }).limit(isHome ? 1 : 50)));
+      }
       if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
       target.replaceChildren();
       if (!rows.length) {
