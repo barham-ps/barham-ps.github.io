@@ -115,7 +115,7 @@ jobs:
           if (typeof sdk?.createClient !== 'function') throw Error('Browser global missing');
           const c = sdk.createClient('https://example.supabase.co','sb_publishable_test',
             {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-          for (const k of ['getUser','getSession','signUp','signInWithPassword','resetPasswordForEmail','updateUser','signOut'])
+          for (const k of ['getUser','getSession','signUp','signInWithPassword','resetPasswordForEmail','verifyOtp','updateUser','signOut'])
             if (typeof c.auth[k] !== 'function') throw Error(k);
           if (typeof c.auth.mfa.getAuthenticatorAssuranceLevel !== 'function' ||
               typeof c.from !== 'function' || typeof c.rpc !== 'function' ||

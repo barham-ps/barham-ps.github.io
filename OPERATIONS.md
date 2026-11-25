@@ -20,3 +20,6 @@ References:
 - https://supabase.com/docs/guides/platform/backups
 - https://search.google.com/search-console
 - https://www.bing.com/webmasters
+
+## V69 email-code password recovery — required hosted configuration
+In Supabase Dashboard > Authentication > Email Templates > Reset password, set the subject to `آل برهم | رمز استعادة كلمة المرور` and paste `supabase/templates/recovery.html` into the template body. The template uses {{ .Token }} and a plain portal link, not a token-bearing link. Keep existing SMTP and redirect allowlist; verify actual delivery with a dedicated test account. OTP length and expiry are determined by Supabase (UI accepts 6–8 digits). Set a short expiry, e.g. 10 minutes, and appropriate Auth rate limits in the dashboard after checking effects on other email flows. Do not paste OTPs, passwords or provider secrets into chat or Git. Browser and unit tests use fake accounts/mocked auth; they do not prove email delivery. Existing password-reset links remain supported. The account password-change button now routes through email recovery; provider-side enforcement of all password changes is separate from the website UI.

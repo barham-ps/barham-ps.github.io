@@ -24,6 +24,11 @@ const base='http://127.0.0.1:8765/';
    assert.equal(await page.locator('.family-utility-link[href="#verify"]').count(),1);
    await page.locator('#family-join-entry').click();await visible('.family-join-steps');assert.equal(await page.locator('.family-join-steps li').count(),3);await noOverflow('registration steps');
    await open('#home');await page.locator('#family-primary-entry').click();await visible('#logForm');await visible('.family-auth-help');await noOverflow('login foyer');
+   await page.locator('#logForm a[href="#reset"]').click();await visible('#recovery-email-form');await noOverflow('recovery email');
+   await page.locator('#recovery-email-form input[type=email]').fill('test@example.invalid');
+   await page.locator('#recovery-email-form button', {hasText:'لدي رمز بالفعل'}).click();await visible('#recovery-code-form');
+   assert.equal(await page.locator('#recovery-password-form').isVisible(),false);
+   assert.equal(await page.locator('#recovery-code-form input').getAttribute('autocomplete'),'one-time-code');await noOverflow('recovery OTP');
    await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
    await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
    for(const slug of ['about','history','membership','en','en/history','en/membership']){

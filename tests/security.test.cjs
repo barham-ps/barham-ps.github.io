@@ -412,3 +412,38 @@ test('security operations center uses admin-only aggregate records and scoped re
  assert.match(js,/setInterval\(refreshDashboard,60000\)/);
  assert.match(js,/securityEpoch\+\+;stopSecurityRefresh\(\);/);
 });
+
+
+test('email recovery accepts only a verified recovery session and matches the exact account',async()=>{
+ const src=js.slice(js.indexOf('  function createPasswordRecovery('),js.indexOf("  var reset = newView('reset'"));
+ const create=vm.runInNewContext(src+';createPasswordRecovery');
+ let calls=[],uid='test-user',otpError=null,sessionId=uid,screenResult='',updateError=null;
+ const auth={
+  resetPasswordForEmail:async(email,options)=>{calls.push(['request',email,options]);return {data:{},error:null}},
+  verifyOtp:async(args)=>{calls.push(['verify',args]);return {error:otpError,data:{user:{id:uid,email:'test@example.invalid'},session:{user:{id:uid}}}}},
+  getSession:async()=>({data:{session:{user:{id:sessionId}}}}),
+  getUser:async()=>({data:{user:{id:sessionId}}}),
+  updateUser:async(args)=>{calls.push(['update',args]);return {error:updateError}}
+ };
+ const flow=create(auth,async()=>screenResult,p=>p.length>=15&&p.length<=128);
+ const password='test-only-password-123';
+ await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ await flow.request('test@example.invalid',{captchaToken:undefined});
+ await assert.rejects(flow.verify('test@example.invalid','abc'),/أدخل الرمز/);
+ otpError={code:'otp_expired'};await assert.rejects(flow.verify('test@example.invalid','123456'),/انتهت صلاحيته/);
+ otpError={code:'invalid_otp'};await assert.rejects(flow.verify('test@example.invalid','123456'),/غير صحيح/);
+ otpError=null;await assert.rejects(flow.verify('other@example.invalid','123456'),/تعذر التحقق/);
+ await flow.verify('test@example.invalid','١٢٣٤٥٦');
+ assert.equal(calls.at(-1)[1].token,'123456');assert.equal(calls.at(-1)[1].type,'recovery');
+ await assert.rejects(flow.save(password,'different'),/غير متطابقتين/);
+ await assert.rejects(flow.save('short','short'),/١٥/);
+ screenResult='كلمة المرور مسربة';await assert.rejects(flow.save(password,password),/مسربة/);screenResult='';
+ sessionId='other';await assert.rejects(flow.save(password,password),/انتهت جلسة/);sessionId=uid;
+ updateError={code:'weak_password'};await assert.rejects(flow.save(password,password),/تعذر تغيير/);updateError=null;
+ assert.equal(await flow.save(password,password),uid);
+ assert.equal(calls.filter(c=>c[0]==='update').length,2);
+ await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ assert.ok(flow.acceptLink({user:{id:uid}}));flow.clear();await assert.rejects(flow.save(password,password),/تحقق من رمز/);
+ assert.match(js,/persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'family-password-recovery'/);
+ assert.match(js,/تغيير كلمة المرور برمز البريد/);
+});
