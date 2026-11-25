@@ -7,3 +7,21 @@ test('PWA shortcuts stay within the portal',()=>{const m=JSON.parse(read('manife
 test('offline worker never caches authenticated data',()=>{const s=read('sw.js');assert.ok(s.includes("cache: 'no-store'"));assert.ok(!/caches\.open|cache\.put/.test(s));});
 
 test('family emblem replaces crown and ships with every branded surface',()=>{const h=read('index.html');assert.doesNotMatch(h,/i-crown|👑/i);assert.ok(h.includes('class="mark family-emblem"'));assert.ok(h.includes('footer-seal'));assert.equal((h.match(/src="\.\/barham-emblem\.webp"/g)||[]).length,2);for(const p of ['about','history','membership','genealogy'])assert.ok(read(p+'/index.html').includes('../barham-emblem.webp'));assert.ok(read('portal.js').includes('./barham-emblem.webp'));assert.ok(read('scripts/build-pages.sh').includes('barham-emblem.webp'));assert.ok(read('icon.svg').includes('data:image/webp;base64,'));const image=fs.readFileSync('barham-emblem.webp');assert.equal(image.toString('ascii',0,4),'RIFF');assert.equal(image.toString('ascii',8,12),'WEBP');assert.ok(JSON.parse(read('manifest.webmanifest')).icons.some(i=>i.src==='barham-emblem.webp'));});
+
+test('English and Arabic public pages are reciprocal, indexable and built',()=>{
+ const pairs=[['about/','en/'],['history/','en/history/'],['membership/','en/membership/']];
+ const root='https://barham-ps.github.io/', sitemap=read('sitemap.xml'),build=read('scripts/build-pages.sh');
+ for(const [ar,en] of pairs){
+  for(const [locale,p] of [['ar',ar],['en',en]]){
+   const h=read(p+'index.html');
+   assert.ok(h.includes('lang="'+locale+'"'));
+   assert.ok(h.includes('rel="canonical" href="'+root+p+'"'));
+   assert.ok(h.includes('hreflang="ar" href="'+root+ar+'"'));
+   assert.ok(h.includes('hreflang="en" href="'+root+en+'"'));
+   assert.ok(!/<script\b/i.test(h));
+   assert.ok(sitemap.includes('<loc>'+root+p+'</loc>'));
+   assert.ok(build.includes(p.slice(0,-1)));
+  }
+ }
+ assert.ok(read('index.html').includes('href="./en/"'));
+});
