@@ -103,7 +103,7 @@
   // Explicit entry via query string works even in browsers that strip URL fragments.
   var requestedPage = new URLSearchParams(location.search).get('page');
   if (['register', 'certificate', 'login', 'account', 'admin', 'member-hub', 'member-services-admin', 'reset',
-      'news-admin', 'mfa', 'security'
+      'news-admin', 'martyrs-admin', 'mfa', 'security'
     ].includes(requestedPage) && !/access_token=|error=|code=/.test(location.hash)) {
     var entry = new URL(location.href);
     entry.searchParams.delete('page');
@@ -367,7 +367,7 @@
       if (z.error) throw Error('تعذر الدخول. تأكد من البريد وكلمة المرور وتأكيد البريد الإلكتروني.');
       var next = sessionStorage.getItem('family_after_login');
       sessionStorage.removeItem('family_after_login');
-      location.hash = ['certificate', 'admin', 'member-hub', 'member-services-admin', 'news-admin', 'mfa',
+      location.hash = ['certificate', 'admin', 'member-hub', 'member-services-admin', 'news-admin', 'martyrs-admin', 'mfa',
         'security'
       ].includes(next) ? next : 'account';
     } catch (err) {
@@ -468,6 +468,7 @@
     cms.hidden=activeAdminPanel!=='content';make('h2',cms,'إدارة المحتوى');
     const contentLinks=make('div',cms);contentLinks.className='row dashboard-content-links';
     dashboardLink(contentLinks,'#news-admin','الأخبار والإعلانات','تحرير ونشر الأخبار','news');
+    dashboardLink(contentLinks,'#martyrs-admin','سجل الشهداء والصور','إدارة الأسماء والمعارض','heart');
     const privateLink=dashboardLink(contentLinks,'#member-services-admin','الأرشيف والمناسبات الخاصة','مواد مخصصة للأعضاء','archive');privateLink.dataset.adminService='content';
     if(window.mountMemorialAdmin)window.mountMemorialAdmin(cms,client);
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
@@ -481,14 +482,14 @@
     action(cms,'حفظ المحتوى / المسودة',async function(){
       if(!title.value.trim()){msg.textContent='أدخل العنوان';return;}
       if(pub.checked&&!confirm('تأكيد النشر العام؟'))return;
-      this.disabled=true;let uploaded=null;
+      this.disabled=true;let uploaded=null,saved=false;
       try{
         if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
         const row={section:section.value,title:title.value.trim(),body:body.value,published:pub.checked,image_path:uploaded||current?.image_path||null};
-        const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;
+        const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;saved=true;
         if(uploaded&&current?.image_path)await client().storage.from('family-public-content').remove([current.image_path]);
         await loadPublicCMS();await renderPublicCMS();
-      }catch(e){if(uploaded)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent='تعذر الحفظ: '+e.message;}finally{this.disabled=false;}
+      }catch(e){if(uploaded&&!saved)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent=saved?'تم الحفظ، لكن تعذر تحديث العرض. حدّث الصفحة.':'تعذر الحفظ: '+e.message;}finally{this.disabled=false;}
     });
     action(cms,'محتوى جديد',()=>loadPublicCMS());
     const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
@@ -515,6 +516,7 @@
       dashboardIcon(tile,icon);const text=make('span',tile);make('strong',text,title);make('small',text,description);
       tile.onclick=()=>switchAdminPanel(key);
     }
+    dashboardLink(adminNavigation,'#martyrs-admin','إدارة الشهداء والصور','السجل ومعارض الصور','heart');
     const inboxLink=dashboardLink(adminNavigation,'#member-services-admin','الطلبات والرسائل','الشكاوى والمساهمات والردود','inbox');inboxLink.dataset.adminService='requests';
     dashboardLink(adminNavigation,'#security','الإعدادات والأمان','التحقق الثنائي وسجل العمليات','shield');
     dashboardLink(adminNavigation,'#account','حسابي','العودة إلى حساب العضو','user');
@@ -1940,6 +1942,7 @@
     ['شجرة العائلة','الأنساب والأجيال والفروع','tree'],
     ['الأرشيف والحكايات','الوثائق والصور والروايات','archive'],
     ['أخبار العائلة','الأخبار والإعلانات والتهاني والمناسبات','news'],
+    ['سجل الشهداء','الشهداء والذاكرة والصور والمعارض','martyrs'],
     ['المبادرات','التكافل والتعاون والمقترحات','initiatives'],
     ['العضوية','التسجيل والتحقق من الشهادات','membership'],
     ['التواصل','مراسلة الإدارة وتصحيح المعلومات','contact'],
@@ -1951,7 +1954,7 @@
     searchSubmit.disabled=true;searchStatus.textContent='جارٍ البحث…';searchResults.replaceChildren();
     try{
       const matching=(v)=>terms.every(t=>normalizeSearch(v).includes(t));
-      const found=publicRoutes.filter(x=>matching(x[0]+' '+x[1])).map(x=>({title:x[0],desc:x[1],url:'#'+x[2]}));
+      const found=publicRoutes.filter(x=>matching(x[0]+' '+x[1])).map(x=>({title:x[0],desc:x[1],url:x[2]==='martyrs'?'./martyrs/':'#'+x[2]}));
       const requests=[
         ()=>client().from('family_news').select('id,title,body,category').eq('published',true).order('created_at',{ascending:false}).limit(100),
         ()=>client().from('family_public_content').select('section,title,body').eq('published',true).order('created_at',{ascending:false}).limit(100)
@@ -1971,6 +1974,20 @@
       searchStatus.textContent='النتائج: '+new Intl.NumberFormat('ar-EG').format(found.length)+(partial?' — تعذر تحميل بعض المحتوى، والنتائج جزئية.':' — البحث يشمل آخر ١٠٠ مادة من كل مصدر.');
     }catch(err){searchStatus.textContent='تعذر إكمال البحث. حاول مجددًا.';}finally{searchSubmit.disabled=false;}
   };
+  const memorialEditor=newView('martyrs-admin','إدارة سجل الشهداء والصور');
+  const memorialBack=make('a',memorialEditor,'العودة إلى مركز الإدارة');memorialBack.href='#admin';memorialBack.className='btn btn-ghost';
+  const memorialEditorBody=make('div',memorialEditor);let memorialEditorEpoch=0;
+  async function loadMemorialEditor(){
+    const token=++memorialEditorEpoch;memorialEditorBody.replaceChildren();
+    const status=make('p',memorialEditorBody,'جارٍ التحقق من الصلاحية…');status.setAttribute('role','status');
+    try{
+      const q=await client().rpc('family_is_admin');
+      if(token!==memorialEditorEpoch||location.hash!=='#martyrs-admin')return;
+      if(q.error||q.data!==true){status.textContent='هذه الصفحة للإدارة المعتمدة بعد التحقق الثنائي.';return;}
+      if(!window.mountMemorialAdmin){status.textContent='تعذر تحميل محرر السجل. حدّث الصفحة.';return;}
+      memorialEditorBody.replaceChildren();window.mountMemorialAdmin(memorialEditorBody,client,true);
+    }catch{if(token===memorialEditorEpoch&&location.hash==='#martyrs-admin')status.textContent='تعذر الاتصال بالخدمة. حدّث الصفحة.';}
+  }
   var newsEditor = newView('news-admin', 'إدارة الأخبار'),
     newsEditorBody = make('div', newsEditor);
   const newsBack=make('a',newsEditor,'العودة إلى إدارة المحتوى');newsBack.href='#admin';newsBack.className='btn btn-ghost';newsBack.dataset.adminTarget='content';newsEditor.insertBefore(newsBack,newsEditorBody);
@@ -2447,7 +2464,7 @@
 
   function extraRoute() {
     var nh = location.hash;
-    if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#certificate', '#mfa',
+    if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate', '#mfa',
         '#security'
       ].includes(nh) && !authReady) return;
     if (nh === '#mfa') {
@@ -2460,6 +2477,7 @@
     }
     if (nh === '' || nh === '#home' || nh === '#news' || nh.startsWith('#news/')) loadPublicNews();
     if (nh === '#news-admin') guardPrivate(loadNewsEditor);
+    if (nh === '#martyrs-admin') guardPrivate(loadMemorialEditor);
     if (['#history','#tree','#archive'].includes(nh))renderPublicCMS().catch(()=>{});
     if (location.hash === '#reset') showReset();
     var hash = location.hash.slice(1);
@@ -3157,7 +3175,7 @@
 
   function markDock() {
     var r = (location.hash || '#home').slice(1).split('/')[0];
-    if (['login', 'register', 'reset', 'member-hub', 'member-services-admin', 'news-admin', 'admin', 'certificate',
+    if (['login', 'register', 'reset', 'member-hub', 'member-services-admin', 'news-admin', 'martyrs-admin', 'admin', 'certificate',
         'verify', 'membership', 'security', 'mfa'
       ].includes(r)) r = 'account';
     if (['history', 'tree', 'archive', 'stories'].includes(r)) r = 'heritage';
@@ -3198,6 +3216,7 @@
     adminRows.replaceChildren();directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;clearMemberPrint();
     adminServiceBody.replaceChildren();
     newsEditorBody.replaceChildren();
+    memorialEditorBody.replaceChildren();memorialEditorEpoch++;
     certBody.replaceChildren();
     mfaBody.replaceChildren();
     secBody.replaceChildren();
@@ -3247,7 +3266,7 @@
       updateHeader(session);
       if (event === 'SIGNED_OUT') {
         clearPrivate();
-        if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#certificate',
+        if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate',
             '#security', '#mfa'
           ].includes(location.hash)) location.hash = 'home';
       }

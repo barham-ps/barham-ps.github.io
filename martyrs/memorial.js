@@ -2,13 +2,17 @@
 (async()=>{
  const el=(t,p,s,c)=>{const n=document.createElement(t);if(c)n.className=c;if(s!==undefined)n.textContent=s;p.append(n);return n;};
  const regions=['gaza','westbank'];
+ const search=document.getElementById('memorial-search'),searchStatus=document.getElementById('memorial-search-status');
+ const normalize=v=>String(v||'').normalize('NFKC').replace(/[\u064b-\u065f\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').trim().toLowerCase();
+ function filter(){const query=normalize(search.value),terms=query.split(/\s+/).filter(Boolean);let count=0;for(const article of document.querySelectorAll('.honor-record')){const match=terms.every(t=>normalize(article.dataset.search).includes(t));article.hidden=!match;if(match)count++;}searchStatus.textContent=query?'النتائج في غزة والضفة: '+new Intl.NumberFormat('ar').format(count):'';}
+ search.addEventListener('input',filter);
  function showPhoto(url,caption){const d=el('dialog',document.body,undefined,'memorial-photo-dialog');const close=el('button',d,'إغلاق ×');close.type='button';close.onclick=()=>d.close();const im=el('img',d);im.src=url;im.alt=caption;el('p',d,caption);d.addEventListener('close',()=>d.remove(),{once:true});d.showModal();close.focus();}
  try{
  const c=window.supabase.createClient('https://vfxxghfmkmgdqrczeowx.supabase.co','sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'memorial-public-only'}});
  const r=await c.from('family_martyrs').select('id,region,full_name,date_label,place,age_label,narrative,featured_caption,sort_order,sources').eq('published',true).order('sort_order').order('id');if(r.error)throw r.error;
  for(const region of regions){const section=document.getElementById(region),list=section.querySelector('.honor-list'),rows=r.data.filter(x=>x.region===region);list.replaceChildren();section.querySelector('.section-count').textContent=new Intl.NumberFormat('ar').format(rows.length)+' في السجل';if(!rows.length)el('p',list,'لا توجد أسماء منشورة.');
  for(const [i,row] of rows.entries()){
- const article=el('article',list,undefined,'honor-record'+(row.featured_caption?' featured':''));el('div',article,new Intl.NumberFormat('ar',{minimumIntegerDigits:2}).format(i+1),'record-index').setAttribute('aria-hidden','true');const body=el('div',article,undefined,'record-content'),title=el('div',body,undefined,'record-title');
+ const article=el('article',list,undefined,'honor-record'+(row.featured_caption?' featured':''));article.dataset.search=[row.full_name,row.place,row.date_label].join(' ');el('div',article,new Intl.NumberFormat('ar',{minimumIntegerDigits:2}).format(i+1),'record-index').setAttribute('aria-hidden','true');const body=el('div',article,undefined,'record-content'),title=el('div',body,undefined,'record-title');
  if(row.featured_caption)el('span',title,row.featured_caption,'featured-caption');el('h3',title,row.full_name);if(row.date_label)el('time',title,row.date_label);const meta=el('div',body,undefined,'record-meta');if(row.place)el('span',meta,row.place);if(row.age_label)el('span',meta,row.age_label);if(row.narrative)el('p',body,row.narrative);if(row.sources){const d=el('details',body,undefined,'sources');el('summary',d,'المصادر والملاحظات');el('p',d,row.sources);}
  const d=el('details',body,undefined,'martyr-gallery');el('summary',d,'معرض الصور');const grid=el('div',d,undefined,'martyr-photos');let loadedUntil=0,loading=false;
  d.addEventListener('toggle',async()=>{if(!d.open||loading||Date.now()<loadedUntil)return;loading=true;grid.replaceChildren();el('p',grid,'جارٍ التحميل…');try{
@@ -19,5 +23,6 @@
  }catch{grid.replaceChildren();el('p',grid,'تعذر تحميل الصور. أغلق المعرض وأعد فتحه.');loadedUntil=0;}finally{loading=false;}});
  }
  }
- }catch{for(const region of regions){const s=document.getElementById(region);s.querySelector('.section-count').textContent='غير متاح';s.querySelector('.honor-list').textContent='تعذر تحميل السجل الحالي. حاول مجددًا.';}}
+ filter();
+ }catch{for(const region of regions){const s=document.getElementById(region);s.querySelector('.section-count').textContent='غير متاح';const list=s.querySelector('.honor-list');list.replaceChildren();el('p',list,'تعذر تحميل السجل الحالي.');const retry=el('button',list,'إعادة المحاولة','mem-retry');retry.type='button';retry.onclick=()=>location.reload();const history=el('a',list,'فتح النسخة التاريخية الثابتة');history.href='./Barham_Martyrs_Register.html';}}
 })();

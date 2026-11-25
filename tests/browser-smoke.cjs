@@ -23,7 +23,9 @@ const base='http://127.0.0.1:8765/';
    for(const slug of ['about','history','membership','en','en/history','en/membership']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
-   await open('martyrs/');await visible('#gaza');
+   await open('martyrs/');await visible('#gaza');await visible('#memorial-search');
+   await page.locator('#memorial-search').fill('اختبار');await noOverflow('memorial search');
+   await page.locator('#memorial-search').clear();
    assert.equal(await page.locator('#westbank').isVisible(),false);
    await page.locator('[data-region="westbank"]').click();await visible('#westbank');
    assert.equal(await page.locator('#gaza').isVisible(),false);

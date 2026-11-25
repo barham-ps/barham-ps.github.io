@@ -1,8 +1,9 @@
 /* Admin-only editor. RLS is the authoritative permission boundary. */
-window.mountMemorialAdmin=function(host,client){
+window.mountMemorialAdmin=function(host,client,autoOpen=false){
  const el=(t,p,s)=>{const n=document.createElement(t);if(s!==undefined)n.textContent=s;p.append(n);return n;};
  const root=el('details',host);root.className='card dashboard-record memorial-admin';el('summary',root,'إدارة سجل الشهداء والصور');
- const panel=el('div',root);panel.className='dashboard-record-body';const status=el('p',panel);status.setAttribute('role','status');
+ root.open=autoOpen;
+ const panel=el('div',root);panel.className='dashboard-record-body';const status=el('p',panel);status.setAttribute('role','status');status.setAttribute('aria-live','polite');
  const search=el('input',panel);search.type='search';search.placeholder='بحث بالاسم';search.setAttribute('aria-label','بحث بالاسم');
  const list=el('div',panel);list.className='memorial-admin-list';const form=el('form',panel);form.className='card';form.hidden=true;
  const fields={};
@@ -24,6 +25,7 @@ window.mountMemorialAdmin=function(host,client){
  async function edit(row){current=row;epoch++;for(const [k,n] of Object.entries(fields))n.value=row?.[k]??(k==='region'?'gaza':k==='sort_order'?100:'');pub.checked=!!row?.published;status.textContent=row?'تعديل: '+row.full_name:'إضافة سجل';form.hidden=false;await gallery();}
  button(panel,'إضافة شهيد جديد',()=>edit(null));search.oninput=render;
  root.addEventListener('toggle',()=>{if(root.open&&!items.length)run(async()=>{await load();await edit(null);});});
+ if(autoOpen)run(async()=>{await load();await edit(null);});
  form.onsubmit=e=>{e.preventDefault();run(async()=>{const p={};for(const [k,n] of Object.entries(fields))p[k]=k==='sort_order'?Number(n.value):n.value.trim();p.published=pub.checked;if(!p.full_name)throw Error('أدخل الاسم.');if(!confirm('تأكيد حفظ السجل وحالة النشر؟'))return;const t=client().from('family_martyrs');const result=check(await(current?t.update(p).eq('id',current.id):t.insert(p)).select('id').single());await load();await edit(items.find(x=>x.id===result.id));status.textContent='تم الحفظ.';});};
  async function gallery(){
   const token=epoch,id=current?.id;photos.replaceChildren();photos.hidden=!id;if(!id)return;
@@ -41,7 +43,7 @@ window.mountMemorialAdmin=function(host,client){
    let count=0;try{for(let i=0;i<files.length;i++){if(!root.isConnected)throw Error('انتهت جلسة التحرير.');status.textContent='رفع الصور: '+(i+1)+' / '+files.length;const f=files[i],path=id+'/'+crypto.randomUUID()+'.'+types[f.type];check(await bucket().upload(path,f,{contentType:f.type,upsert:false}));const r=await table().insert({martyr_id:id,position:free[i],object_path:path});if(r.error){await bucket().remove([path]);throw Error('توقف الرفع بعد '+count+' صورة.');}count++;}}finally{await gallery();}status.textContent='تم رفع '+count+' صورة.';
   });
   const pending=data.filter(p=>!p.published);
-  if(pending.length)button(photos,'نشر جميع الصور المخفية ('+pending.length+')',async()=>{if(!confirm('هل توافق على نشر جميع الصور المخفية لهذا السجل؟'))return;check(await table().update({published:true}).eq('martyr_id',id).in('id',pending.map(p=>p.id)));await gallery();status.textContent='تم نشر الصور.';});
+  if(pending.length)button(photos,'نشر جميع الصور المخفية ('+pending.length+')',async()=>{if(!confirm('هل توافق على نشر جميع الصور المخفية لهذا السجل؟'))return;const changed=check(await table().update({published:true}).eq('martyr_id',id).in('id',pending.map(p=>p.id)).select('id'));if(changed.length!==pending.length)throw Error('لم تُنشر جميع الصور. حدّث المعرض وحاول مجددًا.');await gallery();status.textContent='تم نشر الصور.';});
   const grid=el('div',photos);grid.className='memorial-admin-grid';
   const signedBatch=data.length?await bucket().createSignedUrls(data.map(p=>p.object_path),300):{data:[]};
   for(const p of data){const card=el('article',grid);card.className='card';el('strong',card,'الصورة '+p.position+(p.published?' — منشورة':' — مخفية'));
