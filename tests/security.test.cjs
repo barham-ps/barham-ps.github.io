@@ -253,7 +253,9 @@ test('administrator workspace includes distinct tools and remains gated',()=>{
  const admin=js.slice(js.indexOf('function mountAdminNavigation'),js.indexOf('var cert = newView'));
  assert.match(admin,/rpc\('family_admin_list'\)/);
  assert.ok(admin.indexOf("rpc('family_admin_list')")<admin.indexOf('mountAdminNavigation();'));
- for(const route of ['#member-services-admin','#news-admin','#security'])assert.ok(admin.includes(route));
+ for(const route of ['#member-services-admin','#security'])assert.ok(admin.includes(route));
+ const content=js.slice(js.indexOf('async function loadPublicCMS'),js.indexOf('function switchAdminPanel'));
+ assert.ok(content.includes('#news-admin'));assert.match(content,/dataset\.adminService='content'/);
  assert.match(admin,/make\('details',memberList\)/);
  const services=js.slice(js.indexOf('async function loadServicesAdmin'),js.indexOf('var heritage = newView'));
  assert.match(services,/rpc\('family_is_admin'\)/);
@@ -263,4 +265,37 @@ test('administrator workspace includes distinct tools and remains gated',()=>{
  const logout=js.slice(js.indexOf('function clearPrivate'),js.indexOf('guestLogin.hidden = true;',js.indexOf('function clearPrivate')));
  assert.match(logout,/cms\.replaceChildren\(\)/);
  assert.match(logout,/memberQuick\.hidden=true/);
+});
+
+test('five member groups cover all eight services without duplication',()=>{
+ const source=js.slice(js.indexOf('const hubGroups='),js.indexOf('const hubCardKeys'));
+ const groups=vm.runInNewContext(source+';hubGroups');
+ assert.equal(groups.length,5);
+ const services=Array.from(groups.flatMap(g=>g[4])).sort();
+ assert.deepEqual(services,['archive','directory','identity','lineage','notices','occasions','profile','requests']);
+ const fn=vm.runInNewContext(source+';hubGroupFor');
+ assert.equal(fn('lineage')[0],'family-group');
+ assert.equal(fn('archive')[0],'library-group');
+ assert.equal(fn('requests')[0],'requests');
+ assert.equal(fn('unknown'),undefined);
+ assert.match(js,/overview\.hidden=key!==['"]overview['"]/);
+});
+test('simplified navigation uses one tree entry and preserves historical content routing',()=>{
+ const tree=html.match(/<section class="view" id="v-tree"[\s\S]*?<\/section>/)[0];
+ assert.equal(Array.from(tree.matchAll(/href="\.\/genealogy\/[^"]*"/g)).length,1);
+ const features=js.slice(js.indexOf('var FEAT ='),js.indexOf('var SERV ='));
+ assert.equal(Array.from(features.matchAll(/\['[^']+','[^']+','[^']+','[^']+'\]/g)).length,4);
+ assert.match(js,/collection\(heritage, \[\s*\['history'/);
+ const cms=fs.readFileSync('database/member_request_sender_identity.sql','utf8');
+ assert.match(cms,/set section='history'/);
+});
+test('public search excludes private member data and admin CSV contains aggregates only',()=>{
+ const search=js.slice(js.indexOf("var publicSearch = newView"),js.indexOf("var newsEditor = newView"));
+ assert.match(search,/from\('family_news'\)[\s\S]*?eq\('published',true\)/);
+ assert.match(search,/from\('family_public_content'\)[\s\S]*?eq\('published',true\)/);
+ assert.doesNotMatch(search,/from\('member_applications'|from\('family_member_requests'|from\('family_profiles'|from\('family_member_notices'/);
+ const report=js.slice(js.indexOf('function mountAdminReports'),js.indexOf('async function loadAdmin'));
+ assert.match(report,/members\.filter\(m=>m\.status===key\)\.length/);
+ assert.doesNotMatch(report,/\.full_name|\.email|\.phone|\.whatsapp/);
+ assert.match(js,/p\.checked = item \? item\.published : false/);
 });
