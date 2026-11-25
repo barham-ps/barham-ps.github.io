@@ -542,7 +542,13 @@
     document.getElementById('member-directory-print')?.remove();
   }
   window.addEventListener('afterprint',clearMemberPrint);
-  window.addEventListener('hashchange',clearMemberPrint);
+  window.addEventListener('hashchange',()=>{
+    clearMemberPrint();
+    if(location.hash!=='#admin'){
+      directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;
+      if(activeAdminPanel==='directory')activeAdminPanel='members';
+    }
+  });
   async function loadMemberDirectory(){
     switchAdminPanel('directory');
     const epoch=++directoryEpoch;
