@@ -765,3 +765,24 @@ html{padding-block:0!important;scroll-padding-top:0}
  }
  @media(max-width:340px){.dashboard-grid{grid-template-columns:1fr}}
 }
+
+/* V50: consolidated navigation; preserve the established emerald/gold identity. */
+@media screen{
+ .home-services #features{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+ .home-services #features .card:first-child{grid-column:auto;grid-row:auto}
+ .home-services #features .card{min-height:140px;justify-content:center}
+ .home-search-entry{padding-top:16px}.home-search-entry .btn{width:100%;justify-content:center}
+ .dashboard-content-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-block:16px}
+ .dashboard-overview .dashboard-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+ .dashboard-tabs>strong{color:var(--gold-on-green);font-size:16px}
+ .dashboard-search p:empty{display:none}
+ .family-faq{margin-top:24px}.family-faq details{padding:12px 0;border-bottom:1px solid var(--line)}
+ .family-faq details:last-child{border-bottom:none}.family-faq summary{cursor:pointer;font-weight:600;color:var(--gold-on-green)}
+ .family-faq details p{margin-top:8px}
+ .public-search-results{display:grid;gap:10px;margin-block:18px}
+ .public-search-results .card{min-width:0;overflow-wrap:anywhere}.public-search-results .card p{margin-block:6px 12px}
+ .public-search-results .card h3{font-size:18px}
+ .admin-navigation .dashboard-tile{min-height:100px}
+ @media(max-width:700px){.home-services #features{grid-template-columns:repeat(2,minmax(0,1fr))}.home-services #features .card{min-height:115px}.dashboard-content-links{grid-template-columns:1fr}.dashboard-overview .dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ @media(max-width:340px){.home-services #features,.dashboard-overview .dashboard-grid{grid-template-columns:1fr}}
+}
