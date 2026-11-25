@@ -1,0 +1,102 @@
+name: AEGIS generation III
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '13 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  defense:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Mirror and Genesis - independent clean builds
+        id: mirror
+        run: |
+          sh scripts/build-pages.sh
+          mv dist "$RUNNER_TEMP/aegis-first"
+          sh scripts/build-pages.sh
+          diff -qr "$RUNNER_TEMP/aegis-first" dist
+          python3 scripts/validate_public_build.py dist
+      - name: Labyrinth - isolated authorization and recovery
+        id: labyrinth
+        if: always()
+        run: bash tests/restore-drill.sh
+      - name: Immortal - offline backup readiness
+        id: immortal
+        if: always()
+        run: |
+          bash -n scripts/backup-object-lock.sh
+          bash tests/backup-smoke.sh
+          echo 'External immutable retention NOT verified'
+      - name: Quantum - local capability
+        id: quantum
+        if: always()
+        run: |
+          if openssl list -kem-algorithms | grep -qi ML-KEM-768 && openssl list -signature-algorithms | grep -qi ML-DSA-65; then
+            bash scripts/pqc-probe.sh
+          else
+            echo 'PQC unavailable on runner; production PQC unverified'
+            exit 78
+          fi
+      - name: Antidote - dependency vulnerability audit
+        id: antidote
+        if: always()
+        run: |
+          work=$(mktemp -d)
+          cd "$work"
+          npm init -y >/dev/null
+          npm install --package-lock-only --ignore-scripts --no-audit --save-exact @supabase/supabase-js@2.119.2 qrcodejs@1.0.0
+          npm audit --audit-level=high
+      - name: Watchtower - bounded public TLS and DNS observation
+        id: watchtower
+        if: always()
+        run: |
+          host=barham-ps.github.io
+          getent ahosts "$host" | sort -u
+          timeout 20 openssl s_client -connect "$host:443" -servername "$host" -verify_hostname "$host" -verify_return_error </dev/null > "$RUNNER_TEMP/aegis-tls.txt" 2>&1
+          openssl x509 -in "$RUNNER_TEMP/aegis-tls.txt" -noout -dates -checkend 604800
+          curl --fail --silent --show-error --max-time 20 --head "https://$host/" | grep -Ei '^(HTTP/|strict-transport-security:|content-security-policy:|x-content-type-options:)' || true
+      - name: Blackbox and Omega - hash chained evidence and local decision
+        if: always()
+        env:
+          MIRROR: ${{ steps.mirror.outcome }}
+          LABYRINTH: ${{ steps.labyrinth.outcome }}
+          IMMORTAL: ${{ steps.immortal.outcome }}
+          QUANTUM: ${{ steps.quantum.outcome }}
+          ANTIDOTE: ${{ steps.antidote.outcome }}
+          WATCHTOWER: ${{ steps.watchtower.outcome }}
+        run: |
+          python3 - <<'PY'
+          import os, hashlib, json
+          from pathlib import Path
+          names = ('MIRROR','LABYRINTH','IMMORTAL','QUANTUM','ANTIDOTE','WATCHTOWER')
+          prev = '0'*64
+          records = []
+          for name in names:
+              entry = dict(module=name, outcome=os.environ[name], previous=prev, commit=os.environ['GITHUB_SHA'], run=os.environ['GITHUB_RUN_ID'])
+              prev = hashlib.sha256(json.dumps(entry,sort_keys=True).encode()).hexdigest()
+              records.append(dict(entry, digest=prev))
+          p = Path(os.environ['RUNNER_TEMP'])/'aegis-evidence.json'
+          p.write_text(json.dumps(records,indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('## AEGIS generation III evidence\n\n')
+              for row in records:
+                  f.write('- '+row['module']+': '+row['outcome']+'\n')
+              f.write('\nChain root: '+prev+'\n\nLocal evidence only; no external immutable storage or release enforcement.\n')
+          if any(os.environ[n]!='success' for n in names):
+              raise SystemExit('One or more checks incomplete or failed')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: aegis-generation-three-evidence
+          path: ${{ runner.temp }}/aegis-evidence.json
+          retention-days: 30
