@@ -796,7 +796,7 @@
     suggestion: 'مقترح',
     occasion: 'مناسبة أو تهنئة',
     solidarity: 'طلب تكافل خاص',
-    archive: 'مساهمة أرشيفية أو معلومات عائلية',
+    archive: 'مساهمة أرشيفية أو تصحيح بيانات الشجرة',
     complaint: 'شكوى'
   };
 
@@ -1549,6 +1549,49 @@
     ['contact', 'التواصل', 'users', 'الاستفسارات والمقترحات']
   ]);
 
+  var publicSearch = newView('search','البحث في الموقع');
+  const searchForm=make('form',publicSearch);searchForm.className='card';
+  make('p',searchForm,'ابحث في أقسام البوابة وأحدث الأخبار والمواد العامة المنشورة. لا يشمل البحث بيانات العضوية أو المراسلات أو أسماء الأفراد في الشجرة.');
+  const publicQuery=field(searchForm,'عبارة البحث','public-query','search',120);publicQuery.required=true;publicQuery.minLength=2;
+  const searchSubmit=make('button',searchForm,'بحث');searchSubmit.type='submit';searchSubmit.className='btn btn-gold';
+  const searchStatus=make('p',searchForm);searchStatus.setAttribute('role','status');
+  const searchResults=make('div',publicSearch);searchResults.className='public-search-results';
+  const publicRoutes=[
+    ['تاريخ العائلة','الجذور والذاكرة والتاريخ والروايات','history'],
+    ['شجرة العائلة','الأنساب والأجيال والفروع','tree'],
+    ['الأرشيف والحكايات','الوثائق والصور والروايات','archive'],
+    ['أخبار العائلة','الأخبار والإعلانات والتهاني والمناسبات','news'],
+    ['المبادرات','التكافل والتعاون والمقترحات','initiatives'],
+    ['العضوية','التسجيل والتحقق من الشهادات','membership'],
+    ['التواصل','مراسلة الإدارة وتصحيح المعلومات','contact'],
+    ['الخصوصية','حماية البيانات والمعلومات','privacy']
+  ];
+  searchForm.onsubmit=async e=>{
+    e.preventDefault();if(searchSubmit.disabled)return;
+    const terms=normalizeSearch(publicQuery.value).split(/\s+/).filter(Boolean);if(!terms.length)return;
+    searchSubmit.disabled=true;searchStatus.textContent='جارٍ البحث…';searchResults.replaceChildren();
+    try{
+      const matching=(v)=>terms.every(t=>normalizeSearch(v).includes(t));
+      const found=publicRoutes.filter(x=>matching(x[0]+' '+x[1])).map(x=>({title:x[0],desc:x[1],url:'#'+x[2]}));
+      const requests=[
+        ()=>client().from('family_news').select('id,title,body,category').eq('published',true).order('created_at',{ascending:false}).limit(100),
+        ()=>client().from('family_public_content').select('section,title,body').eq('published',true).order('created_at',{ascending:false}).limit(100)
+      ];
+      const settled=await Promise.allSettled(requests.map(fn=>Promise.resolve().then(fn)));
+      let partial=false;
+      for(let i=0;i<settled.length;i++){
+        const r=settled[i];if(r.status!=='fulfilled'||r.value.error){partial=true;continue;}
+        for(const item of r.value.data||[]){
+          if(!matching([item.title,item.body,item.category,sectionsCMS[item.section]].filter(Boolean).join(' ')))continue;
+          if(i===0&&/^[0-9a-f-]{36}$/i.test(item.id))found.push({title:item.title,desc:(item.body||'').slice(0,180),url:'#news/'+item.id});
+          if(i===1&&Object.hasOwn(sectionsCMS,item.section))found.push({title:item.title,desc:(item.body||'').slice(0,180),url:'#'+item.section});
+        }
+      }
+      for(const item of found){const card=make('article',searchResults);card.className='card';make('h3',card,item.title);make('p',card,item.desc);const link=make('a',card,'فتح القسم أو الخبر');link.href=item.url;link.className='btn btn-ghost';}
+      if(!found.length)make('p',searchResults,'لا توجد نتائج مطابقة. جرّب عبارة أخرى.');
+      searchStatus.textContent='النتائج: '+new Intl.NumberFormat('ar-EG').format(found.length)+(partial?' — تعذر تحميل بعض المحتوى، والنتائج جزئية.':' — البحث يشمل آخر ١٠٠ مادة من كل مصدر.');
+    }catch(err){searchStatus.textContent='تعذر إكمال البحث. حاول مجددًا.';}finally{searchSubmit.disabled=false;}
+  };
   var newsEditor = newView('news-admin', 'إدارة الأخبار'),
     newsEditorBody = make('div', newsEditor);
   const newsBack=make('a',newsEditor,'العودة إلى إدارة المحتوى');newsBack.href='#admin';newsBack.className='btn btn-ghost';newsBack.dataset.adminTarget='content';newsEditor.insertBefore(newsBack,newsEditorBody);
