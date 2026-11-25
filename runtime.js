@@ -45,4 +45,7 @@
     node.hidden=false;
   });
   render();
+  if(toggle)toggle.disabled=false;
+  const diagnosticButton=document.getElementById('local-diagnostics');
+  if(diagnosticButton)diagnosticButton.disabled=false;
 })();
