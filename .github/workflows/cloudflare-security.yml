@@ -24,7 +24,7 @@ jobs:
           PORTAL_HOST: barham-ps-github-io.m0had-b0rh0m.workers.dev
         run: |
           python3 - <<'PY'
-          import http.client, os, ssl
+          import http.client, os, re, ssl
           host = os.environ["PORTAL_HOST"]
           def probe(path):
               conn = http.client.HTTPSConnection(host, timeout=15, context=ssl.create_default_context())
@@ -48,6 +48,15 @@ jobs:
                   errors.append(f"{path}: framing policy mismatch")
               if h.get("x-content-type-options", "").lower() != "nosniff":
                   errors.append(f"{path}: MIME protection mismatch")
+              hsts = re.search(r"(?:^|;)\s*max-age\s*=\s*(\d+)(?:\s*;|\s*$)", h.get("strict-transport-security", ""), re.I)
+              if not hsts or int(hsts.group(1)) < 31536000:
+                  errors.append(f"{path}: HSTS shorter than one year")
+              if h.get("referrer-policy", "").strip().lower() != "no-referrer":
+                  errors.append(f"{path}: referrer policy mismatch")
+              permissions = h.get("permissions-policy", "")
+              for feature in ("camera", "microphone", "geolocation"):
+                  if not re.search(r"(?:^|,)\s*" + feature + r"\s*=\s*\(\s*\)\s*(?:,|$)", permissions, re.I):
+                      errors.append(f"{path}: {feature} not disabled")
               if h.get("access-control-allow-origin") == "*":
                   errors.append(f"{path}: wildcard CORS requires review")
               if "no-store" not in h.get("cache-control", "").lower():
