@@ -353,7 +353,7 @@
       $('#account-note').textContent = 'تم إرسال طلب العضوية للمراجعة.';
       await account();
     } catch (err) {
-      $('#account-note').textContent = err.message;
+      $('#account-note').textContent = 'تعذر تقديم الطلب. تحقق من تأكيد البريد وصحة الأرقام والاتصال.';
     } finally {
       b.disabled = false;
     }
@@ -450,12 +450,12 @@
       if(pub.checked&&!confirm('تأكيد النشر العام؟'))return;
       this.disabled=true;let uploaded=null,saved=false;
       try{
-        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880)throw Error('صورة غير مدعومة أو أكبر من 5 ميجابايت');uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
+        if(file.files[0]){const f=file.files[0];const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[f.type];if(!ext||f.size>5242880){msg.textContent='صورة غير مدعومة أو أكبر من 5 ميجابايت';return;}uploaded=crypto.randomUUID()+'.'+ext;const u=await client().storage.from('family-public-content').upload(uploaded,f);if(u.error){uploaded=null;throw u.error;}}
         const row={section:section.value,title:title.value.trim(),body:body.value,published:pub.checked,image_path:uploaded||current?.image_path||null};
         const q=await (current?client().from('family_public_content').update(row).eq('id',current.id):client().from('family_public_content').insert(row)).select('id').single();if(q.error)throw q.error;saved=true;
         if(uploaded&&current?.image_path)await client().storage.from('family-public-content').remove([current.image_path]);
         await loadPublicCMS();await renderPublicCMS();
-      }catch(e){if(uploaded&&!saved)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent=saved?'تم الحفظ، لكن تعذر تحديث العرض. حدّث الصفحة.':'تعذر الحفظ: '+e.message;}finally{this.disabled=false;}
+      }catch(e){if(uploaded&&!saved)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent=saved?'تم الحفظ، لكن تعذر تحديث العرض. حدّث الصفحة.':'تعذر الحفظ. تحقق من الاتصال والصلاحيات وحاول مجددًا.';}finally{this.disabled=false;}
     });
     action(cms,'محتوى جديد',()=>loadPublicCMS());
     const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
