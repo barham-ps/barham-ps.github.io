@@ -786,3 +786,55 @@ html{padding-block:0!important;scroll-padding-top:0}
  @media(max-width:700px){.home-services #features{grid-template-columns:repeat(2,minmax(0,1fr))}.home-services #features .card{min-height:115px}.dashboard-content-links{grid-template-columns:1fr}.dashboard-overview .dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
  @media(max-width:340px){.home-services #features,.dashboard-overview .dashboard-grid{grid-template-columns:1fr}}
 }
+
+/* V51 — confidential membership register; original certificate print styles unchanged. */
+#member-directory-print{display:none}
+@media screen{
+ .member-directory-entry{margin-block:8px 20px;min-height:48px;justify-content:center}
+ .member-directory{min-width:0}
+ .directory-heading{border-inline-start:3px solid var(--gold);padding-inline-start:15px;margin-bottom:16px}
+ .directory-heading h2{font-size:clamp(24px,4vw,32px);color:var(--gold-on-green);margin-block:5px}
+ .directory-actions{gap:10px;flex-wrap:wrap;margin-block:16px}
+ .directory-actions .btn{min-height:44px;justify-content:center}
+ .member-directory-tablewrap{overflow-x:auto;max-width:100%;border:1px solid var(--glass-border,var(--line));border-radius:12px}
+ .member-directory-table{width:100%;min-width:760px;table-layout:fixed;border-collapse:collapse;font-size:14px}
+ .member-directory-table th{background:#123b30;color:#f5e6b8;padding:12px 8px;border-bottom:2px solid var(--gold);text-align:right}
+ .member-directory-table td{padding:11px 8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere;vertical-align:middle;text-align:start}
+ .member-directory-table tbody tr:nth-child(even){background:var(--band)}
+ .member-directory-table .member-col-seq{width:5%}
+ .member-directory-table .member-col-full_name{width:25%}
+ .member-directory-table .member-col-membership_number{width:18%}
+ .member-directory-table .member-col-email{width:25%}
+ .member-directory-table .member-col-phone{width:16%}
+ .member-directory-table .member-col-status{width:11%}
+ @media(max-width:600px){.directory-actions .btn{flex:1 1 140px}.member-directory-entry{width:100%;white-space:normal}}
+}
+@page memberRegistry{size:A4 landscape;margin:12mm 12mm 14mm}
+@media print{
+ body.printing-member-directory{margin:0!important;padding:0!important;background:#fff!important;color:#1d2923!important;display:block!important}
+ body.printing-member-directory>*:not(#member-directory-print){display:none!important}
+ body.printing-member-directory #member-directory-print,body.printing-member-directory #member-directory-print *{visibility:visible!important}
+ body.printing-member-directory #member-directory-print{display:block!important;position:static!important;page:memberRegistry;direction:rtl;width:auto!important;max-width:none!important;padding:0!important;margin:0!important;font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;font-size:10pt;line-height:1.5;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ #member-directory-print .directory-print-banner{display:flex!important;align-items:center;gap:12px;padding:12px 16px;background:#123b30!important;color:#f5e6b8!important;border-bottom:3px solid #c4a45b;border-radius:8px;break-inside:avoid}
+ #member-directory-print .directory-print-banner img{width:48px;height:48px;object-fit:contain;background:#f5e6b8;border-radius:8px;padding:4px}
+ #member-directory-print .directory-print-banner strong{font-family:Amiri,serif;font-size:26pt;line-height:1.25}
+ #member-directory-print .directory-print-banner p{margin:2px 0;color:#f5e6b8;font-size:9pt}
+ #member-directory-print .directory-confidential{margin-inline-start:auto;border:1px solid #c4a45b;border-radius:5px;padding:5px 10px;font-size:9pt;white-space:nowrap}
+ #member-directory-print h1{font-family:Amiri,serif;font-size:22pt;color:#123b30;margin:12px 0 4px;line-height:1.5;break-after:avoid}
+ #member-directory-print .directory-print-meta{display:flex;flex-wrap:wrap;gap:8px 22px;padding:6px 0 12px;color:#4c5c52;font-size:9pt;break-inside:avoid}
+ #member-directory-print table{width:100%!important;border-collapse:collapse;table-layout:fixed;min-width:0!important;font-size:9pt;direction:rtl}
+ #member-directory-print thead{display:table-header-group}
+ #member-directory-print tbody{display:table-row-group}
+ #member-directory-print tr{break-inside:avoid;page-break-inside:avoid}
+ #member-directory-print th{background:#123b30!important;color:#f5e6b8!important;border:1px solid #c4a45b;padding:7px 6px;text-align:right;font-weight:700}
+ #member-directory-print td{border:1px solid #d8dfd9;padding:6px 5px;text-align:start;vertical-align:middle;overflow-wrap:anywhere;color:#1c3027;background:#fff!important}
+ #member-directory-print tbody tr:nth-child(even) td{background:#f1f5f0!important}
+ #member-directory-print .member-col-seq{width:5%}
+ #member-directory-print .member-col-full_name{width:25%}
+ #member-directory-print .member-col-membership_number{width:18%}
+ #member-directory-print .member-col-email{width:25%}
+ #member-directory-print .member-col-phone{width:16%}
+ #member-directory-print .member-col-status{width:11%}
+ #member-directory-print .directory-print-footer{display:block!important;margin-top:12px;padding-top:7px;border-top:1px solid #c4a45b;color:#54645c;font-size:8pt;break-inside:avoid}
+ #member-directory-print .directory-print-footer p{margin:2px 0}
+}
