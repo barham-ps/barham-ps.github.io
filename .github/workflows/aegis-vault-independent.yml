@@ -1,0 +1,34 @@
+name: AEGIS VAULT independent
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 9 * * 2'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aegis-vault-independent.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Independent vault check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          for p in Path('.github/workflows').glob('aegis-*.yml'):
+           s=p.read_text()
+           assert not re.search(r'^\s*permissions:\s*write-all',s,re.M),p.name
+           assert not re.search(r'^\s*pull_request_target\s*:',s,re.M),p.name
+           assert not re.search(r'^\s*secrets:\s*inherit',s,re.M),p.name
+          print('Workflow privilege policy checked; account secrets not inspected')
+          PY
