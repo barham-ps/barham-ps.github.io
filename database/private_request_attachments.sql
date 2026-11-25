@@ -3,7 +3,10 @@ alter table public.family_member_requests add column if not exists attachment_re
 grant insert (attachment_requested) on public.family_member_requests to authenticated;
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values ('family-request-files','family-request-files',false,10485760,array['image/jpeg','application/pdf'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 create policy "family_request_attachment_insert" on storage.objects for insert to authenticated
 with check (bucket_id='family-request-files' and (select family_private.member_session_active()) and exists (
  select 1 from public.family_member_requests r

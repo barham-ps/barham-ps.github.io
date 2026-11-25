@@ -607,3 +607,16 @@ test('balanced glass changes only surface alpha and preserves accessible fallbac
  assert.match(css,/--glass-hero:rgba\(16,56,45,\.82\)/);
  assert.match(css,/prefers-reduced-transparency:reduce/);
 });
+
+
+test('private request bucket provisioning reconciles existing settings',()=>{
+ const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
+ assert.match(sql,/on conflict \(id\) do update set\s+public = false,\s+file_size_limit = excluded.file_size_limit,\s+allowed_mime_types = excluded.allowed_mime_types;/i);
+});
+test('main meta CSP and hosting CSP agree and navigation is not cached by configured edge',()=>{
+ const meta=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/i)[1];
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const csp=config.headers[0].headers.find(h=>h.key==='Content-Security-Policy').value;
+ assert.equal(csp,meta+"; frame-ancestors 'none'");
+ for(const [path,value] of [['/index.html','no-store'],['/sw.js','no-cache']])assert.ok(config.headers.some(r=>r.source===path&&r.headers.some(h=>h.key==='Cache-Control'&&h.value===value)));
+});
