@@ -35,6 +35,10 @@
     {
       "name": "العضوية",
       "url": "./#membership"
+    },
+    {
+      "name": "سجل الشهداء",
+      "url": "./martyrs/"
     }
   ]
 }
