@@ -1,0 +1,14 @@
+# Scalability roadmap (not provisioned)
+Target: 1,000,000 registered accounts; 100 TB total object storage (not a single file). One million concurrent sessions is a different requirement and needs its own traffic profile and enterprise capacity assessment.
+
+## Architecture
+- Keep GitHub for source and CI, not large media or member uploads. GitHub Pages has a soft monthly bandwidth limit of 100 GB. Preserve the current origin until a reviewed cutover to a CDN-backed host and owner-controlled domain.
+- Use CDN caching for public immutable assets and published content only. Do not cache account, admin, signed private URLs or auth responses. Retain RLS, MFA, private storage and audit checks.
+- Keep Supabase Auth/Postgres for identities and file metadata; use indexed keyset pagination, connection pooling for server workloads, query/latency monitoring and capacity planning. Registered users and monthly active users are different billing measures.
+- Plan a separate private S3-compatible object store (e.g. R2), with multipart upload, checksums, resumable upload, per-user quotas and lifecycle policies. R2 supports up to 5 TiB per object; 100 TB is an aggregate storage target. Never put storage credentials in GitHub or browser code. A trusted service must authorize each object and sign scoped short-lived upload/download requests; enforce ownership, size, expiry, quarantine and malware scanning before publication. Existing uploads remain unchanged until the new service is reviewed and verified.
+- Replace personal Gmail SMTP for production with authenticated transactional email provider, verified sender/domain, monitored delivery and rate limits. Keep existing OTP verification and recovery proof intact.
+- Use isolated staging and synthetic test data. Measure cold/warm page loads, p95 response times, error rates, DB connection saturation, file upload throughput, and recovery email success. Ramp workloads only after a baseline, no production stress test without explicit authorization. Test rollback and restore from independent backups.
+
+## Cost illustration (not a quote)
+At 100,000 GB stored in R2 Standard, $0.015/GB-month is roughly $1,500/month before operation charges, free allowances, and backup copies. At 1,000,000 Supabase MAU on Pro, 900,000 billable MAU at $0.00325 each is $2,925/month above the subscription, compute and other charges. No new paid service, storage allocation or migration has been authorized or activated. Confirm current prices and budget before provisioning.
+References: https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits ; https://developers.cloudflare.com/r2/pricing/ ; https://developers.cloudflare.com/r2/objects/upload-objects/ ; https://supabase.com/pricing ; https://supabase.com/docs/guides/auth/auth-smtp .
