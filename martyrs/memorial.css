@@ -172,7 +172,7 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
 
 /* V10: keep the memorial's distinct identity in both reading modes. */
 @media screen{
- .family-theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;min-width:44px;border:1px solid var(--edge);border-radius:10px;background:var(--navy);color:var(--ivory);font:600 13px inherit;padding:6px 10px;cursor:pointer}
+ .family-theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;min-width:44px;border:1px solid var(--edge);border-radius:10px;background:var(--navy);color:var(--ivory);font:600 13px/1.4 'IBM Plex Sans Arabic',sans-serif;padding:6px 10px;cursor:pointer}
  .family-theme-toggle [data-theme-icon]{font-size:20px;line-height:1;color:var(--gold)}
  :root[data-theme="light"]{color-scheme:light;--night:#f6f3ec;--navy:#fffdf8;--gold:#795a27;--gold-light:#735621;--muted:#536071;--ivory:#253448;--edge:#c7c1b0;--glass:#fffdf8;--control-text:#253448;--control-line:#c7c1b0;--control-hover:#e9e6dc}
  :root[data-theme="light"] body{background:#f6f3ec;color:var(--ivory)}
