@@ -726,7 +726,7 @@
     link.className='btn btn-ghost sm';link.textContent='إعادة محاولة التنزيل';link.rel='noopener';
     parent.appendChild(link);
     const timer=setTimeout(()=>{link.remove();URL.revokeObjectURL(url);downloadLinks.delete(url);},120000);
-    downloadLinks.set(url,{link,timer});link.click();
+    downloadLinks.set(url,{link,timer});try{link.click();}catch(e){/* retry link remains available */}
   }
   function fileExtension(file){
     return ({'application/pdf':'.pdf','image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','image/gif':'.gif','text/plain':'.txt','text/csv':'.csv','application/zip':'.zip','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'.docx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'.xlsx'})[(file.type||'').split(';')[0].toLowerCase()]||'.bin';
@@ -870,7 +870,8 @@
       make('small',qr,'امسح الرمز أو استخدم الرابط');
       const copyStamp=make('p',box.querySelector('.md-main'),'تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date()));copyStamp.className='certificate-copy-time';
       printButton.hidden = downloadCertificate.hidden = false;
-      ensureQR().then(ready=>{if(ready&&box.isConnected&&location.hash==='#certificate'&&recoveredSession?.user.id===sessionId){try{const qrBox=make('div',qr);qr.prepend(qrBox);new QRCode(qrBox,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});}catch(e){}}});
+      const renderQR=()=>{if(box.isConnected&&location.hash==='#certificate'&&recoveredSession?.user.id===sessionId){try{const qrBox=make('div',qr);qr.prepend(qrBox);new QRCode(qrBox,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});}catch(e){}}};
+      if(window.QRCode)renderQR();else ensureQR().then(ready=>{if(ready)renderQR();});
     } catch (e) {
       make('p', certBody, 'تعذر تحميل الشهادة.');
     }
@@ -1251,7 +1252,28 @@
         var l = make('a', hubBody, 'متابعة حسابي');
         l.href = '#account';
         return;
-      } {
+      }
+      if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
+      const loading=make('div',hubBody);loading.className='row';
+      const quickCert=make('a',loading,'عرض الشهادة وتنزيلها');quickCert.href='#certificate';quickCert.className='btn btn-gold';
+      make('p',loading,'جارٍ تجهيز بقية الخدمات…').setAttribute('role','status');
+      // Start independent reads concurrently after approval; each section handles its own failure.
+      const read=query=>Promise.resolve(query).catch(error=>({error}));
+      const prefetched={certificate:read(client().rpc('family_my_certificate')),
+        profile:read(client().from('family_profiles').select('*').eq('user_id', uid).maybeSingle()),
+        lineage:read(client().from('family_lineage').select('*').eq('user_id', uid).order(
+          'created_at')),
+        directory:read(client().from('family_profiles').select('display_name,profession,city,bio').eq(
+            'directory_opt_in', true).order('display_name').limit(100)),
+        notices:read(client().from('family_member_notices').select('*').eq('user_id', uid).order(
+            'created_at', {
+              ascending: false
+            }).limit(100)),
+        content:read(client().from('family_member_content').select('*').eq('published', true).order(
+            'created_at', {
+              ascending: false
+            }).limit(100))};
+      {
         var beforeCount = hubBody.children.length;
         try {
           var card = section(hubBody, 'بطاقتي العائلية الرقمية');
@@ -1261,7 +1283,7 @@
           make('h2', card, app.full_name);
           make('p', card, 'رقم العضوية: ' + app.membership_number);
           make('p', card, 'عضوية معتمدة');
-          var cq = ok(await client().rpc('family_my_certificate'));
+          var cq = ok(await prefetched.certificate);
           if(cq.length)make('p',card,'تاريخ ووقت اعتماد الشهادة: '+formatPortalTime(cq[0].issued_at));
           if (cq.length) await Promise.race([ensureQR(),new Promise(resolve=>setTimeout(resolve,1800))]);
           if (cq.length && window.QRCode) {
@@ -1305,7 +1327,7 @@
               try{saveDownload(new Blob([canvasBytes(canvas,'image/png')],{type:'image/png'}),'albarham-membership.png',card);}catch(e){alert('تعذر حفظ البطاقة. أعد المحاولة.');}
             });
           }
-          var certA = make('a', card, 'عرض الشهادة وطباعتها');
+          var certA = make('a', card, 'عرض الشهادة وتنزيلها');
           certA.href = '#certificate';
           certA.className = 'btn btn-gold';
         } catch (e) {
@@ -1319,7 +1341,7 @@
         var beforeCount = hubBody.children.length;
         try {
           var profile = section(hubBody, 'ملفي الشخصي');
-          var p = ok(await client().from('family_profiles').select('*').eq('user_id', uid).maybeSingle()) || {};
+          var p = ok(await prefetched.profile) || {};
           var f = make('form', profile),
             dn = field(f, 'الاسم المعروض', 'name', 'text', 150),
             job = field(f, 'المهنة أو التخصص', 'profession', 'text', 150),
@@ -1363,8 +1385,7 @@
             grandmother: 'الجدة',
             other: 'صلة أخرى'
           };
-          var entries = ok(await client().from('family_lineage').select('*').eq('user_id', uid).order(
-          'created_at'));
+          var entries = ok(await prefetched.lineage);
           var diagram = make('div', tree);
           diagram.className = 'card';
           make('h3', diagram, app.full_name);
@@ -1420,8 +1441,7 @@
         try {
           var dir = section(hubBody, 'دليل المهن والكفاءات');
           make('p', dir, 'يضم فقط الملفات التي وافق أصحابها على المشاركة.');
-          var ds = ok(await client().from('family_profiles').select('display_name,profession,city,bio').eq(
-            'directory_opt_in', true).order('display_name').limit(100));
+          var ds = ok(await prefetched.directory);
           if (!ds.length) make('p', dir, 'لا توجد ملفات مشاركة بعد.');
           var search = field(dir, 'بحث في الدليل', 'search', 'search', 150),
             list = make('div', dir);
@@ -1446,10 +1466,7 @@
         var beforeCount = hubBody.children.length;
         try {
           var inbox = section(hubBody, 'صندوق الإشعارات الخاص');
-          var ns = ok(await client().from('family_member_notices').select('*').eq('user_id', uid).order(
-            'created_at', {
-              ascending: false
-            }).limit(100));
+          var ns = ok(await prefetched.notices);
           var unread = ns.filter(x => !x.read_at).length;
           make('p', inbox, 'غير مقروءة: ' + unread);
           if (!ns.length) make('p', inbox, 'لا إشعارات حتى الآن.');
@@ -1483,10 +1500,7 @@
       } {
         var beforeCount = hubBody.children.length;
         try {
-          var content = ok(await client().from('family_member_content').select('*').eq('published', true).order(
-            'created_at', {
-              ascending: false
-            }).limit(100));
+          var content = ok(await prefetched.content);
           for (var k of ['archive', 'occasion']) {
             var c = section(hubBody, k === 'archive' ? 'الأرشيف الحصري' : 'المناسبات والتهاني');
             var rows = content.filter(x => x.kind === k);
@@ -1606,6 +1620,8 @@
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       }
+      loading.remove();
+      if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
       decorateHub(app);
     } catch (e) {
       hubBody.replaceChildren();
