@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '21 3 * * 1'
+    - cron: '21 3 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,12 +22,17 @@ jobs:
       - name: Validate portal JavaScript and security policy
         run: |
           node --check portal.js
+          node --check footer.js
+          bash tests/backup-smoke.sh
+          bash -n scripts/backup-object-lock.sh scripts/pqc-probe.sh
+          python3 -m unittest discover -s tests -p 'test_private_av_scanner.py'
           node --check sw.js
           node --check captcha.js
           node --check security-config.js
           sh scripts/build-pages.sh
           test -f dist/_headers && test -f dist/captcha.js
-          node --test tests/security.test.cjs
+          node --test tests/security.test.cjs tests/upgrade.test.cjs
+          python3 -m unittest discover -s tests -p 'test_production_monitor.py'
           node -e "JSON.parse(require('fs').readFileSync('vercel.json'))"
           python3 - <<'PY'
           from pathlib import Path
@@ -112,7 +117,7 @@ jobs:
           if (typeof sdk?.createClient !== 'function') throw Error('Browser global missing');
           const c = sdk.createClient('https://example.supabase.co','sb_publishable_test',
             {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-          for (const k of ['getUser','getSession','signUp','signInWithPassword','resetPasswordForEmail','updateUser','signOut'])
+          for (const k of ['getUser','getSession','signUp','signInWithPassword','resetPasswordForEmail','verifyOtp','updateUser','signOut'])
             if (typeof c.auth[k] !== 'function') throw Error(k);
           if (typeof c.auth.mfa.getAuthenticatorAssuranceLevel !== 'function' ||
               typeof c.from !== 'function' || typeof c.rpc !== 'function' ||

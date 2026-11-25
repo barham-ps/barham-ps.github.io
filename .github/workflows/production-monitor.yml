@@ -1,0 +1,62 @@
+name: Public portal availability and TLS
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'portal.js'
+      - 'runtime.js'
+      - 'portal.css'
+      - 'security-config.js'
+      - 'captcha.js'
+      - '_headers'
+      - 'scripts/edge_probe.py'
+      - 'scripts/release_verify.py'
+      - 'trust/**'
+      - '.well-known/**'
+      - 'security.txt'
+      - 'scripts/production_monitor.py'
+      - '.github/workflows/production-monitor.yml'
+      - '_config.yml'
+  workflow_run:
+    workflows: ['pages build and deployment']
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: public-portal-health
+  cancel-in-progress: false
+jobs:
+  public-health:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Check published public pages and TLS
+        run: |
+          # A bounded retry handles Pages propagation; persistent failures remain failures.
+          for attempt in 1 2 3; do
+            if python3 scripts/production_monitor.py; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          exit 1
+      - name: Check transfer encoding and edge evidence
+        run: python3 scripts/edge_probe.py --host barham-ps.github.io
+      - name: Verify actual published release bytes
+        if: github.event_name != 'push'
+        run: |
+          for attempt in 1 2 3; do
+            if python3 scripts/release_verify.py; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          exit 1
+      - name: Inspect Brotli and HTTP3 support
+        run: bash scripts/protocol_probe.sh

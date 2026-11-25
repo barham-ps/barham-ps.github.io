@@ -16,6 +16,7 @@ jobs:
       - name: Syntax and regression tests
         run: |
           node --check portal.js
+          node --check footer.js
           node --check sw.js
           node --check captcha.js
           node --check security-config.js

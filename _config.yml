@@ -1,0 +1,22 @@
+# GitHub Pages builds the public site with Jekyll.
+# Development files remain in Git; they are not part of the website.
+exclude:
+  - database
+  - scripts
+  - tests
+  - supabase
+  - dist
+  - node_modules
+  - vendor
+  - PRIVACY-RESILIENCE.md
+  - RECOVERY.md
+  - SECURITY.md
+  - UPGRADE-REVIEW.md
+  - vercel.json
+  - OPERATIONS.md
+  - backups
+  - isms
+
+# Publish the RFC 9116 vulnerability disclosure contact.
+include:
+  - .well-known
