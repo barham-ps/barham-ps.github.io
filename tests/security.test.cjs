@@ -368,3 +368,16 @@ test('Gaza timestamps distinguish original certificate issuance and exported cop
  assert.match(js,/تاريخ ووقت إعداد النسخة/);
  assert.match(js,/directory-signature/);
 });
+
+
+test('existing request bucket is reconciled to private and bounded settings',()=>{
+ const sql=fs.readFileSync('database/private_request_attachments.sql','utf8');
+ assert.match(sql,/on conflict \(id\) do update set\s+public = false,\s+file_size_limit = excluded.file_size_limit,\s+allowed_mime_types = excluded.allowed_mime_types;/i);
+});
+test('main meta CSP matches configured hosting policy apart from HTTP frame protection',()=>{
+ const meta=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/i)[1];
+ const vercel=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const header=vercel.headers[0].headers.find(x=>x.key==='Content-Security-Policy').value;
+ assert.equal(header,meta+"; frame-ancestors 'none'");
+ assert.ok(fs.readFileSync('_headers','utf8').includes('Content-Security-Policy: '+header));
+});
