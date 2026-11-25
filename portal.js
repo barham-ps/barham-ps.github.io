@@ -300,50 +300,16 @@
     try {
       const leakMessage = await requirePasswordScreen(pw);
       if (leakMessage) return show('#r-msg', leakMessage, 1);
-      if (window.familyCaptcha.enabled) {
-        const captchaToken = await window.familyCaptcha.token(this);
-        const signup = await client().auth.signUp({email, password: pw, options: {emailRedirectTo: location.origin + location.pathname, data: {full_name: name, phone: p, whatsapp: w}, captchaToken}});
-        if (signup.error) return show('#r-msg', authError(signup.error), 1);
-        if (signup.data.session) { location.hash = 'account'; await account(); return; }
-        show('#r-msg', 'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
-        this.reset(); syncWa(); return;
-      }
-      var endpoint = 'https://vfxxghfmkmgdqrczeowx.supabase.co/auth/v1/signup?redirect_to=' +
-        encodeURIComponent(location.origin + location.pathname);
-      var response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'sb_publishable_-LW-iVjvk4hmvdzcR9jgYw_my4buOkw'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: pw,
-          data: {
-            full_name: name,
-            phone: p,
-            whatsapp: w
-          }
-        })
+      // One SDK path for all signups, with the same CAPTCHA integration.
+      const captchaToken = await window.familyCaptcha.token(this);
+      const signup = await client().auth.signUp({
+        email, password: pw,
+        options: {emailRedirectTo: location.origin + location.pathname,
+          data: {full_name: name, phone: p, whatsapp: w}, captchaToken}
       });
-      var data = await response.json();
-      if (!response.ok) {
-        const duplicate = ['email_exists', 'user_already_exists'].includes(data.code || data.error_code);
-        return show('#r-msg', authError(data), duplicate ? 0 : 1);
-      }
-      if (data.access_token && data.refresh_token && window.supabase) {
-        var sess = await client().auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token
-        });
-        if (!sess.error) {
-          location.hash = 'account';
-          await account();
-          return;
-        }
-      }
-      show('#r-msg',
-        'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
+      if (signup.error) return show('#r-msg', authError(signup.error), 1);
+      if (signup.data.session) { location.hash = 'account'; await account(); return; }
+      show('#r-msg', 'استلمت خدمة التسجيل الطلب. تحقق من صندوق البريد والرسائل غير المرغوب فيها، ثم سجل الدخول.', 0);
       this.reset();
       syncWa();
     } catch (err) {

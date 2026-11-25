@@ -558,3 +558,11 @@ test('secret diagnostics separate history and deployed files without hiding scan
  assert.match(workflow,/test "\$history_status" -eq 0 && test "\$current_status" -eq 0/);
  assert.equal(fs.readFileSync('security.txt','utf8'),fs.readFileSync('.well-known/security.txt','utf8'));
 });
+
+test('signup uses a single SDK flow and always obtains the configured CAPTCHA token',()=>{
+ const signup=js.slice(js.indexOf("$('#regForm').addEventListener"),js.indexOf("$('#logForm').addEventListener"));
+ assert.equal((signup.match(/\.auth\.signUp\(/g)||[]).length,1);
+ assert.match(signup,/await window\.familyCaptcha\.token\(this\)/);
+ assert.match(signup,/captchaToken/);
+ assert.doesNotMatch(signup,/\/auth\/v1\/signup|\bfetch\(/);
+});
