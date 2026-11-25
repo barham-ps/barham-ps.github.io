@@ -57,3 +57,7 @@ The Portal security workflow is scheduled daily, and now runs both regression su
 - ZAP baseline runs passive checks against a static preview on an internal Docker network only. Image versions are resolved to digests at runtime; this is not a production or authenticated pentest.
 - OpenSSF Scorecard publishes a workflow artifact only, with no claim of external certification; branch protection may be unavailable with the read-only token.
 - Turnstile requires an owner-created site key and matching Auth server secret. WebAuthn requires server-side relying-party settings and account recovery verification. Do not turn either flag on independently.
+
+## Governance and attachment configuration
+- GOVERNANCE.md is a draft for owner review, not formal approval. Existing privacy, retention and security caveats remain in effect; do not claim a configured provider or approved retention period without verification.
+- Bucket provisioning reconciles the private request attachment bucket's existing privacy, file-size and MIME restrictions. This source update does not run a production migration; review and apply separately only if required.
