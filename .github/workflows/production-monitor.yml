@@ -3,6 +3,13 @@ on:
   push:
     branches: [main]
     paths:
+      - 'index.html'
+      - 'portal.js'
+      - 'portal.css'
+      - 'security-config.js'
+      - 'captcha.js'
+      - '_headers'
+      - 'scripts/edge_probe.py'
       - 'trust/**'
       - '.well-known/**'
       - 'security.txt'
@@ -14,7 +21,7 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    - cron: '17 */6 * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,3 +45,5 @@ jobs:
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
+      - name: Check transfer encoding and edge evidence
+        run: python3 scripts/edge_probe.py --host barham-ps.github.io

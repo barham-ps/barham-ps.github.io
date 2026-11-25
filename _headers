@@ -14,3 +14,11 @@
   Cache-Control: no-store
 /sw.js
   Cache-Control: no-cache
+
+# Only public, non-sensitive static icons; short TTL for unversioned URLs.
+/barham-emblem.webp
+  Cache-Control: public, max-age=300, must-revalidate
+/favicon.png
+  Cache-Control: public, max-age=300, must-revalidate
+/icon.svg
+  Cache-Control: public, max-age=300, must-revalidate
