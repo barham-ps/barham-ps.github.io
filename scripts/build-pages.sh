@@ -15,3 +15,7 @@ cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.
 # Publish the memorial section and the legacy URL retirement notice.
 mkdir -p dist/martyrs
 cp martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/admin.js martyrs/Barham_Martyrs_Register.html dist/martyrs/
+
+# Public security transparency page (no private audit details).
+mkdir -p dist/trust
+cp trust/index.html dist/trust/

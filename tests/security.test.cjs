@@ -503,3 +503,15 @@ test('private views reject unconfirmed, anonymous, deleted and currently banned 
   const guard=js.slice(js.indexOf('async function guardPrivate'),js.indexOf('async function loadMfa'));
   for(const field of ['email_confirmed_at','is_anonymous','deleted_at','banned_until']) assert.ok(guard.includes(field));
 });
+
+test('public trust center uses independent evidence links and does not claim accreditation',()=>{
+ const page=fs.readFileSync('trust/index.html','utf8');
+ assert.match(page,/default-src 'none'/);
+ assert.doesNotMatch(page,/<script\b|<iframe\b|\s(?:onclick|onload|onerror)=/i);
+ assert.match(page,/لا تدّعي البوابة حصولها على اعتماد رسمي/);
+ assert.match(page,/ssllabs\.com\/ssltest/);
+ assert.match(page,/actions\/workflows\/security\.yml/);
+ assert.match(html,/href="\.\/trust\/"/);
+ assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp trust\/index\.html dist\/trust\//);
+ for(const link of page.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g))assert.match(link[0],/rel="noopener noreferrer"/);
+});
