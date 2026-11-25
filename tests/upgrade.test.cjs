@@ -60,7 +60,7 @@ test('visitor priorities are visible without authentication and print design rem
 
 
 test('memorial section is linked and included in the deployable build',()=>{
- const assets=['index.html','memorial.css','memorial.js','Barham_Martyrs_Register.html'];
+ const assets=['index.html','memorial.css','memorial.js','admin.js','Barham_Martyrs_Register.html'];
  const html=read('index.html'), memorial=read('martyrs/index.html');
  assert.ok(html.includes('href="./martyrs/"'));
  assert.ok(memorial.includes('href="./Barham_Martyrs_Register.html"'));
@@ -68,3 +68,5 @@ test('memorial section is linked and included in the deployable build',()=>{
  require('node:child_process').execFileSync('sh',['scripts/build-pages.sh']);
  for(const asset of assets)assert.deepEqual(fs.readFileSync('dist/martyrs/'+asset),fs.readFileSync('martyrs/'+asset),asset);
 });
+
+test('memorial photo storage is private and limited to 30 slots per record',()=>{const sql=read('database/family_martyrs.sql');assert.match(sql,/position between 1 and 30/);assert.match(sql,/unique\(martyr_id,position\)/);assert.match(sql,/family_martyr_photos enable row level security/);assert.match(sql,/'family-martyr-photos','family-martyr-photos',false,5242880/);assert.match(sql,/p\.published and m\.published/);assert.ok(read('portal.js').includes('window.mountMemorialAdmin(cms,client)'));assert.ok(read('martyrs/memorial.js').includes('createSignedUrls'));require('node:child_process').execFileSync(process.execPath,['--check','martyrs/admin.js']);require('node:child_process').execFileSync(process.execPath,['--check','martyrs/memorial.js']);});

@@ -75,3 +75,5 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
 .record-content p{font-size:.89rem}
 }
 @media screen and (max-width:350px){.region-nav a{font-size:.78rem;padding:8px 7px}.region-nav a svg{display:none}.honor-record,.honor-record:last-child{padding-inline:10px}}
+
+.martyr-gallery{margin-block:14px}.martyr-gallery summary{cursor:pointer;padding:10px 0;color:var(--gold)}.martyr-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:10px}.martyr-photos figure{margin:0;min-width:0}.martyr-photos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px}.martyr-photos figcaption{overflow-wrap:anywhere;font-size:.85rem}@media print{.martyr-gallery{display:none}}

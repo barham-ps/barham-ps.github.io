@@ -14,4 +14,4 @@ cp genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.
 
 # Publish the memorial section and its downloadable register.
 mkdir -p dist/martyrs
-cp martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/Barham_Martyrs_Register.html dist/martyrs/
+cp martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/admin.js martyrs/Barham_Martyrs_Register.html dist/martyrs/
