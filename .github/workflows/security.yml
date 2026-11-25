@@ -24,6 +24,8 @@ jobs:
           node --check portal.js
           node --check footer.js
           bash tests/backup-smoke.sh
+          bash -n scripts/backup-object-lock.sh scripts/pqc-probe.sh
+          python3 -m unittest discover -s tests -p 'test_private_av_scanner.py'
           node --check sw.js
           node --check captcha.js
           node --check security-config.js
