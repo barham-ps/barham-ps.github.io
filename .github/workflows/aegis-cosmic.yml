@@ -1,0 +1,89 @@
+name: AEGIS Cosmic Core
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '37 8 * * 1'
+permissions:
+  contents: read
+jobs:
+  cosmic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Sentinel Matrix Vault - workflow policy inventory
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          files=list(Path('.github/workflows').glob('aegis-*.yml'))
+          assert len(files)>=6
+          for p in files:
+              s=p.read_text()
+              assert not re.search(r'^\s*pull_request_target\s*:',s,re.M),p.name
+              assert not re.search(r'^\s*permissions:\s*write-all',s,re.M),p.name
+              for ref in re.findall(r'uses:\s*([^\s]+)',s):
+                  assert re.fullmatch(r'[^@]+@[a-f0-9]{40}',ref),p.name
+          print('AEGIS workflow policy inventory verified:',len(files))
+          PY
+      - name: Entropy - synthetic randomness health smoke test
+        run: |
+          python3 - <<'PY'
+          import secrets, collections, math
+          values=[secrets.token_bytes(32) for _ in range(4096)]
+          assert len(set(values))==len(values)
+          counts=collections.Counter(b for v in values for b in v)
+          entropy=-sum(n/131072*math.log2(n/131072) for n in counts.values())
+          assert entropy>7.95
+          print('Synthetic RNG smoke test passed; not cryptographic certification')
+          PY
+      - name: Phantom - verified scanner positive and negative controls
+        run: |
+          set -eu
+          work=$(mktemp -d)
+          curl --fail --silent --show-error --location --max-time 90 https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz -o "$work/tool.tar.gz"
+          echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  $work/tool.tar.gz" | sha256sum --check -
+          tar -xzf "$work/tool.tar.gz" -C "$work" gitleaks
+          mkdir "$work/fixture"
+          printf 'ordinary synthetic text\n' > "$work/fixture/sample.txt"
+          printf '[ [rules] ]\n' >/dev/null
+          cat > "$work/test.toml" <<'EOF'
+          [[rules]]
+          id = "aegis-synthetic"
+          description = "Synthetic marker only"
+          regex = "AEGIS_TEST_[A-Z0-9]{24}"
+          EOF
+          "$work/gitleaks" dir --config "$work/test.toml" --redact=100 --no-banner --exit-code 17 "$work/fixture"
+          printf '%s%s\n' AEGIS_TEST_ ABCDEFGHIJKLMNOPQRSTUVWX > "$work/fixture/sample.txt"
+          status=0
+          "$work/gitleaks" dir --config "$work/test.toml" --redact=100 --no-banner --exit-code 17 "$work/fixture" || status=$?
+          test "$status" -eq 17
+      - name: Neural Eclipse Singularity - decision fault injection
+        run: |
+          python3 - <<'PY'
+          import itertools, statistics
+          def decision(states):
+              return len(states)==6 and all(x=='success' for x in states)
+          for states in itertools.product(('success','failure','missing'),repeat=6):
+              assert decision(states)==(states==('success',)*6)
+          assert not decision([])
+          def anomaly(history,value):
+              return abs(value-statistics.median(history))>max(1,6*statistics.median(abs(x-statistics.median(history)) for x in history))
+          assert anomaly([10,10,11,9,10],100)
+          assert not anomaly([10,10,11,9,10],10)
+          print('729 decision combinations and synthetic anomaly controls passed')
+          PY
+      - name: Horizon - pinned dependency audit
+        run: |
+          work=$(mktemp -d)
+          cd "$work"
+          npm init -y >/dev/null
+          npm install --package-lock-only --ignore-scripts --no-audit --save-exact @supabase/supabase-js@2.119.2 qrcodejs@1.0.0
+          npm audit --audit-level=high
