@@ -1,15 +1,14 @@
-# Scale readiness (staging only)
-Target: 1,000,000 registered accounts and >100 TB total object storage, not a guarantee of 1,000,000 concurrent sessions.
+# Zero-budget capacity plan (replaces prior paid scale target)
+Target at least 1,000 registered accounts with no recurring bills. A 1 TB archive is aspirational: no verified permanent free managed 1 TB object store has been identified. No billing activation without owner approval.
 
-## First change
-Public history/tree/archive queries are paginated (24 rows), ordered consistently and use one signed-URL batch per page. Keep the published-only predicate, existing RLS, five-minute signed URLs and no-store navigation. No private files are cached. Run node --check portal.js and node --test tests/*.test.cjs plus browser smoke tests before deployment.
+## Free architecture
+- Keep GitHub Pages and current official URL. GitHub stores source, not member files. A Cloudflare Pages free preview can be considered later; static requests are unlimited subject to platform limits, but dynamic APIs retain their own quotas. No cutover or account signup performed.
+- Supabase Free: 50,000 monthly active auth users, 500 MB database and 1 GB file storage; bandwidth, shared compute and rate limits still apply. 50,000 MAU is not a concurrency guarantee.
+- R2 Standard includes 10 GB-month free but can charge for exceeding quotas; do not activate billing for a zero-budget project. Oracle Always Free offers 20 GB object storage subject to eligibility. Neither is currently connected.
+- Compress new public illustrations, preserve original private documents, paginate and batch signed URLs. Two partial public-feed indexes have been added to the live database and verified. Keep RLS, existing OTP and MFA, and no-store navigation.
+- At 200 KB average per compressed image, 1 GB is roughly 5,000 images before overhead or other files. Monitor actual database/storage/egress in dashboard and stop new media uploads before limits; archive original large files offline if the owner has storage.
+- Current aggregate baseline before indexes: database 13,244,083 bytes, objects 6,171,092 bytes, 14 objects, 2 auth accounts. No member records exported.
+- Do not use GitHub releases or public repositories as private file storage, and do not create multiple accounts to evade quotas.
+- Verify staged changes with node --check portal.js, node --test tests/*.test.cjs and browser smoke tests. Run load tests against an isolated environment only; do not claim measured concurrency until verified.
 
-## Infrastructure gates
-- Keep GitHub as source control. GitHub Pages has a soft 100 GB/month transfer limit; use a Cloudflare Pages preview with the existing build script, then a domain and CDN after testing. Do not switch the canonical URL or auth allowlist until owner approval.
-- Store object metadata, owner IDs and access policies in Postgres, not the files themselves. Use private R2/S3 object storage, server-side authorization before narrowly scoped short-lived upload/download URLs, multipart upload, checksum validation, quotas and quarantine/scanning. Do not migrate existing member documents before a tested copy/rollback and access isolation. A single object is subject to provider limits.
-- Measure auth and database load in an isolated test project with synthetic accounts and data. Use indexed queries, bounded pagination, connection pooling where applicable and read replicas only if measured demand warrants them. Never load-test real member accounts or production without an approved plan.
-- Use a transactional SMTP provider for production recovery (not consumer Gmail at high volume). Configure verified sending domain, SPF/DKIM/DMARC, limits, retry policy and delivery metrics; preserve existing OTP verification and administrative MFA. No secrets in Git.
-- Capacity gates: define peak concurrent users and request mix; measure p95 latency, error rate, DB CPU/connections, email delivery, storage/egress and cost. Run staged tests at increasing rates, then approve capacity against actual results. No claim of verified million-user capacity until these gates pass.
-- R2 standard storage list price $0.015/GB-month: 100,000 GB is about $1,500/month before operations, backups, database and auth. Actual costs depend on usage and current provider pricing. No paid resources provisioned.
-
-Sources: https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits ; https://developers.cloudflare.com/r2/pricing/ ; https://supabase.com/docs/guides/deployment/going-into-prod ; https://supabase.com/docs/guides/auth/auth-smtp .
+Sources: https://supabase.com/pricing ; https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits ; https://developers.cloudflare.com/r2/pricing/ ; https://developers.cloudflare.com/pages/functions/pricing/ ; https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
