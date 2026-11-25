@@ -29,7 +29,7 @@ jobs:
               s=p.read_text()
               assert not re.search(r'^\s*pull_request_target\s*:',s,re.M),p.name
               assert not re.search(r'^\s*permissions:\s*write-all',s,re.M),p.name
-              for ref in re.findall(r'uses:\s*([^\s]+)',s):
+              for ref in re.findall(r'^\s*(?:-\s*)?uses:\s*([^\s]+)',s,re.M):
                   assert re.fullmatch(r'[^@]+@[a-f0-9]{40}',ref),p.name
           print('AEGIS workflow policy inventory verified:',len(files))
           PY
