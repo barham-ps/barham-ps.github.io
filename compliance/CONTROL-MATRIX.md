@@ -18,3 +18,10 @@ Owner approval and complete licensed-standard control mapping pending. No exclus
 | C14 | Quality / ISO 9001 | Yes | pending | acceptance criteria, complaints and corrective actions |
 | C15 | Supplier management / ISO 27001 | Yes | pending | review hosting terms, privacy agreements and shared responsibility |
 | C16 | Release rollback / ISO 20000-1 | Yes | pending | test rollback and canary in staging |
+
+| C17 | Cloud shared responsibility / ISO/IEC 27017:2026 | Yes | pending | provider responsibility matrix, credential scope, private supplier and exit review |
+| C18 | Privacy rights / ISO/IEC 27701:2025 | Yes | pending | synthetic identity, access, correction and deletion exercise; restricted processing inventory |
+| C19 | Continuity impact analysis / ISO 22301:2019 | Yes | pending | owner-approved service recovery priorities and measured production restore evidence |
+| C20 | Quality management / ISO 9001:2026 | Yes | pending | approved quality objectives, acceptance checks, user feedback and corrective action evidence |
+
+Refer to INTEGRATED-ISO.md for the evidence gates. No status implies certification.
