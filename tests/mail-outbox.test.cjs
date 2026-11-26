@@ -11,6 +11,7 @@ test('outbox handler rejects unauthorized/oversized/arbitrary content and transm
   const URLtext=String(input);const payload=JSON.parse(init.body);calls.push({url:URLtext,payload,headers:init.headers});
   if(URLtext.endsWith('/family_mail_reserve'))return Response.json([{job_id:ID}]);
   if(URLtext.endsWith('/family_mail_claim')){const rows=claimable?[{template_key:'request_complaint_received',source_id:REF,audience:'member',recipient_email:'fixture@example.invalid'}]:[];claimable=false;return Response.json(rows);}
+  if(URLtext.endsWith('/family_auth_mail_claim'))return Response.json(null);
   if(URLtext.endsWith('/family_mail_finish'))return Response.json(true);
   if(URLtext.startsWith('https://hook.us2.make.com/'))return new Response('Accepted',{status:200});
   throw Error('Unexpected request');
@@ -24,7 +25,7 @@ test('outbox handler rejects unauthorized/oversized/arbitrary content and transm
   assert.equal((await call('dispatch',secrets.MAIL_MAKE_PULL_SECRET)).status,401);assert.equal(calls.length,0);
   const dispatch=await call('dispatch',secrets.MAIL_DISPATCH_SECRET);assert.equal(dispatch.status,200);assert.equal((await dispatch.json()).queued_to_make,1);
   const hook=calls.find(c=>c.url.startsWith('https://hook.us2.make.com/'));assert.deepEqual(hook.payload,{job_id:ID});assert.equal(hook.headers['x-make-apikey'],secrets.MAIL_MAKE_WEBHOOK_KEY);assert.ok(!JSON.stringify(hook.payload).includes('@'));
-  const claim=await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID});assert.equal(claim.status,200);assert.equal(claim.headers.get('Cache-Control'),'no-store');const body=await claim.json();assert.equal(body.to,'fixture@example.invalid');assert.equal(body.job_id,ID);assert.match(body.subject,/الشكوى/);assert.match(body.html,/حفاظاً على خصوصيتك/);assert.doesNotMatch(body.html,/fixture@example\.invalid/);
+  const claim=await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID});assert.equal(claim.status,200);assert.equal(claim.headers.get('Cache-Control'),'no-store');const body=await claim.json();assert.equal(body.to,'fixture@example.invalid');const graph=JSON.parse(body.graph_body);assert.equal(graph.message.toRecipients[0].emailAddress.address,body.to);assert.equal(graph.message.subject,body.subject);assert.equal(graph.message.body.content,body.html);assert.equal(graph.message.body.contentType,'HTML');assert.equal(graph.saveToSentItems,true);assert.equal(body.job_id,ID);assert.match(body.subject,/الشكوى/);assert.match(body.html,/حفاظاً على خصوصيتك/);assert.doesNotMatch(body.html,/fixture@example\.invalid/);
   assert.equal((await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID})).status,409);
   assert.equal((await call('finish',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID,outcome:'arbitrary'})).status,400);
   assert.equal((await call('finish',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID,outcome:'sent'})).status,200);

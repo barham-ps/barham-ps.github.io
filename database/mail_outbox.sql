@@ -5,8 +5,10 @@ CREATE SCHEMA IF NOT EXISTS family_private;
 CREATE TABLE IF NOT EXISTS family_private.mail_outbox_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
   enabled boolean NOT NULL DEFAULT false,
-  monthly_limit integer NOT NULL DEFAULT 120 CHECK (monthly_limit BETWEEN 1 AND 10000)
+  monthly_limit integer NOT NULL DEFAULT 120 CHECK (monthly_limit BETWEEN 1 AND 10000),
+  test_job_id uuid
 );
+ALTER TABLE family_private.mail_outbox_settings ADD COLUMN IF NOT EXISTS test_job_id uuid;
 INSERT INTO family_private.mail_outbox_settings(singleton) VALUES(true) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS family_private.mail_outbox (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,28 +105,28 @@ CREATE TRIGGER family_mail_notice AFTER INSERT ON public.family_member_notices F
 -- Serialize reservations to enforce the calendar-month budget. No user data is returned by reserve.
 CREATE OR REPLACE FUNCTION public.family_mail_reserve(p_limit integer DEFAULT 5)
 RETURNS TABLE(job_id uuid) LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE capacity integer; budget integer;
+DECLARE capacity integer; budget integer; active boolean; test_id uuid;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('family-mail-reserve',0));
-  SELECT monthly_limit INTO budget FROM family_private.mail_outbox_settings WHERE singleton AND enabled;
-  IF budget IS NULL THEN RETURN; END IF;
+  SELECT monthly_limit, enabled, test_job_id INTO budget, active, test_id FROM family_private.mail_outbox_settings WHERE singleton;
+  IF budget IS NULL OR (NOT active AND test_id IS NULL) THEN RETURN; END IF;
   UPDATE family_private.mail_outbox SET state='expired',finished_at=now() WHERE state='queued' AND created_at<now()-interval '7 days';
   UPDATE family_private.mail_outbox SET state='uncertain',finished_at=now() WHERE state IN ('dispatched','sending') AND dispatched_at<now()-interval '10 minutes';
   DELETE FROM family_private.mail_outbox WHERE state IN ('sent','failed','uncertain','expired') AND finished_at<now()-interval '32 days';
   SELECT greatest(0,budget-count(*)::integer) INTO capacity FROM family_private.mail_outbox WHERE dispatched_at>=date_trunc('month',now());
   IF capacity=0 THEN RETURN; END IF;
   RETURN QUERY WITH reserved AS (
-    SELECT id FROM family_private.mail_outbox WHERE state='queued' ORDER BY created_at,id LIMIT least(capacity,greatest(0,least(coalesce(p_limit,5),10))) FOR UPDATE SKIP LOCKED
+    SELECT id FROM family_private.mail_outbox WHERE state='queued' AND (active OR (id=test_id AND audience='admin' AND template_key='admin_delivery_test')) ORDER BY created_at,id LIMIT least(capacity,greatest(0,least(coalesce(p_limit,5),10))) FOR UPDATE SKIP LOCKED
   ) UPDATE family_private.mail_outbox q SET state='dispatched',dispatched_at=now() FROM reserved r WHERE q.id=r.id RETURNING q.id;
 END; $$;
 CREATE OR REPLACE FUNCTION public.family_mail_claim(p_job uuid)
 RETURNS TABLE(template_key text,source_id uuid,audience text,recipient_email text) LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
-  IF NOT EXISTS(SELECT 1 FROM family_private.mail_outbox_settings WHERE singleton AND enabled) THEN RETURN; END IF;
+  IF NOT EXISTS(SELECT 1 FROM family_private.mail_outbox_settings WHERE singleton AND (enabled OR test_job_id=p_job)) THEN RETURN; END IF;
   -- One atomic claim; expired or already claimed jobs cannot be sent again.
   RETURN QUERY WITH claimed AS (
     UPDATE family_private.mail_outbox q SET state='sending',claimed_at=now()
-    WHERE q.id=p_job AND q.state='dispatched' AND q.dispatched_at>now()-interval '10 minutes'
+    WHERE q.id=p_job AND (EXISTS(SELECT 1 FROM family_private.mail_outbox_settings WHERE singleton AND enabled) OR (q.audience='admin' AND q.template_key='admin_delivery_test')) AND q.state='dispatched' AND q.dispatched_at>now()-interval '10 minutes'
     AND (q.audience='admin' OR EXISTS(SELECT 1 FROM auth.users u WHERE u.id=q.recipient_user_id AND u.email_confirmed_at IS NOT NULL AND u.deleted_at IS NULL AND (u.banned_until IS NULL OR u.banned_until<now()) AND u.email IS NOT NULL))
     RETURNING q.template_key,q.source_id,q.audience,q.recipient_user_id
   ) SELECT c.template_key,c.source_id,c.audience,u.email::text FROM claimed c LEFT JOIN auth.users u ON u.id=c.recipient_user_id;

@@ -72,3 +72,31 @@ export function renderEvent(key, reference) {
   if(reference!==undefined&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference))throw new Error('Invalid reference');
   return {subject:t.subject, html:shell(t,{link:t.link,ref:reference}),audience:t.audience};
 }
+
+// Separate internal delivery test, never emitted by member-facing event triggers.
+export function renderDeliveryTest() {
+  const t=event('اختبار الربط الآلي مع Supabase',['هذه رسالة اختبار تقنية مخصصة لبريد إدارة آل برهم. تم توليدها من مسار الطابور الخادمي، ولا تشير إلى أي طلب عضوية أو شكوى حقيقية.','لا يلزم اتخاذ أي إجراء.'],'admin','admin');
+  return {subject:t.subject,html:shell(t,{link:t.link}),audience:'admin'};
+}
+
+// Signed/privileged Auth Hook inputs only. URLs are pinned to this portal.
+export function renderAuthEmail(action, token, tokenHash) {
+  const actionToKey={
+    signup:'confirmation',invite:'invite',magiclink:'magic_link',email:'magic_link',
+    recovery:'recovery',email_change:'email_change',reauthentication:'reauthentication',
+    password_changed_notification:'password_changed',email_changed_notification:'email_changed',phone_changed_notification:'phone_changed',
+    identity_linked_notification:'identity_linked',identity_unlinked_notification:'identity_unlinked',
+    mfa_factor_enrolled_notification:'mfa_factor_enrolled',mfa_factor_unenrolled_notification:'mfa_factor_unenrolled'
+  };
+  if(!Object.hasOwn(actionToKey,action))throw new Error('Unknown Auth event');
+  const t=AUTH_TEMPLATES[actionToKey[action]];
+  let code,link=t.link;
+  if(t.code){if(typeof token!=='string'||!/^\d{4,10}$/.test(token))throw new Error('Invalid OTP');code=esc(token);}
+  if(link==='confirmation'){
+    if(typeof tokenHash!=='string'||!(/^[A-Za-z0-9_-]{16,255}$/).test(tokenHash))throw new Error('Invalid token hash');
+    const u=new URL('https://vfxxghfmkmgdqrczeowx.supabase.co/auth/v1/verify');
+    u.searchParams.set('token',tokenHash);u.searchParams.set('type',action);u.searchParams.set('redirect_to',SITE);
+    link=esc(u.toString());
+  }
+  return {subject:t.subject,html:shell(t,{code,link})};
+}
