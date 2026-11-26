@@ -32,7 +32,7 @@ on:
       - 'sitemap.xml'
       - 'icon.svg'
   schedule:
-    - cron: '38 5 * * 3'
+    - cron: '12 * * * *'
 permissions:
   contents: read
 concurrency:
@@ -54,7 +54,29 @@ jobs:
         run: /usr/bin/python3 -m unittest discover -s tests -p test_independent_quality.py
       - name: Run 13 independent diagnostics
         run: /usr/bin/python3 scripts/independent_quality.py --report "$RUNNER_TEMP/independent-quality.json"
-      - name: Publish status only, not source snippets
+      - name: Generate format-only candidate in isolated checkout
+        run: |
+          /usr/bin/python3 scripts/safe_quality_fix.py --report "$RUNNER_TEMP/safe-quality-fix.json"
+          git diff --check
+          # Enforce the scope independently of the generator.
+          git diff --name-only | while IFS= read -r path; do
+            case "$path" in tests/*.sh) bash -n "$path" ;; *) exit 1 ;; esac
+          done
+          if ! git diff --quiet -- tests; then
+            node --test tests/security.test.cjs tests/upgrade.test.cjs tests/worker-guard.test.mjs
+            bash tests/backup-smoke.sh
+            bash tests/restore-drill.sh
+          fi
+          git diff -- tests/*.sh > "$RUNNER_TEMP/safe-quality-fix.patch"
+      - name: Upload tested candidate (never deploy from this job)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: safe-quality-candidate
+          path: |
+            ${{ runner.temp }}/safe-quality-fix.json
+            ${{ runner.temp }}/safe-quality-fix.patch
+          retention-days: 7
+      - name: Publish sanitized status, not source snippets
         if: always()
         run: |
           if test -f "$RUNNER_TEMP/independent-quality.json"; then
