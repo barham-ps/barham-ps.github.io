@@ -35,3 +35,27 @@ test('unavailable rate binding still blocks protected paths',async()=>{
  const x=setup();x.env.ABUSE_LIMIT.limit=async()=>{throw Error('unavailable');};
  assert.equal((await x.probe('/.env')).status,404);assert.equal(x.calls.length,0);
 });
+test('internal artifacts and nested encoding do not reach the asset binding', async()=>{
+ const x=setup();
+ for (const path of ['/tests/security.test.cjs','/compliance/README.md','/isms/README.md','/wrangler.jsonc','/_headers','/SECURITY.md','/nested/.env','/%25252egit%25252fconfig','/history/%252e%252e%252fcompliance%252fREADME.md']) {
+  const r=await x.probe(path); assert.equal(r.status,404,path);
+  assert.equal(r.headers.get('Cache-Control'),'no-store');
+  assert.equal(await r.text(),'');
+ }
+ assert.ok(!x.calls.some(y=>y[0]==='asset'));
+});
+test('ambiguous or malformed paths fail closed without contacting the asset binding',async()=>{
+ const x=setup();
+ for(const path of ['/%ZZ','/%00','/%2525252525252eenv','/'+ 'a'.repeat(4096)]) {
+  const r=await x.probe(path);assert.equal(r.status,400,path.slice(0,30));
+  assert.equal(r.headers.get('Strict-Transport-Security'),'max-age=31536000');
+ }
+ assert.equal(x.calls.length,0);
+});
+test('asset binding failures return a non-cacheable generic response',async()=>{
+ const x=setup();x.env.ASSETS.fetch=async()=>{throw Error('internal details');};
+ const r=await x.probe('/about/');
+ assert.equal(r.status,503);assert.equal(await r.text(),'');
+ assert.equal(r.headers.get('Cache-Control'),'no-store');
+ assert.equal(r.headers.get('Retry-After'),'60');
+});

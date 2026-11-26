@@ -4,12 +4,12 @@ set -euo pipefail
 umask 077
 bin=$(pg_config --bindir)
 for cmd in initdb pg_ctl psql createdb pg_dump pg_restore; do
-  test -x "$bin/$cmd"
+	test -x "$bin/$cmd"
 done
 work=$(mktemp -d)
 cleanup() {
-  if [[ -f "$work/db/postmaster.pid" ]]; then "$bin/pg_ctl" -D "$work/db" -m fast -w stop >/dev/null 2>&1 || true; fi
-  rm -rf -- "$work"
+	if [[ -f "$work/db/postmaster.pid" ]]; then "$bin/pg_ctl" -D "$work/db" -m fast -w stop >/dev/null 2>&1 || true; fi
+	rm -rf -- "$work"
 }
 trap cleanup EXIT
 mkdir -m 700 "$work/socket"
@@ -29,10 +29,14 @@ grant select on public.drill_records to drill_reader;
 SQL
 started=$(date +%s)
 "$bin/pg_dump" -Fc -d drill_source -f "$work/backup.dump"
-(cd "$work"; sha256sum backup.dump > backup.sha256; sha256sum -c backup.sha256)
+(
+	cd "$work"
+	sha256sum backup.dump >backup.sha256
+	sha256sum -c backup.sha256
+)
 "$bin/pg_restore" --exit-on-error --single-transaction -d drill_target "$work/backup.dump"
 for db in drill_source drill_target; do
-  "$bin/psql" -X -v ON_ERROR_STOP=1 -d "$db" <<'SQL'
+	"$bin/psql" -X -v ON_ERROR_STOP=1 -d "$db" <<'SQL'
 do $$begin
  if (select count(*) from public.drill_records)<>2 or
     (select label from public.drill_records where id=2)<>'synthetic private' or
@@ -50,4 +54,4 @@ end$$;
 reset role;
 SQL
 done
-printf 'Synthetic PostgreSQL archive/restore and RLS checks passed; elapsed_seconds=%s\n' "$(($(date +%s)-started))"
+printf 'Synthetic PostgreSQL archive/restore and RLS checks passed; elapsed_seconds=%s\n' "$(($(date +%s) - started))"
