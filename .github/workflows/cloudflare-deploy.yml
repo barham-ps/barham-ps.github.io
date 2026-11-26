@@ -39,9 +39,38 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -eu
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Cloudflare deployment credentials are not configured in GitHub Actions."
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not configured in GitHub Actions."
             exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            # Discover the account only when the scoped token can see exactly one.
+            # Never print API response bodies, account details, or the token.
+            CLOUDFLARE_ACCOUNT_ID=$(python3 - <<'PY'
+          import json, os, re, sys, urllib.request
+          try:
+              request = urllib.request.Request(
+                  "https://api.cloudflare.com/client/v4/accounts?per_page=5",
+                  headers={"Authorization": "Bearer " + os.environ["CLOUDFLARE_API_TOKEN"],
+                           "Accept": "application/json"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  data = json.load(response)
+              accounts = data.get("result")
+              if not data.get("success") or not isinstance(accounts, list) or len(accounts) != 1:
+                  raise ValueError("account is not uniquely discoverable")
+              if data.get("result_info", {}).get("total_count", 1) != 1:
+                  raise ValueError("account is not uniquely discoverable")
+              account_id = accounts[0].get("id", "")
+              if not re.fullmatch(r"[0-9a-fA-F]{32}", account_id):
+                  raise ValueError("unexpected account identifier")
+              print(account_id)
+          except Exception:
+              print("::error::Cannot discover exactly one authorized Cloudflare account. Configure CLOUDFLARE_ACCOUNT_ID as a GitHub Actions secret.", file=sys.stderr)
+              sys.exit(1)
+          PY
+            )
+            echo "::add-mask::$CLOUDFLARE_ACCOUNT_ID"
+            export CLOUDFLARE_ACCOUNT_ID
           fi
           npx --yes wrangler@4.168.0 deploy
       - name: Verify all six live security controls
