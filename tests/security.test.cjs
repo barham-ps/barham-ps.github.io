@@ -700,3 +700,18 @@ test('security inventory covers five private buckets and preserves administratio
   assert.match(js,/credentials:'omit',cache:'no-store',redirect:'error',signal:abort.signal/);
   assert.match(js,/cloudflare-deploy\.yml/);
 });
+
+
+test('Cloudflare deployment paths cover every published asset',()=>{
+ const workflow=fs.readFileSync('.github/workflows/cloudflare-deploy.yml','utf8');
+ const paths=workflow.split('    paths:\n')[1].split('\npermissions:')[0].split('\n')
+   .map(line=>line.match(/^\s*- '([^']+)'$/)?.[1]).filter(Boolean);
+ const validator=fs.readFileSync('scripts/validate_public_build.py','utf8');
+ const publicFiles=validator.split('ALLOWED = frozenset("""')[1].split('"""')[0].trim().split(/\s+/);
+ const covered=(file,pattern)=>{
+   if(pattern.endsWith('/**'))return file.startsWith(pattern.slice(0,-2));
+   if(pattern.startsWith('*.'))return !file.includes('/')&&file.endsWith(pattern.slice(1));
+   return file===pattern;
+ };
+ for(const file of publicFiles)assert.ok(paths.some(pattern=>covered(file,pattern)), 'Missing deployment trigger for '+file);
+});
