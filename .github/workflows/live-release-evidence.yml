@@ -27,7 +27,7 @@ jobs:
       - name: Verify current production baseline
         run: |
           for attempt in 1 2 3; do
-            if python3 scripts/release_verify.py --source-dir baseline; then exit 0; fi
+            if python3 scripts/release_verify.py --full --source-dir baseline; then exit 0; fi
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1

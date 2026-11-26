@@ -54,7 +54,7 @@ jobs:
         if: github.event_name != 'push'
         run: |
           for attempt in 1 2 3; do
-            if python3 scripts/release_verify.py; then exit 0; fi
+            if python3 scripts/release_verify.py --full; then exit 0; fi
             if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
