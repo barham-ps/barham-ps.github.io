@@ -715,3 +715,10 @@ test('Cloudflare deployment paths cover every published asset',()=>{
  };
  for(const file of publicFiles)assert.ok(paths.some(pattern=>covered(file,pattern)), 'Missing deployment trigger for '+file);
 });
+
+
+ test('Internal Markdown documents are excluded from GitHub Pages publication',()=>{
+ const config=fs.readFileSync('_config.yml','utf8');
+ const excluded=config.split('exclude:\n')[1].split('\n\n')[0].split('\n').map(line=>line.trim().replace(/^-\s*/,''));
+ for(const name of fs.readdirSync('.').filter(name=>name.endsWith('.md'))) assert.ok(excluded.includes(name),'Public build exclusion missing: '+name);
+ });
