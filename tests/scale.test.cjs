@@ -74,3 +74,51 @@ test('failed cover stays retryable and shows the successful refresh even on a sl
  img.onerror();assert.equal(retry.hidden,false);assert.equal(state.hidden,false);
  await retry.onclick();assert.equal(img.src,'fresh:cover');
 });
+
+test('news archive loads bounded pages, filters published categories and retries without losing earlier results',async()=>{
+ const source=fs.readFileSync('portal.js','utf8');
+ const code=source.slice(source.indexOf('  const newsPageSize ='),source.indexOf("  window.addEventListener('online',()=>{",source.indexOf('  const newsPageSize =')));
+ function node(tag,t){return {tag,textContent:t,children:[],dataset:{},style:{},hidden:false,value:'',attrs:{},classList:{add(){}},setAttribute(k,v){this.attrs[k]=v},removeAttribute(k){delete this.attrs[k]},replaceChildren(){this.children=[]},addEventListener(k,v){this[k]=v}}}
+ const make=(tag,p,t)=>{const n=node(tag,t);p.children.push(n);return n};
+ const action=(p,t,fn)=>{const n=make('button',p,t);n.onclick=fn;return n};
+ const field=(p,label,name)=>{const n=make('input',p,label);n.name=name;return n};
+ const selectField=(p,label,name)=>{const n=make('select',p,label);n.value='all';return n};
+ const newsLabels={news:'خبر عائلي',occasion:'مناسبة',announcement:'إعلان عائلي'};
+ const rows=Array.from({length:15},(_,i)=>({id:String(i),title:'خبر '+i,body:'نص '+i,category:i%2?'news':'announcement',created_at:'2026-11-26'}));
+ const log=[];let failNext=false;
+ const client=()=>({from(table){assert.equal(table,'family_news');return {filtered:rows,filters:[],orders:[],select(){return this},eq(key,value){this.filters.push([key,value]);if(key==='category')this.filtered=this.filtered.filter(x=>x.category===value);return this},order(key,options){this.orders.push([key,options.ascending]);return this},async range(a,b){log.push({a,b,filters:this.filters,orders:this.orders});if(failNext){failNext=false;return {error:'network'}}return {data:this.filtered.slice(a,b+1)}},async limit(n){log.push({limit:n,filters:this.filters});return {data:this.filtered.slice(0,n)}}}}});
+ const feed=node('div'),home=node('div'),ctx={make,action,field,selectField,newsLabels,client,ok(q){if(q.error)throw Error(q.error);return q.data},normalizeSearch:x=>String(x).toLowerCase(),newsPhotos:()=>[],newsCover:()=>[],newsGallery(){},formatPortalTime:()=>'',location:{hash:'#news'},newsEpoch:0,$:s=>s==='#public-news-list'?feed:home};
+ const app=vm.runInNewContext(code+';({loadPublicNews,newsExcerpt})',ctx);
+ await app.loadPublicNews();
+ const [toolbar,list,empty,footer]=feed.children,[category,search,clear,results]=toolbar.children,[state,more]=footer.children;
+ assert.equal(list.children.length,12);assert.equal(more.hidden,false);
+ assert.deepEqual(log[0].filters,[['published',true]]);
+ assert.deepEqual(log[0].orders,[['created_at',false],['id',false]]);
+ assert.equal(log[0].a,0);assert.equal(log[0].b,12);
+ failNext=true;await more.onclick();assert.equal(list.children.length,12);assert.equal(more.textContent,'إعادة المحاولة');assert.equal(more.disabled,false);
+ await more.onclick();assert.equal(list.children.length,15);assert.equal(more.hidden,true);assert.equal(log[2].a,12);
+ search.value='خبر 14';search.input();assert.equal(list.children.filter(x=>!x.hidden).length,1);assert.equal(empty.hidden,true);
+ search.value='غير موجود';search.input();assert.equal(empty.hidden,false);
+ search.value='';category.value='announcement';await category.change();
+ assert.equal(list.children.length,8);assert.equal(log.at(-1).a,0);assert.deepEqual(log.at(-1).filters,[['published',true],['category','announcement']]);
+ ctx.location.hash='#home';await app.loadPublicNews();
+ assert.equal(home.children[0].children.length,1);assert.equal(log.at(-1).limit,1);assert.deepEqual(log.at(-1).filters,[['published',true]]);
+ assert.equal(app.newsExcerpt('بسم الله الرحمن الرحيم\nنص الخبر',170),'نص الخبر');
+});
+
+test('missing preferred cover automatically tries an alternate published photo',async()=>{
+ const js=fs.readFileSync('portal.js','utf8');
+ const source=js.slice(js.indexOf('  function newsGallery('),js.indexOf('  const newsPageSize ='));
+ const calls=[],opened=[];
+ function node(tag,t){return {tag,textContent:t,children:[],isConnected:true,hidden:false,dataset:{},setAttribute(){},removeAttribute(k){delete this[k]}}}
+ const make=(tag,p,t)=>{const n=node(tag,t);p.children.push(n);return n};
+ const action=(p,t,fn)=>{const n=make('button',p,t);n.onclick=fn;return n};
+ const photoURLs=async(paths,refresh)=>{calls.push([...paths]);return paths.map(p=>p==='missing'?null:'signed:'+p)};
+ const gallery=vm.runInNewContext(source+';newsGallery',{make,action,photoURLs,window:{},showPhotoGallery(paths,title,index){opened.push(index)}});
+ const root=node('article');gallery(root,['missing'],'Title',true,['missing','backup']);
+ await new Promise(setImmediate);
+ const [button,state,retry]=root.children[0].children[0].children;
+ const img=button.children[0];assert.equal(img.src,'signed:backup');
+ img.onload();assert.equal(state.hidden,true);assert.equal(retry.hidden,true);
+ button.onclick();assert.deepEqual(opened,[1]);assert.deepEqual(calls,[['missing'],['backup']]);
+});

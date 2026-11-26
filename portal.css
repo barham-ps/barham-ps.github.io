@@ -1353,6 +1353,70 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
   }
 }
 
+/* V93 — compact news feature, paginated archive and readable controls. */
+@media screen {
+  :root #v-home .home-news-grid .news-feature {
+    display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:clamp(14px,2.5vw,26px);
+  }
+  .news-teaser-copy,.news-teaser-media{min-width:0;max-width:100%}
+  .news-teaser-copy{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+  .news-teaser-copy h2,.news-teaser-copy h3{overflow-wrap:anywhere}
+  :root #v-home .home-news-grid .news-teaser-copy .btn-gold{align-self:flex-start;margin-top:6px;min-height:44px}
+  #v-home .news-teaser-media>.gallery-open{margin-top:6px;color:#f9e9bf}
+  #v-home .news-feature .news-teaser-media{display:grid;gap:4px}
+  #v-home .news-feature .news-gallery,#v-news .news-feed-card .news-gallery{margin:0}
+  :root #v-home .home-news-grid .news-feature .news-media img{max-height:270px;aspect-ratio:16/10;object-fit:contain}
+  #v-home .news-feature .news-media{min-height:100px}
+  #v-news #public-news-list{max-width:1120px;margin-inline:auto;min-width:0}
+  .news-archive-tools{display:grid;grid-template-columns:minmax(140px,1fr) minmax(180px,2fr) auto;align-items:end;gap:12px;margin:0 0 18px;padding:16px;box-shadow:none!important}
+  .news-archive-tools label{margin:0;min-width:0}
+  .news-archive-tools input,.news-archive-tools select{min-height:44px;width:100%;min-width:0}
+  .news-archive-tools .btn{min-height:44px;justify-content:center}
+  .news-archive-tools>p{grid-column:1/-1;margin:0;color:var(--fg2);font-size:13px}
+  .news-archive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+  :root #v-news .news-feed-card{display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);box-shadow:none;margin:0;padding:16px;border-radius:14px;min-width:0}
+  .news-feed-card .news-teaser-copy{flex:1;align-items:stretch}
+  .news-feed-card .lux-badge{align-self:flex-start;font-size:12px;padding:4px 12px}
+  .news-feed-card h2{font:700 clamp(19px,2.5vw,25px)/1.55 var(--body);margin:0;color:var(--fg)}
+  .news-feed-card .news-date{margin:0;text-align:start;color:var(--fg2);opacity:1}
+  .news-feed-card p{font-size:14px;line-height:1.8;margin:0;overflow-wrap:anywhere}
+  .news-feed-card .btn-gold{margin-top:auto;align-self:flex-start;min-height:44px}
+  .news-feed-card .news-teaser-media{order:-1}
+  .news-feed-card .news-teaser-media .gallery-open{margin-top:6px}
+  #v-news .news-feed-card .news-media img{aspect-ratio:16/10;max-height:220px;object-fit:contain}
+  .news-archive-footer{display:flex;flex-direction:column;align-items:center;gap:8px;padding-block:20px}
+  .news-archive-footer p,.news-empty{color:var(--fg2);text-align:center;margin:0}
+  .news-empty{padding:20px 12px;border:1px dashed var(--line);border-radius:12px;margin:12px 0}
+  #v-home .news-empty{margin:0}
+  #v-news .news-back{min-height:44px}
+  #v-news .news-detail{max-width:850px}
+  #v-news .news-detail p{overflow-wrap:anywhere}
+  .photo-dialog .btn{min-height:44px}
+  .access-error .btn{display:flex;width:max-content;margin-block-start:10px}
+  @media(min-width:701px){
+    :root #v-home .home-news-grid .news-feature.has-news-media{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+  }
+  @media(max-width:700px){
+    .news-archive-grid{grid-template-columns:minmax(0,1fr)}
+    .news-archive-tools{grid-template-columns:minmax(0,1fr);gap:8px;padding:12px}
+    .news-archive-tools .btn{justify-self:start}
+    :root #v-home .home-news-grid .news-feature .news-media img{max-height:210px}
+    #v-home .home-news-grid .news-feature.has-news-media .news-teaser-media{grid-row:1}
+    :root #v-home .home-news-grid .news-teaser-copy .btn-gold{align-self:stretch;justify-content:center}
+    .news-feed-card .btn-gold{align-self:stretch;justify-content:center}
+  }
+}
+@media screen {
+  .mail-private .mail-summary-copy{display:grid;gap:3px;min-width:0}
+  .mail-private .mail-summary-copy small{font-size:12px;font-weight:400;color:var(--fg2);overflow-wrap:anywhere}
+  .mail-private .mail-summary-copy strong{overflow-wrap:anywhere}
+  .mail-private .mail-filter-result,.mail-private .mail-operation{font-size:13px;padding:0;margin:8px 0;color:var(--fg2)}
+  .mail-private .mail-filter-result:empty,.mail-private .mail-operation:empty{display:none}
+  .mail-private .mail-operation:not(:empty){padding:10px;border-inline-start:3px solid var(--gold);background:var(--band);border-radius:8px}
+  .mail-private .dashboard-state[data-mail-status=new]{background:#e8cb79;color:#142b22}
+  @media(max-width:700px){.mail-private .dashboard-filter>.btn{justify-self:start}}
+}
+
 /* Royal public home typography — visual layer only, no grid, navigation or print changes. */
 @media screen{
  :root{--royal-ar:'Amiri','Noto Naskh Arabic','Traditional Arabic',Tahoma,Arial,sans-serif;--royal-ui:'Noto Sans Arabic',Tahoma,Arial,system-ui,sans-serif;--royal-ivory:#fff5df;--royal-gold:#f2d58e}

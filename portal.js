@@ -60,7 +60,11 @@
     btn = $('#menuBtn');
 
   const publicHomeTitle=document.title;
+  let lastRenderedHash;
   function route() {
+    const requestedHash=location.hash||'#home';
+    const changed=lastRenderedHash!==requestedHash;
+    lastRenderedHash=requestedHash;
     var r = (location.hash || '#home').slice(1) || 'home';
     if (r.startsWith('verify/')) r = 'verify';
     if (r.startsWith('news/')) r = 'news';
@@ -79,7 +83,7 @@
     });
     hdr.classList.remove('open');
     btn.setAttribute('aria-expanded', 'false');
-    window.scrollTo({
+    if(changed) window.scrollTo({
       top: 0,
       behavior: 'instant'
     });
@@ -98,8 +102,15 @@
   route();
   btn.addEventListener('click', function() {
     var o = hdr.classList.toggle('open');
-    btn.setAttribute('aria-expanded', o)
+    btn.setAttribute('aria-expanded', String(o));
   });
+  function closeMenu(returnFocus=false){
+    if(!hdr.classList.contains('open'))return;
+    hdr.classList.remove('open');btn.setAttribute('aria-expanded','false');
+    if(returnFocus)btn.focus();
+  }
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu(true);});
+  document.addEventListener('click',e=>{if(!hdr.contains(e.target)||e.target.closest?.('nav.main a'))closeMenu();});
 
   var same = $('#r-same');
 
@@ -2108,7 +2119,7 @@
       const version = ++request, path = paths[index];
       img.hidden = true; img.removeAttribute('src'); retry.hidden = true;
       status.textContent = 'جارٍ تحميل الصورة…';
-      count.textContent = (index + 1) + ' / ' + paths.length;
+      count.textContent = arabicNumber(index + 1) + ' / ' + arabicNumber(paths.length);
       prev.disabled = index === 0; next.disabled = index === paths.length - 1;
       const unavailable = () => {
         if (version !== request || !d.isConnected) return;
@@ -2124,6 +2135,10 @@
     }
     prev.onclick = () => { if (index > 0) { index--; draw(); } };
     next.onclick = () => { if (index < paths.length - 1) { index++; draw(); } };
+    d.addEventListener('keydown',e=>{
+      if(e.key==='ArrowLeft'&&index<paths.length-1){e.preventDefault();index++;draw();}
+      if(e.key==='ArrowRight'&&index>0){e.preventDefault();index--;draw();}
+    });
     let x = 0;
     img.addEventListener('touchstart', e => { x = e.changedTouches[0].clientX; }, {passive:true});
     img.addEventListener('touchend', e => {
@@ -2152,8 +2167,9 @@
       a.hidden = true;
       const state = make('div', tile, 'جارٍ تحميل الصورة…'); state.className = 'news-image-state'; state.setAttribute('role', 'status');
       const retry = action(tile, 'إعادة تحميل الصورة', () => load([i], true)); retry.hidden = true;
-      a.onclick = () => showPhotoGallery(galleryPaths, title, galleryPaths.indexOf(path));
-      return {a, im, state, retry, path, version:0};
+      const item={a,im,state,retry,path,version:0,loaded:false,alternateTried:false};
+      a.onclick=()=>showPhotoGallery(galleryPaths,title,galleryPaths.indexOf(item.path));
+      return item;
     });
     async function load(indices, refresh = false) {
       if (!g.isConnected) return;
@@ -2170,11 +2186,18 @@
         const error = () => {
           if (!g.isConnected || version !== item.version) return;
           if (!refresh && urls[i]) { load([indices[i]], true); return; }
+          if(cover&&!item.loaded&&!item.alternateTried){
+            const alternate=galleryPaths.find(path=>path!==item.path);
+            if(alternate){
+              item.alternateTried=true;item.path=alternate;
+              load([indices[i]],false);return;
+            }
+          }
           item.a.hidden = true; item.state.hidden = false; item.state.textContent = 'الصورة غير متاحة الآن.'; item.retry.hidden = false;
         };
         item.im.onload = () => {
           if (!g.isConnected || version !== item.version) return;
-          item.a.hidden = false; item.im.hidden = false; item.state.hidden = true; item.retry.hidden = true;
+          item.loaded=true;item.a.hidden = false; item.im.hidden = false; item.state.hidden = true; item.retry.hidden = true;
         };
         item.im.onerror = error;
         // Do not assign a lazy image inside a hidden button: it may never request.
@@ -2203,117 +2226,179 @@
     }
   }
 
+  const newsPageSize = 12;
+  const arabicNumber = n => new Intl.NumberFormat('ar-PS').format(n);
+  const newsFields = 'id,title,body,category,image_path,image_paths,cover_paths,created_at';
+  function publicNewsQuery(){
+    return client().from('family_news').select(newsFields).eq('published',true);
+  }
+  function newsExcerpt(body, maxLength){
+    const text=String(body||'').split(/\n/).map(t=>t.trim()).filter(t=>t&&!t.startsWith('بسم الله')&&!t.startsWith('﴿')).join(' ');
+    const content=text||String(body||'').trim();
+    if(content.length<=maxLength)return content;
+    const end=content.lastIndexOf(' ',maxLength);
+    return content.slice(0,end>maxLength*.7?end:maxLength).trim()+'…';
+  }
+  function newsTimestamp(parent,row){
+    const time=make('time',parent,formatPortalTime(row.created_at));
+    time.className='news-date';
+    if(row.created_at&&Number.isFinite(Date.parse(row.created_at)))time.dateTime=row.created_at;
+    return time;
+  }
+  function newsTeaser(parent,row,home){
+    const teaser=make('article',parent);
+    teaser.className=home?'home-news-card news-feature':'card news-feed-card';
+    const copy=make('div',teaser);copy.className='news-teaser-copy';
+    make('span',copy,newsLabels[row.category]||'خبر عائلي').className=home?'home-news-label':'lux-badge';
+    make(home?'h3':'h2',copy,row.title);
+    newsTimestamp(copy,row);
+    make('p',copy,newsExcerpt(row.body,home?170:220));
+    const read=make('a',copy,'قراءة '+(row.category==='announcement'?'الإعلان':'الخبر')+' كاملًا');
+    read.href='#news/'+row.id;read.className='btn btn-gold';
+    const photos=newsPhotos(row);
+    if(photos.length){
+      teaser.classList.add('has-news-media');
+      const media=make('div',teaser);media.className='news-teaser-media';
+      newsGallery(media,newsCover(row),row.title,true,photos);
+    }
+    return teaser;
+  }
+  function renderNewsDetail(feed,x){
+    const back=make('a',feed,'← جميع الأخبار');back.href='#news';back.className='btn btn-ghost news-back';
+    const c=make('article',feed);c.className='card lux-news-card news-detail';
+    make('span',c,newsLabels[x.category]||'خبر').className='lux-badge';
+    make('h2',c,x.title).className='lux-title';
+    newsTimestamp(c,x);
+    const photos=newsPhotos(x),covers=newsCover(x);
+    newsGallery(c,covers,x.title,true,photos);
+    const blocks=String(x.body||'').split(/\n\s*\n/).filter(t=>t.trim());
+    for(const block of blocks){
+      if(block.startsWith('بسم الله الرحمن الرحيم')&&block.includes('﴿')){
+        const verse=make('div',c);verse.className='lux-verse-box';
+        make('p',verse,'بسم الله الرحمن الرحيم').className='lux-bismillah';
+        make('blockquote',verse,block.split('\n').slice(1).join('\n')).className='lux-verse';
+      }else if(block.startsWith('أعضاء المجلس\n')){
+        make('h3',c,'أعضاء المجلس').className='lux-section-title';
+        const ol=make('ol',c);ol.className='lux-members';
+        block.split('\n').slice(1).filter(Boolean).forEach(n=>make('li',ol,n));
+      }else{
+        const para=make('p',c,block);para.style.whiteSpace='pre-line';
+      }
+    }
+    // Every photo is accessible, including secondary images marked as covers.
+    const rest=photos.filter(path=>path!==covers[0]);
+    if(rest.length){
+      make('h3',c,'صور إضافية').className='lux-section-title';
+      newsGallery(c,rest,x.title,false,photos);
+    }
+    const share=make('a',c,'مشاركة عبر واتساب');share.className='btn btn-gold';
+    share.target='_blank';share.rel='noopener noreferrer';
+    share.href='https://wa.me/?text='+encodeURIComponent(x.title+'\n'+location.origin+location.pathname+'#news/'+x.id);
+  }
+  async function renderNewsArchive(feed,current){
+    const toolbar=make('div',feed);toolbar.className='card news-archive-tools';
+    const category=selectField(toolbar,'التصنيف','news-category',{all:'كل الأخبار',...newsLabels});
+    const search=field(toolbar,'البحث في الأخبار المعروضة','news-search','search',150);search.placeholder='عنوان الخبر أو كلمة من النص';
+    const reset=action(toolbar,'مسح التصفية',()=>{search.value='';if(category.value!=='all'){category.value='all';loadPage(true);}else filterCards();});
+    reset.className='btn btn-ghost';
+    const results=make('p',toolbar);results.setAttribute('role','status');
+    const list=make('div',feed);list.className='news-archive-grid';
+    const empty=make('p',feed);empty.className='news-empty';empty.hidden=true;
+    const footer=make('div',feed);footer.className='news-archive-footer';
+    const state=make('p',footer);state.setAttribute('role','status');
+    const more=action(footer,'عرض أخبار أقدم',()=>loadPage(false));more.className='btn btn-gold';more.hidden=true;
+    let offset=0,request=0,busy=false,hasMore=false,records=[],seen=new Set();
+    function filterCards(){
+      const terms=normalizeSearch(search.value).split(/\s+/).filter(Boolean);
+      let visible=0;
+      for(const record of records){
+        record.el.hidden=!terms.every(term=>record.text.includes(term));
+        if(!record.el.hidden)visible++;
+      }
+      results.textContent='المعروضة: '+arabicNumber(visible)+' من '+arabicNumber(records.length)+(hasMore?' · توجد أخبار أقدم':'');
+      empty.hidden=busy||visible!==0;
+      empty.textContent=records.length?'لا توجد نتائج مطابقة في الأخبار المحمّلة. غيّر البحث أو حمّل أخبارًا أقدم.':'لا توجد أخبار منشورة بهذا التصنيف.';
+    }
+    async function loadPage(resetList){
+      if(!current()||(!resetList&&busy))return;
+      if(resetList){offset=0;records=[];seen.clear();list.replaceChildren();hasMore=false;}
+      const version=++request,active=()=>current()&&version===request;
+      busy=true;more.disabled=true;empty.hidden=true;list.setAttribute('aria-busy','true');
+      state.textContent='جارٍ تحميل الأخبار…';filterCards();
+      try{
+        let query=publicNewsQuery();
+        if(category.value!=='all')query=query.eq('category',category.value);
+        const rows=ok(await query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+newsPageSize))||[];
+        if(!active())return;
+        hasMore=rows.length>newsPageSize;
+        const page=rows.slice(0,newsPageSize);
+        for(const row of page){
+          if(seen.has(row.id))continue;
+          seen.add(row.id);
+          const el=newsTeaser(list,row,false);
+          records.push({el,text:normalizeSearch([row.title,row.body,newsLabels[row.category]].join(' '))});
+        }
+        offset+=page.length;
+        more.hidden=!hasMore;more.textContent='عرض أخبار أقدم';
+        state.textContent=hasMore?'يمكنك متابعة تصفح الأخبار الأقدم.':(records.length?'وصلت إلى نهاية الأرشيف.':'');
+        delete feed.dataset.newsFailed;
+      }catch{
+        if(!active())return;
+        feed.dataset.newsFailed='true';
+        more.hidden=false;more.textContent='إعادة المحاولة';
+        state.textContent='تعذر تحميل الأخبار. تحقق من الاتصال ثم أعد المحاولة.';
+      }finally{
+        if(active()){
+          busy=false;more.disabled=false;list.removeAttribute('aria-busy');filterCards();
+          if(feed.dataset.newsFailed==='true'&&!records.length)empty.hidden=true;
+        }
+      }
+    }
+    search.addEventListener('input',filterCards);
+    category.addEventListener('change',()=>loadPage(true));
+    await loadPage(true);
+  }
+
   async function loadPublicNews() {
-    var epoch = ++newsEpoch,
-      feed = $('#public-news-list'),
-      home = $('#home-latest-news'),
-      hash = location.hash || '#home',
-      isHome = hash === '#home';
-    if (!isHome && hash !== '#news' && !hash.startsWith('#news/')) return;
-    var target = isHome ? home : feed;
-    target.setAttribute('aria-busy','true');
-    try {
-      var selected = hash.startsWith('#news/') ? hash.slice(6) : '';
-      if (selected && !/^[0-9a-f-]{36}$/i.test(selected)) {
-        target.replaceChildren();
-        make('p', target, 'رابط الخبر غير صالح.');
-        return;
+    const epoch=++newsEpoch,feed=$('#public-news-list'),home=$('#home-latest-news');
+    const hash=location.hash||'#home',isHome=hash==='#home',selected=hash.startsWith('#news/')?hash.slice(6):'';
+    if(!isHome&&hash!=='#news'&&!hash.startsWith('#news/'))return;
+    const target=isHome?home:feed,current=()=>epoch===newsEpoch&&(location.hash||'#home')===hash;
+    target.replaceChildren();target.setAttribute('aria-busy','true');delete target.dataset.newsFailed;
+    try{
+      if(!isHome&&hash==='#news'){await renderNewsArchive(feed,current);return;}
+      if(hash.startsWith('#news/')&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selected)){
+        make('p',target,'رابط الخبر غير صالح.');
+        const a=make('a',target,'جميع الأخبار');a.href='#news';a.className='btn btn-ghost';return;
       }
-      var query = client().from('family_news').select(
-        'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
-      var rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
-        ascending: false
-      }).order('id',{ascending:false}).limit(isHome ? 1 : 50)));
-      if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
+      make('p',target,'جارٍ تحميل الخبر…').className='portal-loading';
+      const query=publicNewsQuery();
+      const rows=ok(await (selected?query.eq('id',selected):query.order('created_at',{ascending:false}).order('id',{ascending:false}).limit(1)))||[];
+      if(!current())return;
       target.replaceChildren();
-      if (!rows.length) {
-        make('p', target, selected ? 'الخبر غير متاح.' : 'لا أخبار منشورة حاليًا.');
-        if (selected) {
-          var a = make('a', target, 'جميع الأخبار');
-          a.href = '#news';
-        }
+      if(!rows.length){
+        make('p',target,selected?'الخبر غير متاح.':'لا أخبار منشورة حاليًا.').className='news-empty';
+        if(selected){const a=make('a',target,'جميع الأخبار');a.href='#news';a.className='btn btn-ghost';}
         return;
       }
-      if (isHome) {
-        const featured = make('div', home); featured.className = 'home-news-grid';
-        rows.forEach(latest => {
-          const teaser = make('article', featured); teaser.className='home-news-card';
-          make('span', teaser, newsLabels[latest.category] || 'آخر الأخبار').className='home-news-label';
-          make('h3', teaser, latest.title);
-          make('time', teaser, formatPortalTime(latest.created_at)).className='news-date';
-          newsGallery(teaser, newsCover(latest), latest.title, true, newsPhotos(latest));
-          const body=String(latest.body||'');
-          const excerpt=body.split('\n').find(x=>x.trim()&&!x.startsWith('بسم')&&!x.startsWith('﴿'))||body;
-          make('p', teaser, excerpt.slice(0, 170));
-          const read=make('a',teaser,'قراءة الإعلان');read.href='#news/'+latest.id;read.className='btn btn-gold';
-        });
-        return;
-      }
-      var visible = rows;
-      const newsRecords = [];
-      if (selected) {
-        var back = make('a', feed, 'جميع الأخبار');
-        back.href = '#news';
-        back.className = 'btn btn-ghost';
-      }
-      if (!visible.length) make('p', feed, 'الخبر غير متاح.');
-      for (const x of visible) {
-        var c = make('article', feed);
-        c.className = 'card lux-news-card';
-        newsRecords.push({el:c, text:[x.title,x.body,newsLabels[x.category]].filter(Boolean).join(' ')});
-        make('span', c, newsLabels[x.category] || 'خبر').className = 'lux-badge';
-        make('h2', c, x.title).className = 'lux-title';
-        make('time', c, formatPortalTime(x.created_at)).className = 'news-date';
-        if (!selected) {
-          newsGallery(c, newsCover(x), x.title, true, newsPhotos(x));
-          var excerpt = make('p', c, x.body.split(/\n\s*\n/).filter(v => !v.startsWith('بسم'))[0]?.slice(0, 250) ||
-            x.body.slice(0, 250));
-          var open = make('a', c, 'قراءة الإعلان الكامل' + (newsPhotos(x).length ? ' • ' + newsPhotos(x).length +
-            ' صور' : ''));
-          open.className = 'btn btn-gold';
-          open.href = '#news/' + x.id;
-          continue;
-        }
-        newsGallery(c, newsCover(x), x.title, true, newsPhotos(x));
-        var blocks = x.body.split(/\n\s*\n/);
-        for (const block of blocks) {
-          if (block.startsWith('بسم الله الرحمن الرحيم') && block.includes('﴿')) {
-            var verse = make('div', c);
-            verse.className = 'lux-verse-box';
-            make('p', verse, 'بسم الله الرحمن الرحيم').className = 'lux-bismillah';
-            make('blockquote', verse, block.split('\n').slice(1).join('\n')).className = 'lux-verse';
-          } else if (block.startsWith('أعضاء المجلس\n')) {
-            make('h3', c, 'أعضاء المجلس').className = 'lux-section-title';
-            var ol = make('ol', c);
-            ol.className = 'lux-members';
-            block.split('\n').slice(1).filter(Boolean).forEach(n => make('li', ol, n));
-          } else {
-            var para = make('p', c, block);
-            para.style.whiteSpace = 'pre-line';
-          }
-        }
-        var rest = newsPhotos(x).filter(path => !newsCover(x).includes(path));
-        if (rest.length) {
-          make('h3', c, 'صور من الإعلان').className = 'lux-section-title';
-          newsGallery(c, rest, x.title, false);
-        }
-        var share = make('a', c, 'مشاركة عبر واتساب');
-        share.className = 'btn btn-gold';
-        share.target = '_blank';
-        share.rel = 'noopener noreferrer';
-        share.href = 'https://wa.me/?text=' + encodeURIComponent(x.title + '\n' + location.origin + location
-          .pathname + '#news/' + x.id);
-      }
-      if (!selected) { const searchBox = make('div', feed); feed.prepend(searchBox); attachSearch(searchBox, 'بحث في الأخبار المنشورة (آخر ٥٠ خبرًا)', newsRecords); }
-    } catch (e) {
-      if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
-      target.replaceChildren();
-      make('p', target, 'تعذر تحميل الأخبار. تحقق من الاتصال.');
-      action(target, 'إعادة المحاولة', loadPublicNews);
-    } finally {
-      if (epoch === newsEpoch) target.removeAttribute('aria-busy');
+      if(isHome){
+        const featured=make('div',home);featured.className='home-news-grid';
+        newsTeaser(featured,rows[0],true);
+      }else renderNewsDetail(feed,rows[0]);
+    }catch{
+      if(!current())return;
+      target.replaceChildren();target.dataset.newsFailed='true';
+      make('p',target,'تعذر تحميل الأخبار. تحقق من الاتصال.').className='news-empty';
+      action(target,'إعادة المحاولة',loadPublicNews).className='btn btn-ghost';
+    }finally{
+      if(epoch===newsEpoch)target.removeAttribute('aria-busy');
     }
   }
+  window.addEventListener('online',()=>{
+    const hash=location.hash||'#home';
+    const target=hash==='#home'?$('#home-latest-news'):hash.startsWith('#news/')?$('#public-news-list'):null;
+    if(target?.dataset.newsFailed==='true')loadPublicNews();
+  });
 
   async function loadNewsEditor() {
     newsEditorBody.replaceChildren();
@@ -2599,7 +2684,7 @@
           send.disabled=true;msg.textContent='جارٍ الإرسال…';
           try{
             ok(await client().from('family_correspondence').insert({department:dep.value,subject,body:message}));
-            if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد في الصادر.';folder='all';status.value='all';department.value='all';markFolder();await refresh(true);}
+            if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد في الصادر.';folder='all';status.value='all';department.value='all';search.value='';markFolder();await refresh(true);}
           }catch{if(current())msg.textContent='تعذر الإرسال. تحقق من الاتصال وصلاحية العضوية.';}
           finally{if(current())send.disabled=false;}
         });
@@ -2618,9 +2703,19 @@
       const department=selectField(filters,'القسم','mail-filter',{all:'كل الأقسام',...mailDepartments});
       const status=selectField(filters,'الحالة','mail-status',{all:'كل الحالات',...mailStatuses});
       const search=field(filters,'بحث في الصفحة الحالية','mail-search','search',150);
+      search.placeholder='الموضوع أو نص الرسالة';
+      const clearFilter=action(filters,'مسح التصفية',()=>{
+        search.value='';department.value=status.value='all';folder='all';markFolder();refresh(true);
+      });clearFilter.className='btn btn-ghost';
       const list=make('div',inbox);list.className='mail-records';
-      search.oninput=()=>{const term=normalizeSearch(search.value);for(const row of list.children)row.hidden=!!term&&!normalizeSearch(row.dataset.search||'').includes(term);};
+      const filtered=make('p',inbox);filtered.className='mail-filter-result';filtered.setAttribute('role','status');
+      search.oninput=()=>{
+        const terms=normalizeSearch(search.value).split(/\s+/).filter(Boolean);let count=0;
+        for(const row of list.children){row.hidden=!terms.every(term=>normalizeSearch(row.dataset.search||'').includes(term));if(!row.hidden)count++;}
+        filtered.textContent=terms.length?(count?'نتائج البحث في هذه الصفحة: '+arabicNumber(count):'لا توجد نتائج مطابقة في الصفحة الحالية. جرّب مسح التصفية أو الصفحة التالية.'):'';
+      };
       const state=make('p',inbox);state.setAttribute('role','status');
+      const operation=make('p',inbox);operation.setAttribute('role','status');operation.className='mail-operation';
       const actions=make('div',inbox);actions.className='row';
       const refreshButton=action(actions,'تحديث الرسائل',()=>refresh(true));
       const prev=action(actions,'السابق',()=>{if(offset>=20){offset-=20;refresh(false);}});
@@ -2632,8 +2727,8 @@
         if(!current())return;
         if(reset)offset=0;
         const version=++seq, active=()=>current()&&version===seq;
-        list.replaceChildren();state.textContent='جارٍ تحميل المراسلات…';
-        prev.disabled=next.disabled=refreshButton.disabled=true;
+        list.replaceChildren();filtered.textContent='';state.textContent='جارٍ تحميل المراسلات…';
+        list.setAttribute('aria-busy','true');prev.disabled=next.disabled=refreshButton.disabled=true;
         try{
           let q=client().from('family_correspondence').select('id,department,subject,body,reply,status,created_at',{count:'exact'});
           if(!isAdmin)q=q.eq('user_id',actor);
@@ -2646,13 +2741,16 @@
           const result=await q.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+19);
           const rows=ok(result)||[];
           if(!active())return;
-          state.textContent=rows.length?'عرض '+(offset+1)+'–'+(offset+rows.length)+' من '+(result.count??rows.length):'لا توجد مراسلات مطابقة.';
+          state.textContent=rows.length?'عرض '+arabicNumber(offset+1)+'–'+arabicNumber(offset+rows.length)+' من '+arabicNumber(result.count??rows.length):'لا توجد مراسلات مطابقة.';
           prev.disabled=offset===0;next.disabled=result.count===null?rows.length<20:offset+rows.length>=result.count;
           for(const item of rows){
             const entry=make('details',list);entry.className='card dashboard-record mail-record';
             entry.dataset.search=[item.subject,item.body,item.reply,mailDepartments[item.department],mailStatuses[item.status]].filter(Boolean).join(' ');
             const summary=make('summary',entry);
-            make('strong',summary,item.subject);make('span',summary,mailStatuses[item.status]||'—').className='dashboard-state';
+            const summaryCopy=make('span',summary);summaryCopy.className='mail-summary-copy';
+            make('strong',summaryCopy,item.subject);
+            make('small',summaryCopy,mailDepartments[item.department]||'قسم غير محدد');
+            const badge=make('span',summary,mailStatuses[item.status]||'—');badge.className='dashboard-state';badge.dataset.mailStatus=item.status;
             const article=make('div',entry);article.className='dashboard-record-body';
             make('span',article,mailDepartments[item.department]||'قسم غير محدد').className='eyebrow';
             make('p',article,formatPortalTime(item.created_at));
@@ -2675,17 +2773,17 @@
               try{
                 const updated=ok(await client().from('family_correspondence').update({reply:answer||null,status:answer&&['new','read'].includes(statusEdit.value)?'answered':statusEdit.value}).eq('id',item.id).select('id').single());
                 if(!updated?.id)throw Error('Update rejected');
-                if(active()){feedback.textContent='تم حفظ الرد والحالة.';await refresh(false);}
+                if(active()){operation.textContent='تم حفظ الرد والحالة بنجاح.';await refresh(false);}
               }catch{if(active())feedback.textContent='تعذر الحفظ. تحقق من الاتصال وصلاحية الإدارة.';}
               finally{if(active())save.disabled=false;}
             });
           }
           search.oninput();
         }catch{if(active())state.textContent='تعذر تحميل المراسلات. أعد المحاولة.';}
-        finally{if(active())refreshButton.disabled=false;}
+        finally{if(active()){refreshButton.disabled=false;list.removeAttribute('aria-busy');}}
       }
       await refresh(true);
-    }catch{if(current())notice.textContent='تعذر التحقق من الصلاحية أو الاتصال. أعد فتح الصفحة.';}
+    }catch{if(current()){notice.textContent='تعذر التحقق من الصلاحية أو الاتصال.';action(root,'إعادة المحاولة',()=>guardPrivate(()=>loadMail(isAdmin))).className='btn btn-ghost';}}
   }
 
   function extraRoute() {
@@ -2982,6 +3080,7 @@
         var msg = make('p', view.querySelector('.wrap') || view,
           'تعذر التحقق من الحساب. أعد فتح الصفحة عند استقرار الاتصال.');
         msg.className = 'access-error';
+        const retry=action(msg,'إعادة التحقق',()=>guardPrivate(fn));retry.className='btn btn-ghost';
       }
     }
   }
