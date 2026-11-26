@@ -15,6 +15,7 @@ on:
       - 'scripts/validate_public_build.py'
       - 'tests/security.test.cjs'
       - 'index.html'
+      - 'trust/**'
       - 'portal.js'
       - 'runtime.js'
       - 'sw.js'
@@ -112,6 +113,11 @@ jobs:
                       if actual != expected:
                           raise RuntimeError("Live security configuration differs from release")
                       print("Live security configuration matches release")
+                      expected_trust = pathlib.Path("dist/trust/index.html").read_bytes()
+                      _, actual_trust = probe("/trust/", len(expected_trust) + 1)
+                      if actual_trust != expected_trust:
+                          raise RuntimeError("Live trust center differs from release")
+                      print("Live trust center matches release")
                       break
               except Exception as exc:
                   print(type(exc).__name__, str(exc))
