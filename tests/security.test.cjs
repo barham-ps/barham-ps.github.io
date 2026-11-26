@@ -160,7 +160,7 @@ test('release keeps footer identity and deferred scripts in dependency order', (
   assert.match(css,/--glass-surface:/);
   assert.match(css,/prefers-reduced-motion/);
   assert.match(js,/new IntersectionObserver/);
-  assert.match(js,/im.fetchPriority = priority \? 'high' : 'low'/);
+  assert.match(js,/im.fetchPriority = cover \? 'auto' : 'low'/);
 });
 
 test('featured announcement does not inherit the light glass card surface', () => {
@@ -261,7 +261,7 @@ test('history does not duplicate genealogy call to action and sender details sta
  assert.match(sql,/where r\.id=any\(p_request_ids\)/);
 });
 test('repeat request submissions are independent and new submissions do not reload the member hub',()=>{
- const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app);',js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')")));
+ const req=js.slice(js.indexOf("var req = section(work, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app,work);',js.indexOf("var req = section(work, 'الطلبات والمساهمات والشكاوى')")));
  assert.match(req,/\.insert\(\{user_id:uid,kind,title,body,attachment_requested:!!file\}\)\.select/);
  assert.match(req,/mine=\[created,\.\.\.mine\.filter/);
  assert.match(req,/drawRequests\(\);rf\.reset\(\)/);
@@ -271,9 +271,9 @@ test('repeat request submissions are independent and new submissions do not relo
 });
 
 test('member dashboard uses named service keys and direct shortcuts rather than array positions',()=>{
- const hub=js.slice(js.indexOf('const hubServices ='),js.indexOf('function formAction'));
+ const hub=js.slice(js.indexOf('const hubGroups='),js.indexOf('function formAction'));
  const section=js.slice(js.indexOf('function section(parent'),js.indexOf('var activeHubGroup'));
- for(const key of ['identity','profile','lineage','directory','notices','archive','occasions','requests'])assert.ok(hub.includes("['"+key+"',"));
+ for(const key of ['identity','profile','lineage','directory','notices','archive','occasions','requests'])assert.ok(hub.includes("'"+key+"'"));
  assert.match(section,/dataset\.hubService=hubCardKeys\[title\]/);
  assert.match(hub,/card\.dataset\.hubService/);
  assert.match(hub,/hubNavigate=showGroup/);
@@ -346,7 +346,7 @@ test('request attachments are private, immutable and tied to a saved request',()
  assert.match(helpers,/upsert:false/);
  assert.match(helpers,/\.download\(uid\+'\/'\+row\.id\)/);
  assert.doesNotMatch(helpers,/getPublicUrl|createSignedUrl/);
- const req=js.slice(js.indexOf("var req = section(hubBody, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app);'));
+ const req=js.slice(js.indexOf("var req = section(work, 'الطلبات والمساهمات والشكاوى')"),js.indexOf('decorateHub(app,work);'));
  assert.ok(req.indexOf('const created=ok(await client()')<req.indexOf('await uploadRequestFile(created,uid,file)'));
  assert.match(req,/دون إعادة إرسال الطلب/);
 });

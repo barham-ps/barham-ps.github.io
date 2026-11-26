@@ -174,6 +174,8 @@
       return;
     }
     var u = s.data.user;
+    if(location.hash!=='#account'||recoveredSession?.user.id!==u.id)return;
+    memberQuick.hidden=hubLink.hidden=mailShortcut.hidden=certShortcut.hidden=adminShortcut.hidden=true;
     $('#member-welcome').textContent = 'أهلًا بك، ' + (u.user_metadata?.full_name || u.email);
     $('#member-email').textContent = u.email;
     const adminCheck=client().rpc('family_is_admin');
@@ -198,7 +200,12 @@
     if(q.data?.full_name)$('#member-welcome').textContent='أهلًا بك، '+q.data.full_name;
     if (q.data?.status === 'approved') {
       hubLink.textContent='فتح خدماتي';
-      Promise.resolve(client().from('family_member_notices').select('id',{count:'exact',head:true}).eq('user_id',u.id).is('read_at',null)).then(notice=>{if(location.hash==='#account'&&recoveredSession?.user.id===u.id)hubLink.textContent='فتح خدماتي'+(!notice.error&&notice.count?' ('+notice.count+' جديد)':'');}).catch(()=>{});
+      mailShortcut.textContent='مراسلاتي';
+      Promise.resolve(client().from('family_correspondence').select('id',{count:'exact',head:true}).eq('user_id',u.id).not('reply','is',null)).then(result=>{
+        if(location.hash==='#account'&&recoveredSession?.user.id===u.id&&!result.error&&result.count)
+          mailShortcut.textContent='مراسلاتي ('+result.count+' رد)';
+      }).catch(()=>{});
+      Promise.resolve(client().from('family_member_notices').select('id',{count:'exact',head:true}).eq('user_id',u.id).is('read_at',null)).then(notice=>{if(location.hash==='#account'&&recoveredSession?.user.id===u.id)hubLink.textContent='فتح خدماتي'+(!notice.error&&notice.count?' ('+notice.count+' إشعارات جديدة)':'');}).catch(()=>{});
     }
     var m = u.user_metadata || {};
     $('#c-name').value = m.full_name || '';
@@ -394,6 +401,9 @@
   admin.insertBefore(adminNavigation,adminMsg);
   adminMsg.setAttribute('role','status');
   var activeAdminPanel='overview';
+  let adminCMSTask=null, adminCMSIndex=0, adminEpoch=0;
+  const adminNavTop=make('div',admin);adminNavTop.className='dashboard-subnav';adminNavTop.hidden=true;
+  admin.insertBefore(adminNavTop,adminNavigation);
   var adminDirectory=make('div',admin);adminDirectory.className='card member-directory';adminDirectory.hidden=true;
   var directoryEpoch=0;
   var adminReports=make('div',admin);adminReports.className='card';adminReports.hidden=true;
@@ -452,16 +462,16 @@
     if(typeof window.mountMemorialAdmin!=='function') throw Error('Editor unavailable');
   }
   async function loadPublicCMS(){
-    cms.hidden=true;cms.replaceChildren();
-    const auth=await client().rpc('family_is_admin');if(auth.error||auth.data!==true)return;
-    cms.hidden=activeAdminPanel!=='content';make('h2',cms,'إدارة المحتوى');
+    cms.hidden=activeAdminPanel!=='content';cms.replaceChildren();make('p',cms,'جارٍ تحميل إدارة المحتوى…');
+    const actor=recoveredSession?.user.id, index=adminCMSIndex;
+    const currentCMS=()=>!!actor&&recoveredSession?.user.id===actor&&location.hash==='#admin'&&index===adminCMSIndex;
+    const auth=await client().rpc('family_is_admin');if(!currentCMS())return;
+    if(auth.error||auth.data!==true)throw Error('Forbidden');
+    cms.replaceChildren();cms.hidden=activeAdminPanel!=='content';make('h2',cms,'إدارة المحتوى');
     const contentLinks=make('div',cms);contentLinks.className='row dashboard-content-links';
     dashboardLink(contentLinks,'#news-admin','الأخبار والإعلانات','تحرير ونشر الأخبار','news');
     dashboardLink(contentLinks,'#martyrs-admin','سجل الشهداء والصور','إدارة الأسماء والمعارض','heart');
     const privateLink=dashboardLink(contentLinks,'#member-services-admin','الأرشيف والمناسبات الخاصة','مواد مخصصة للأعضاء','archive');privateLink.dataset.adminService='content';
-    const editorSlot=make('div',cms);
-    const openEditor=make('button',editorSlot,'فتح محرر سجل الشهداء');openEditor.type='button';openEditor.className='btn btn-ghost';
-    openEditor.onclick=async()=>{openEditor.disabled=true;try{const a=await client().rpc('family_is_admin');if(a.error||a.data!==true||!editorSlot.isConnected)return;await loadMemorialModule();if(!editorSlot.isConnected||cms.hidden||location.hash!=='#admin')return;editorSlot.replaceChildren();window.mountMemorialAdmin(editorSlot,client,true);}catch{if(editorSlot.isConnected)openEditor.textContent='تعذر التحميل، أعد المحاولة';}finally{openEditor.disabled=false;}};
     make('p',cms,'لا تنشر بيانات أو صورًا شخصية دون موافقة أصحابها.');
     const msg=make('p',cms);msg.setAttribute('role','status');const sectionLabel=make('label',cms,'القسم المراد تحريره');sectionLabel.className='f';const section=make('select',sectionLabel);
     for(const [key,label] of Object.entries(sectionsCMS)){const o=make('option',section,label);o.value=key;}
@@ -483,7 +493,7 @@
       }catch(e){if(uploaded&&!saved)await client().storage.from('family-public-content').remove([uploaded]);msg.textContent=saved?'تم الحفظ، لكن تعذر تحديث العرض. حدّث الصفحة.':'تعذر الحفظ. تحقق من الاتصال والصلاحيات وحاول مجددًا.';}finally{this.disabled=false;}
     });
     action(cms,'محتوى جديد',()=>loadPublicCMS());
-    const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
+    const q=await client().from('family_public_content').select('*').order('created_at',{ascending:false});if(!currentCMS())return;if(q.error){msg.textContent='تعذر تحميل المحتوى';return;}
     make('h3',cms,'المواد المحفوظة');const cmsRecords=[];
     for(const item of q.data){const record=make('details',cms);record.className='card dashboard-record';make('summary',record,sectionsCMS[item.section]+' — '+item.title+' — '+(item.published?'منشور':'مسودة'));const c=make('div',record);c.className='dashboard-record-body';cmsRecords.push({el:record,text:[sectionsCMS[item.section],item.title,item.body,item.published?'منشور':'مسودة'].join(' ')});
       action(c,'تعديل',()=>{current=item;section.value=item.section;title.value=item.title;body.value=item.body;pub.checked=item.published;file.value='';msg.textContent='تعديل: '+item.title;title.focus();});
@@ -498,21 +508,50 @@
     adminDirectory.hidden=key!=='directory';
     if(key!=='directory'){directoryEpoch++;adminDirectory.replaceChildren();clearMemberPrint();}
     adminRows.hidden=key!=='members';adminRefresh.hidden=key!=='members';cms.hidden=key!=='content';adminReports.hidden=key!=='reports';adminIntro.hidden=key!=='overview';
+    adminNavigation.hidden=key!=='overview';
+    adminNavTop.hidden=key==='overview';
+    adminNavTop.querySelector('strong').textContent=({members:'إدارة العضويات',directory:'سجل الأعضاء',content:'إدارة المحتوى',reports:'التقارير والإحصاءات'})[key]||'';
     adminNavigation.querySelectorAll('[data-admin-panel]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.adminPanel===key)));
+    if(key==='content'&&!adminCMSTask){
+      const index=++adminCMSIndex;
+      adminCMSTask=loadPublicCMS().catch(()=>{
+        if(index!==adminCMSIndex)return;
+        cms.replaceChildren();make('p',cms,'تعذر تحميل إدارة المحتوى.');
+        action(cms,'إعادة المحاولة',()=>{adminCMSTask=null;switchAdminPanel('content');});
+      });
+    }
   }
   function mountAdminNavigation(){
+    adminNavTop.replaceChildren();
+    action(adminNavTop,'← جميع أقسام الإدارة',()=>switchAdminPanel('overview')).className='btn btn-ghost';
+    make('strong',adminNavTop);
     adminNavigation.replaceChildren();
-    for(const [key,title,description,icon] of [['members','إدارة الأعضاء','العضويات والشهادات','users'],['content','إدارة المحتوى','التاريخ والشجرة والأرشيف والأخبار','archive'],['reports','التقارير والإحصاءات','ملخص العضويات','chart']]){
-      const tile=make('button',adminNavigation);tile.type='button';tile.className='dashboard-tile';tile.dataset.adminPanel=key;
-      dashboardIcon(tile,icon);const text=make('span',tile);make('strong',text,title);make('small',text,description);
-      tile.onclick=()=>switchAdminPanel(key);
+    function group(title){
+      const area=make('section',adminNavigation);area.className='admin-nav-group';
+      make('h2',area,title);const grid=make('div',area);grid.className='dashboard-grid';return grid;
     }
-    dashboardLink(adminNavigation,'#martyrs-admin','إدارة الشهداء والصور','السجل ومعارض الصور','heart');
-    const inboxLink=dashboardLink(adminNavigation,'#member-services-admin','الطلبات والرسائل','الشكاوى والمساهمات والردود','inbox');inboxLink.dataset.adminService='requests';
-    dashboardLink(adminNavigation,'#correspondence-admin','إدارة المراسلات','صناديق الأقسام الأربعة والردود','inbox');
-    dashboardLink(adminNavigation,'#security','الإعدادات والأمان','التحقق الثنائي وسجل العمليات','shield');
-    dashboardLink(adminNavigation,'#account','حسابي','العودة إلى حساب العضو','user');
-    adminNavigation.hidden=false;
+    function tile(parent,key,title,description,icon){
+      const button=make('button',parent);button.type='button';button.className='dashboard-tile';button.dataset.adminPanel=key;
+      dashboardIcon(button,icon);const text=make('span',button);make('strong',text,title);make('small',text,description);
+      button.onclick=()=>switchAdminPanel(key);
+    }
+    const members=group('العضويات والتواصل');
+    tile(members,'members','إدارة العضويات','مراجعة الطلبات والشهادات','users');
+    const inbox=dashboardLink(members,'#member-services-admin','طلبات الأعضاء','الشكاوى والمساهمات والمقترحات','inbox');inbox.dataset.adminService='requests';
+    const mail=dashboardLink(members,'#correspondence-admin','المراسلات','الوارد والردود وحالة الرسائل','bell');
+    const actor=recoveredSession?.user.id, epoch=adminEpoch;
+    Promise.resolve(client().from('family_correspondence').select('id',{count:'exact',head:true}).eq('status','new')).then(q=>{
+      if(!q.error&&q.count&&actor===recoveredSession?.user.id&&epoch===adminEpoch&&location.hash==='#admin')
+        mail.querySelector('small').textContent='رسائل جديدة: '+q.count;
+    }).catch(()=>{});
+    const publishing=group('النشر والتوثيق');
+    dashboardLink(publishing,'#news-admin','الأخبار والإعلانات','نشر وتعديل الصور والإعلانات','news');
+    tile(publishing,'content','المحتوى والتراث','التاريخ والأرشيف العام والخاص','archive');
+    dashboardLink(publishing,'#martyrs-admin','سجل الشهداء','إدارة الأسماء ومعارض الصور','heart');
+    const ops=group('الإدارة والتقارير');
+    tile(ops,'reports','التقارير والإحصاءات','ملخص العضويات والتصدير','chart');
+    dashboardLink(ops,'#security','الأمان والإعدادات','التحقق الثنائي وسجل العمليات','shield');
+    dashboardLink(ops,'#account','حسابي','العودة إلى حساب العضو','user');
   }
   function mountAdminReports(members){
     adminReports.replaceChildren();make('h2',adminReports,'تقارير العضوية');
@@ -565,6 +604,7 @@
   window.addEventListener('hashchange',()=>{
     clearMemberPrint();
     if(location.hash!=='#admin'){
+      adminEpoch++;adminCMSIndex++;adminCMSTask=null;
       directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;
       if(activeAdminPanel==='directory')activeAdminPanel='members';
     }
@@ -637,12 +677,16 @@
     }catch(e){if(epoch===directoryEpoch){adminDirectory.replaceChildren();make('p',adminDirectory,'تعذر فتح السجل؛ يلزم حساب إدارة مخوّل وتحقق ثنائي نشط.');action(adminDirectory,'العودة',()=>switchAdminPanel('members'));}}
   }
   async function loadAdmin() {
-    adminNavigation.hidden=true;adminRefresh.hidden=true;
+    const epoch=++adminEpoch, actor=recoveredSession?.user.id;
+    const current=()=>epoch===adminEpoch&&actor&&actor===recoveredSession?.user.id&&location.hash==='#admin';
+    adminNavigation.hidden=true;adminNavTop.hidden=true;adminRefresh.hidden=true;adminRows.hidden=true;
+    adminCMSIndex++;adminCMSTask=null;
     cms.hidden=true;cms.replaceChildren();adminReports.hidden=true;adminReports.replaceChildren();adminIntro.hidden=true;
     adminRows.replaceChildren();directoryEpoch++;adminDirectory.replaceChildren();adminDirectory.hidden=true;clearMemberPrint();
     adminMsg.textContent = 'جارٍ التحقق من الصلاحية';
     try {
       var q = await client().rpc('family_admin_list');
+      if(!current())return;
       if (q.error) {
         adminMsg.textContent = 'هذه الصفحة مخصصة للمشرف المعتمد. سجل الدخول بحساب الإدارة.';
         return;
@@ -725,7 +769,7 @@
       }
       applyFilter();
       mountAdminReports(q.data);
-      try{await loadPublicCMS();switchAdminPanel(activeAdminPanel);}catch(e){cms.replaceChildren();make('p',cms,'تعذر تحميل إدارة المحتوى. حدّث الصفحة ثم أعد المحاولة.');switchAdminPanel(activeAdminPanel);}
+      // Content editor is requested only when its section is opened.
     } catch (e) {
       adminMsg.textContent = 'تعذر الاتصال بالخدمة.';
     }
@@ -1083,13 +1127,13 @@
     hubBody = make('div', hub),
     hubLink = make('a', accountLinks, 'مجلس العضو الرقمي');
   hubLink.href = '#member-hub';
-  hubLink.className = 'btn btn-gold';
+  hubLink.className = 'btn btn-gold';accountLinks.prepend(hubLink);
   hubLink.hidden = true;
   var memberQuick = make('div',panel.querySelector('.wrap'));
   memberQuick.className='dashboard-grid account-quick';memberQuick.hidden=true;
   make('h2',memberQuick,'خدماتك الأقرب إليك').className='member-quick-heading';
   panel.querySelector('.wrap').insertBefore(memberQuick,pwBox);
-  for(const [key,title,description,icon] of [['identity','بطاقتي وشهادتي','عرض الهوية العائلية ووثيقة العضوية','shield'],['profile','ملفي الشخصي','تحديث المعلومات المسجلة في ملفي','users'],['notices','رسائل الإدارة','الاطلاع على الإشعارات الخاصة','bell'],['requests','طلباتي ومساهماتي','متابعة الطلبات والمقترحات الخاصة','inbox'],['lineage','سجل قراباتي','إدارة سجل النسب الشخصي','network'],['directory','دليل الكفاءات','استعراض التخصصات المتاحة','landmark'],['archive','أرشيف العائلة','الوثائق المتاحة للأعضاء','archive'],['occasions','المناسبات','متابعة المناسبات والتهاني','cal']]){
+  for(const [key,title,description,icon] of [['membership-group','عضويتي','البطاقة والشهادة والملف الشخصي','shield'],['requests','طلباتي','الشكاوى والمقترحات والمساهمات','inbox'],['family-group','عائلتي','القرابة ودليل الكفاءات','network'],['library-group','المكتبة العائلية','الأرشيف والمناسبات','archive'],['notices','الإشعارات','تنبيهات الإدارة الخاصة','bell']]){
     const l=dashboardLink(memberQuick,'#member-hub',title,description,icon);l.dataset.hubTarget=key;
   }
   hubLink.dataset.hubTarget='overview';
@@ -1135,23 +1179,13 @@
     c.className = 'card';
     c.style.marginBottom = '16px';
     make('h2', c, title);
-    if(parent===hubBody)c.dataset.hubService=hubCardKeys[title]||'overview';
+    if(parent===hubBody||parent.dataset.hubStage==='true')c.dataset.hubService=hubCardKeys[title]||'overview';
     return c;
   }
   var activeHubGroup = 'overview';
   var hubNavigate = null;
 
   // Explicit service keys prevent a missing or reordered card from changing the navigation.
-  const hubServices = [
-    ['identity','بطاقتي وشهادتي','البطاقة الرقمية ووثيقة العضوية','shield'],
-    ['profile','ملفي الشخصي','تحديث معلوماتي ودليل الكفاءات','users'],
-    ['lineage','سجل قراباتي','إدارة سجل النسب الخاص','network'],
-    ['directory','دليل الكفاءات','التخصصات والمهارات المتاحة','landmark'],
-    ['notices','الإشعارات','الرسائل الخاصة من الإدارة','file'],
-    ['archive','الأرشيف','الوثائق والمصادر المتاحة للأعضاء','archive'],
-    ['occasions','المناسبات','التهاني والمواعيد','cal'],
-    ['requests','طلباتي ومساهماتي','شكوى أو مقترح أو مادة أرشيفية','heart']
-  ];
   const hubGroups=[
     ['membership-group','عضويتي','البطاقة والشهادة والملف الشخصي','user',['identity','profile']],
     ['family-group','عائلتي','سجل القرابة ودليل الكفاءات','network',['lineage','directory']],
@@ -1192,22 +1226,22 @@
     dashboardIcon(link,icon);const text=make('span',link);make('strong',text,title);make('small',text,description);
     return link;
   }
-  function decorateHub(app) {
-    const cards=Array.from(hubBody.children).filter(x=>x.classList.contains('card'));
+  function decorateHub(app, host) {
+    const cards=Array.from(host.children).filter(x=>x.classList.contains('card'));
     if(!cards.length)return;
-    const shell=make('div',hubBody);shell.className='dashboard-shell';hubBody.prepend(shell);
+    const shell=make('div',host);shell.className='dashboard-shell';host.prepend(shell);
     const heading=make('div',shell);heading.className='dashboard-heading';
     const intro=make('div',heading);
     make('span',intro,'مساحتي الخاصة').className='eyebrow';
     make('h2',intro,'أهلًا بك، '+app.full_name);
     make('p',intro,'عضوية معتمدة • '+(app.membership_number||'رقم العضوية غير متاح'));
-    const back=make('a',heading,'إعدادات حسابي');back.href='#account';back.className='btn btn-ghost';
+    const back=make('a',heading,'حسابي');back.href='#account';back.className='btn btn-ghost';
     const menu=make('nav',shell);menu.className='dashboard-tabs';menu.setAttribute('aria-label','خدمات العضو');
     const content=make('div',shell);content.className='dashboard-content';
     const overview=make('div',content);overview.className='dashboard-overview';
     make('h3',overview,'مجلسك العائلي — خدماتك في مكان واحد');
     make('p',overview,'انتقل إلى الخدمة المطلوبة، أو ابحث في الخدمات باستخدام حقل البحث أعلاه.').className='member-overview-note';
-    const grid=make('div',overview);grid.className='dashboard-grid';
+    const grid=make('div',overview);grid.className='dashboard-grid hub-service-grid';
     const toolbar=make('div',shell);toolbar.className='dashboard-search';
     const search=field(toolbar,'البحث داخل خدماتي','hub-search','search',150);
     search.placeholder='مثال: شكوى، شهادة، وثيقة';
@@ -1233,6 +1267,7 @@
       const tile=make('button',grid);tile.type='button';tile.className='dashboard-tile';dashboardIcon(tile,icon);
       const text=make('span',tile);make('strong',text,title);make('small',text,description);tile.addEventListener('click',()=>showGroup(key));
     }
+    dashboardLink(grid,'#correspondence','المراسلات','إرسال رسالة ومتابعة رد الإدارة','inbox');
     for(const card of cards)content.appendChild(card);
     search.addEventListener('input',()=>showGroup(activeHubGroup,false));
     hubNavigate=showGroup;
@@ -1344,22 +1379,24 @@
   async function loadHub() {
     hubNavigate=null;
     hubBody.replaceChildren();
-    make('p', hubBody, 'جارٍ تحميل خدمات العضوية…');
+    const work=make('div',hubBody);work.dataset.hubStage='true';work.classList.add('hub-loading');
+    make('p', work, 'جارٍ تحميل خدمات العضوية…').setAttribute('role','status');
     try {
       var user = ok(await client().auth.getUser()).user;
       if (!user) throw Error();
       var uid = user.id;
       var app = ok(await client().from('member_applications').select('status,membership_number,full_name').eq(
         'auth_user_id', uid).maybeSingle());
-      hubBody.replaceChildren();
+      if(!work.isConnected||location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
+      work.replaceChildren();
       if (!app || app.status !== 'approved') {
-        make('p', hubBody, 'هذه الخدمات مخصصة للأعضاء المعتمدين.');
-        var l = make('a', hubBody, 'متابعة حسابي');
+        make('p', work, 'هذه الخدمات مخصصة للأعضاء المعتمدين.');
+        var l = make('a', work, 'متابعة حسابي');
         l.href = '#account';
         return;
       }
       if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
-      const loading=make('div',hubBody);loading.className='row';
+      const loading=make('div',work);loading.className='row';
       const quickCert=make('a',loading,'عرض الشهادة وتنزيلها');quickCert.href='#certificate';quickCert.className='btn btn-gold';
       make('p',loading,'جارٍ تجهيز بقية الخدمات…').setAttribute('role','status');
       // Start independent reads concurrently after approval; each section handles its own failure.
@@ -1379,9 +1416,9 @@
               ascending: false
             }).limit(100))};
       {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var card = section(hubBody, 'بطاقتي العائلية الرقمية');
+          var card = section(work, 'بطاقتي العائلية الرقمية');
           card.style.cssText =
             'background:#123b30;color:#fff;border:2px solid #c4a45b;border-radius:16px;padding:24px;margin-bottom:16px';
           make('p', card, 'آل برهم • أصالة الجذور وعهد الأجيال');
@@ -1436,16 +1473,16 @@
           certA.href = '#certificate';
           certA.className = 'btn btn-gold';
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'البطاقة الرقمية');
+          var unavailable = section(work, 'البطاقة الرقمية');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var profile = section(hubBody, 'ملفي الشخصي');
+          var profile = section(work, 'ملفي الشخصي');
           var p = ok(await prefetched.profile) || {};
           var f = make('form', profile),
             dn = field(f, 'الاسم المعروض', 'name', 'text', 150),
@@ -1472,16 +1509,16 @@
             }));
           });
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'الملف الشخصي');
+          var unavailable = section(work, 'الملف الشخصي');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var tree = section(hubBody, 'شجرة نسبي الشخصية');
+          var tree = section(work, 'شجرة نسبي الشخصية');
           make('p', tree, 'سجل خاص بك؛ المعلومات مدخلة ذاتيًا وليست إثباتًا للنسب.');
           var rels = {
             father: 'الأب',
@@ -1535,16 +1572,16 @@
             loadHub();
           });
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'سجل القرابة');
+          var unavailable = section(work, 'سجل القرابة');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var dir = section(hubBody, 'دليل المهن والكفاءات');
+          var dir = section(work, 'دليل المهن والكفاءات');
           make('p', dir, 'يضم فقط الملفات التي وافق أصحابها على المشاركة.');
           var ds = ok(await prefetched.directory);
           if (!ds.length) make('p', dir, 'لا توجد ملفات مشاركة بعد.');
@@ -1561,16 +1598,16 @@
           search.oninput = drawDir;
           drawDir();
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'دليل الكفاءات');
+          var unavailable = section(work, 'دليل الكفاءات');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var inbox = section(hubBody, 'صندوق الإشعارات الخاص');
+          var inbox = section(work, 'صندوق الإشعارات الخاص');
           var ns = ok(await prefetched.notices);
           var unread = ns.filter(x => !x.read_at).length;
           make('p', inbox, 'غير مقروءة: ' + unread);
@@ -1596,18 +1633,18 @@
             });
           });
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'الإشعارات');
+          var unavailable = section(work, 'الإشعارات');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
           var content = ok(await prefetched.content);
           for (var k of ['archive', 'occasion']) {
-            var c = section(hubBody, k === 'archive' ? 'الأرشيف الحصري' : 'المناسبات والتهاني');
+            var c = section(work, k === 'archive' ? 'الأرشيف الحصري' : 'المناسبات والتهاني');
             var rows = content.filter(x => x.kind === k);
             if (k === 'occasion') mountEventCalendar(c, rows);
             if (!rows.length) make('p', c, 'لم تنشر الإدارة مواد بعد.');
@@ -1638,18 +1675,18 @@
             attachSearch(c, k === 'archive' ? 'بحث في الأرشيف والمصادر' : 'بحث في المناسبات', records);
           }
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
           for (const name of ['الأرشيف', 'المناسبات']) {
-            var unavailable = section(hubBody, name);
+            var unavailable = section(work, name);
             make('p', unavailable, 'تعذر تحميل هذا القسم.');
             action(unavailable, 'إعادة المحاولة', loadHub);
           }
         }
       } {
-        var beforeCount = hubBody.children.length;
+        var beforeCount = work.children.length;
         try {
-          var req = section(hubBody, 'الطلبات والمساهمات والشكاوى');
+          var req = section(work, 'الطلبات والمساهمات والشكاوى');
           make('p', req, 'تُرسل طلباتك إلى الإدارة بسرية. يمكنك إرسال طلبات مستقلة متعددة (حتى ١٠ خلال ٢٤ ساعة). لا تدرج بيانات طبية أو مالية حساسة.');
           var rf = make('form', req),
             rk = selectField(rf, 'نوع الطلب', 'kind', kinds),
@@ -1718,20 +1755,21 @@
           };
           try{await refreshRequests();}catch(e){drawRequests();requestMsg.textContent='تعذر تحميل الطلبات السابقة؛ يمكنك تحديث السجل.';}
         } catch (e) {
-          var existing = Array.from(hubBody.children).slice(beforeCount);
+          var existing = Array.from(work.children).slice(beforeCount);
           existing.forEach(x => x.remove());
-          var unavailable = section(hubBody, 'الطلبات');
+          var unavailable = section(work, 'الطلبات');
           make('p', unavailable, 'تعذر تحميل هذا القسم.');
           action(unavailable, 'إعادة المحاولة', loadHub);
         }
       }
       loading.remove();
-      if(location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
-      decorateHub(app);
+      if(!work.isConnected||location.hash!=='#member-hub'||recoveredSession?.user.id!==uid)return;
+      work.classList.remove('hub-loading');
+      decorateHub(app,work);
     } catch (e) {
-      hubBody.replaceChildren();
-      make('p', hubBody, 'تعذر تحميل الخدمات؛ سجل الدخول بحساب معتمد ثم حاول مجددًا.');
-      var l = make('a', hubBody, 'حسابي');
+      work.classList.remove('hub-loading');work.replaceChildren();
+      make('p', work, 'تعذر تحميل الخدمات؛ سجل الدخول بحساب معتمد ثم حاول مجددًا.');
+      var l = make('a', work, 'حسابي');
       l.href = '#account';
     }
   }
@@ -1991,7 +2029,7 @@
   }
   var newsEditor = newView('news-admin', 'إدارة الأخبار'),
     newsEditorBody = make('div', newsEditor);
-  const newsBack=make('a',newsEditor,'العودة إلى إدارة المحتوى');newsBack.href='#admin';newsBack.className='btn btn-ghost';newsBack.dataset.adminTarget='content';newsEditor.insertBefore(newsBack,newsEditorBody);
+  const newsBack=make('a',newsEditor,'العودة إلى لوحة الإدارة');newsBack.href='#admin';newsBack.className='btn btn-ghost';newsBack.dataset.adminTarget='overview';newsEditor.insertBefore(newsBack,newsEditorBody);
   var newsLink = make('a', admin, 'إدارة الأخبار والمناسبات');
   newsLink.href = '#news-admin';
   newsLink.hidden=true;
@@ -2004,153 +2042,165 @@
   var newsEpoch = 0;
 
   function newsPhotos(row) {
-    return [...new Set([...(row.image_paths || []), ...(row.image_path ? [row.image_path] : [])])];
+    return [...new Set([...(Array.isArray(row.image_paths) ? row.image_paths : []), row.image_path]
+      .filter(p => typeof p === 'string' && p.length > 0))];
   }
 
   function newsCover(row) {
-    return (row.cover_paths || []).filter(p => newsPhotos(row).includes(p)).slice(0, 3);
+    const photos = newsPhotos(row);
+    const covers = [...new Set(Array.isArray(row.cover_paths) ? row.cover_paths : [])]
+      .filter(p => photos.includes(p)).slice(0, 3);
+    return covers.length ? covers : photos.slice(0, 1);
   }
 
-  var photoCache = new Map();
-  async function photoURLs(paths) {
-    var now = Date.now();
-    for (const [key, entry] of photoCache) if (entry.until < now) photoCache.delete(key);
-    var missing = [...new Set(paths)].filter(p => !photoCache.has(p) || photoCache.get(p).until < now);
+  // Only published news reaches this helper. Preserve the private bucket and its RLS.
+  const photoCache = new Map();
+  const signedPhotoLifetime = 900;
+  async function photoURLs(paths, refresh = false) {
+    const now = Date.now();
+    for (const [key, entry] of photoCache) if (entry.until <= now) photoCache.delete(key);
+    const unique = [...new Set(paths)];
+    if (refresh) unique.forEach(path => photoCache.delete(path));
+    const missing = unique.filter(path => !photoCache.has(path));
     if (missing.length) {
-      var z = await client().storage.from('family-news').createSignedUrls(missing, 900);
-      if (z.error) throw z.error;
-      for (const item of z.data || []) {
-        if (item.signedUrl) photoCache.set(item.path, {
-          url: item.signedUrl,
-          until: now + 780000
-        });
+      const bucket = client().storage.from('family-news');
+      function remember(path, url) {
+        if (typeof url !== 'string' || !url) return;
+        photoCache.set(path, {url, until: Date.now() + (signedPhotoLifetime - 120) * 1000});
       }
+      try {
+        const batch = await bucket.createSignedUrls(missing, signedPhotoLifetime);
+        if (!batch.error) for (const item of batch.data || []) {
+          if (missing.includes(item.path)) remember(item.path, item.signedUrl);
+        }
+      } catch (_) { /* Individual retry below. */ }
+      // A partially failed batch must not silently discard a valid image.
+      await Promise.all(missing.filter(path => !photoCache.has(path)).map(async path => {
+        try {
+          const single = await bucket.createSignedUrl(path, signedPhotoLifetime);
+          if (!single.error) remember(path, single.data?.signedUrl);
+        } catch (_) { /* Keep a visible retry control. */ }
+      }));
     }
-    return paths.map(p => { const entry = photoCache.get(p); return entry && entry.until >= Date.now() ? entry.url : null; });
+    return paths.map(path => {
+      const entry = photoCache.get(path);
+      return entry && entry.until > Date.now() ? entry.url : null;
+    });
   }
 
-  function showPhotoGallery(urls, title, index) {
-    var d = make('dialog', document.body);
+  function showPhotoGallery(paths, title, index) {
+    if (!paths.length) return;
+    const d = make('dialog', document.body);
     d.className = 'photo-dialog';
     d.setAttribute('aria-label', 'معرض الصور');
-    var close = make('button', d, 'إغلاق ×');
+    const close = make('button', d, 'إغلاق ×');
     close.className = 'btn btn-ghost';
     close.onclick = () => d.close();
-    var img = make('img', d);
+    const img = make('img', d);
     img.alt = title;
-    var controls = make('div', d);
-    controls.className = 'photo-controls';
-    var prev = make('button', controls, 'السابق'),
-      count = make('span', controls),
-      next = make('button', controls, 'التالي');
+    const status = make('p', d); status.setAttribute('role', 'status');
+    const retry = action(d, 'إعادة تحميل الصورة', () => draw(true)); retry.hidden = true;
+    const controls = make('div', d); controls.className = 'photo-controls';
+    const prev = make('button', controls, 'السابق'), count = make('span', controls), next = make('button', controls, 'التالي');
     prev.className = next.className = 'btn btn-ghost';
-
-    function draw() {
-      img.src = urls[index];
-      count.textContent = (index + 1) + ' / ' + urls.length;
-      prev.disabled = index === 0;
-      next.disabled = index === urls.length - 1;
+    let request = 0;
+    async function draw(refresh = false) {
+      const version = ++request, path = paths[index];
+      img.hidden = true; img.removeAttribute('src'); retry.hidden = true;
+      status.textContent = 'جارٍ تحميل الصورة…';
+      count.textContent = (index + 1) + ' / ' + paths.length;
+      prev.disabled = index === 0; next.disabled = index === paths.length - 1;
+      const unavailable = () => {
+        if (version !== request || !d.isConnected) return;
+        img.hidden = true; retry.hidden = false; status.textContent = 'تعذر تحميل الصورة.';
+      };
+      img.onload = () => { if (version === request && d.isConnected) { img.hidden = false; status.textContent = ''; } };
+      img.onerror = unavailable;
+      try {
+        const [url] = await photoURLs([path], refresh);
+        if (version !== request || !d.isConnected) return;
+        if (url) img.src = url; else unavailable();
+      } catch (_) { unavailable(); }
     }
-    prev.onclick = () => {
-      if (index > 0) {
-        index--;
-        draw();
-      }
-    };
-    next.onclick = () => {
-      if (index < urls.length - 1) {
-        index++;
-        draw();
-      }
-    };
-    var x = 0;
-    img.addEventListener('touchstart', e => {
-      x = e.changedTouches[0].clientX;
-    }, {
-      passive: true
-    });
+    prev.onclick = () => { if (index > 0) { index--; draw(); } };
+    next.onclick = () => { if (index < paths.length - 1) { index++; draw(); } };
+    let x = 0;
+    img.addEventListener('touchstart', e => { x = e.changedTouches[0].clientX; }, {passive:true});
     img.addEventListener('touchend', e => {
-      var delta = e.changedTouches[0].clientX - x;
-      if (Math.abs(delta) > 45) {
-        index = Math.max(0, Math.min(urls.length - 1, index + (delta > 0 ? 1 : -1)));
-        draw();
-      }
-    }, {
-      passive: true
-    });
-    d.addEventListener('close', () => d.remove());
-    draw();
+      const delta = e.changedTouches[0].clientX - x;
+      if (Math.abs(delta) > 45) { index = Math.max(0, Math.min(paths.length - 1, index + (delta > 0 ? 1 : -1))); draw(); }
+    }, {passive:true});
+    const closeOnRoute = () => { if (d.open) d.close(); };
+    window.addEventListener('hashchange', closeOnRoute);
+    d.addEventListener('close', () => { request++; window.removeEventListener('hashchange', closeOnRoute); d.remove(); });
     d.showModal();
+    draw();
   }
 
-  // Public news images are requested close to the viewport, not for the entire feed.
-  function nearViewport(element, callback, immediate = false) {
-    if (immediate || typeof IntersectionObserver !== 'function') { callback(); return; }
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) {
-        observer.disconnect();
-        if (element.isConnected) callback();
-      }
-    }, {rootMargin:'250px 0px'});
-    observer.observe(element);
-    // Disconnect observers for galleries removed by navigation.
-    const cleanup = () => { observer.disconnect(); };
-    window.addEventListener('hashchange', cleanup, {once:true});
-  }
-
-  function newsGallery(parent, paths, title, cover) {
+  // One eager cover per post even on slow connections; remaining photos are on demand.
+  function newsGallery(parent, paths, title, cover, allPaths = paths) {
     if (!paths.length) return;
-    var g = make('div', parent);
-    g.className = 'news-gallery' + (cover ? ' news-cover' : '');
-    g.dataset.count = String(paths.length);
-    var urls = [];
-    const reduced=window.familyRuntime?.lowData()===true || navigator.onLine===false;
-    if(reduced)g.hidden=true;
-    var items = paths.map((path, i) => {
-      var a = make('button', g);
-      a.type = 'button';
-      a.className = 'news-gallery-item';
-      a.setAttribute('aria-label', 'عرض الصورة ' + (i + 1));
-      var im = make('img', a);
-      im.alt = title + ' — صورة ' + (i + 1);
-      // The main hero is the high-priority content; below-the-fold news images are lazy.
-      const priority = false;
-      im.loading = priority ? 'eager' : 'lazy';
-      im.fetchPriority = priority ? 'high' : 'low';
-      im.decoding = 'async';
-      a.disabled = true;
-      a.onclick = () => {
-        var valid = urls.filter(Boolean);
-        showPhotoGallery(valid, title, valid.indexOf(urls[i]));
-      };
-      return {
-        a,
-        im
-      };
+    const g = make('div', parent); g.className = 'news-gallery' + (cover ? ' news-cover' : '');
+    const primary = cover ? paths.slice(0, 1) : paths;
+    const galleryPaths = allPaths;
+    const items = primary.map((path, i) => {
+      const tile = make('div', g); tile.className = 'news-media';
+      const a = make('button', tile); a.type = 'button'; a.className = 'news-gallery-item';
+      a.setAttribute('aria-label', 'فتح الصورة ' + (i + 1));
+      const im = make('img', a); im.alt = title + ' — صورة ' + (i + 1);
+      im.loading = 'eager'; im.fetchPriority = cover ? 'auto' : 'low'; im.decoding = 'async'; im.hidden = true;
+      a.hidden = true;
+      const state = make('div', tile, 'جارٍ تحميل الصورة…'); state.className = 'news-image-state'; state.setAttribute('role', 'status');
+      const retry = action(tile, 'إعادة تحميل الصورة', () => load([i], true)); retry.hidden = true;
+      a.onclick = () => showPhotoGallery(galleryPaths, title, galleryPaths.indexOf(path));
+      return {a, im, state, retry, path, version:0};
     });
-    if (cover && paths.length > 1) make('p', parent, 'اسحب لمشاهدة الصور • ' + paths.length + ' صور').className =
-      'gallery-hint';
-    const load = () => photoURLs(paths).then(result => {
+    async function load(indices, refresh = false) {
       if (!g.isConnected) return;
-      urls = result;
-      items.forEach(({
-        a,
-        im
-      }, i) => {
-        if (urls[i] && im.isConnected) {
-          im.src = urls[i];
-          a.disabled = false;
-        } else a.remove();
+      const active = indices.map(i => {
+        const item = items[i]; item.version++; item.retry.hidden = true; item.state.hidden = false;
+        item.state.textContent = 'جارٍ تحميل الصورة…'; item.a.hidden = true; item.im.hidden = true;
+        item.im.removeAttribute('src'); return {item, version:item.version};
       });
-    }).catch(() => {
-      if (!g.isConnected) return;
-      g.replaceChildren();
-      make('p', g, 'تعذر تحميل الصور.');
-    });
-    if(reduced){
-      const reveal=make('button',parent,'تحميل الصور ('+paths.length+')');reveal.type='button';reveal.className='btn btn-ghost sm';
-      reveal.onclick=()=>{if(navigator.onLine===false){reveal.textContent='لا يوجد اتصال — أعد المحاولة';return;}g.hidden=false;reveal.remove();load();};
-    }else nearViewport(g, load);
+      let urls;
+      try { urls = await photoURLs(active.map(x=>x.item.path), refresh); }
+      catch (_) { urls = []; }
+      active.forEach(({item,version},i) => {
+        if (!g.isConnected || version !== item.version) return;
+        const error = () => {
+          if (!g.isConnected || version !== item.version) return;
+          if (!refresh && urls[i]) { load([indices[i]], true); return; }
+          item.a.hidden = true; item.state.hidden = false; item.state.textContent = 'الصورة غير متاحة الآن.'; item.retry.hidden = false;
+        };
+        item.im.onload = () => {
+          if (!g.isConnected || version !== item.version) return;
+          item.a.hidden = false; item.im.hidden = false; item.state.hidden = true; item.retry.hidden = true;
+        };
+        item.im.onerror = error;
+        // Do not assign a lazy image inside a hidden button: it may never request.
+        item.im.loading = 'eager';
+        if (urls[i]) { item.a.hidden = false; item.im.hidden = false; item.im.src = urls[i]; }
+        else error();
+      });
+    }
+    if (cover) {
+      if (typeof IntersectionObserver === 'function') {
+        const requestRoute=location.hash;
+        const observer=new IntersectionObserver(entries=>{
+          if(entries.some(e=>e.isIntersecting)){
+            observer.disconnect();window.removeEventListener('hashchange',cleanup);
+            if(g.isConnected&&location.hash===requestRoute)load([0]);
+          }
+        },{rootMargin:'300px 0px'});
+        const cleanup=()=>{observer.disconnect();};
+        window.addEventListener('hashchange',cleanup,{once:true});
+        observer.observe(g);
+      } else load([0]);
+      if (allPaths.length > 1) action(parent, 'عرض جميع الصور ('+allPaths.length+')', () => showPhotoGallery(allPaths,title,allPaths.indexOf(paths[0]))).className='btn btn-ghost sm gallery-open';
+    } else {
+      const button=action(parent,'عرض صور الإعلان ('+paths.length+')',()=>{g.hidden=false;button.hidden=true;load(items.map((_,i)=>i));});
+      button.className='btn btn-ghost sm gallery-open';g.hidden=true;
+    }
   }
 
   async function loadPublicNews() {
@@ -2173,7 +2223,7 @@
         'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
       var rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
         ascending: false
-      }).limit(isHome ? 1 : 50)));
+      }).order('id',{ascending:false}).limit(isHome ? 4 : 50)));
       if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
       target.replaceChildren();
       if (!rows.length) {
@@ -2185,19 +2235,18 @@
         return;
       }
       if (isHome) {
-        var latest = rows[0],
-          teaser = make('article', home);
-        teaser.className = 'home-news-card';
-        make('span', teaser, newsLabels[latest.category] || 'آخر الأخبار').className = 'home-news-label';
-        make('h3', teaser, latest.title);
-        make('time', teaser, formatPortalTime(latest.created_at)).className = 'news-date';
-        newsGallery(teaser, newsCover(latest), latest.title, true);
-        var excerpt = latest.body.split('\n').filter(x => x.trim() && !x.startsWith('بسم') && !x.startsWith('﴿'))[
-          0] || latest.body;
-        make('p', teaser, excerpt.slice(0, 260));
-        var read = make('a', teaser, 'قراءة الخبر');
-        read.href = '#news/' + latest.id;
-        read.className = 'btn btn-gold';
+        const featured = make('div', home); featured.className = 'home-news-grid';
+        rows.forEach(latest => {
+          const teaser = make('article', featured); teaser.className='home-news-card';
+          make('span', teaser, newsLabels[latest.category] || 'آخر الأخبار').className='home-news-label';
+          make('h3', teaser, latest.title);
+          make('time', teaser, formatPortalTime(latest.created_at)).className='news-date';
+          newsGallery(teaser, newsCover(latest), latest.title, true, newsPhotos(latest));
+          const body=String(latest.body||'');
+          const excerpt=body.split('\n').find(x=>x.trim()&&!x.startsWith('بسم')&&!x.startsWith('﴿'))||body;
+          make('p', teaser, excerpt.slice(0, 170));
+          const read=make('a',teaser,'قراءة الإعلان');read.href='#news/'+latest.id;read.className='btn btn-gold';
+        });
         return;
       }
       var visible = rows;
@@ -2216,7 +2265,7 @@
         make('h2', c, x.title).className = 'lux-title';
         make('time', c, formatPortalTime(x.created_at)).className = 'news-date';
         if (!selected) {
-          newsGallery(c, newsCover(x), x.title, true);
+          newsGallery(c, newsCover(x), x.title, true, newsPhotos(x));
           var excerpt = make('p', c, x.body.split(/\n\s*\n/).filter(v => !v.startsWith('بسم'))[0]?.slice(0, 250) ||
             x.body.slice(0, 250));
           var open = make('a', c, 'قراءة الإعلان الكامل' + (newsPhotos(x).length ? ' • ' + newsPhotos(x).length +
@@ -2225,7 +2274,7 @@
           open.href = '#news/' + x.id;
           continue;
         }
-        newsGallery(c, newsCover(x), x.title, true);
+        newsGallery(c, newsCover(x), x.title, true, newsPhotos(x));
         var blocks = x.body.split(/\n\s*\n/);
         for (const block of blocks) {
           if (block.startsWith('بسم الله الرحمن الرحيم') && block.includes('﴿')) {
@@ -2273,15 +2322,20 @@
         make('p', newsEditorBody, 'هذه الصفحة للإدارة فقط.');
         return;
       }
+      const actor=recoveredSession?.user.id;
       var list = ok(await client().from('family_news').select('*').order('created_at', {
         ascending: false
       }).limit(100));
+      if(location.hash!=='#news-admin'||recoveredSession?.user.id!==actor)return;
 
       function editor(parent, item) {
         var d = make('details', parent);
         d.className = 'card';
         d.open = !item;
         make('summary', d, item ? (item.published ? 'منشور: ' : 'مسودة: ') + item.title : 'نشر خبر جديد');
+        let mounted=false;
+        function mount(){
+        if(mounted)return;mounted=true;
         var f = make('form', d),
           t = field(f, 'العنوان', 'title', 'text', 180),
           b = field(f, 'النص', 'body', 'textarea', 12000),
@@ -2299,7 +2353,7 @@
         var original = item ? newsPhotos(item) : [],
           entries = original.map(path => ({
             path,
-            cover: newsCover(item).includes(path)
+            cover: (Array.isArray(item?.cover_paths)?item.cover_paths:[]).includes(path)
           }));
         var panel = make('div', f);
         make('p', panel, 'حدد حتى ثلاث صور للواجهة. باقي الصور تظهر داخل الخبر.').className = 'note';
@@ -2339,9 +2393,18 @@
             img.loading = 'lazy';
             img.decoding = 'async';
             if (entry.file) img.src = entry.preview;
-            else client().storage.from('family-news').createSignedUrl(entry.path, 900).then(z => {
-              if (!z.error && img.isConnected) img.src = z.data.signedUrl;
-            }).catch(() => {});
+            else if (d.open) {
+              const retry=action(c,'تحميل الصورة مجددًا',preview);retry.hidden=true;
+              function preview(){
+                retry.hidden=true;
+                client().storage.from('family-news').createSignedUrl(entry.path, 900).then(z => {
+                  if(!img.isConnected)return;
+                  if(z.error||!z.data?.signedUrl){retry.hidden=false;return;}
+                  img.onerror=()=>{retry.hidden=false;};img.src=z.data.signedUrl;
+                }).catch(()=>{if(img.isConnected)retry.hidden=false;});
+              }
+              preview();
+            }
             var l = make('label', c),
               check = make('input', l);
             check.type = 'checkbox';
@@ -2447,8 +2510,8 @@
             if (item) ok(await client().from('family_news').update({
               ...data,
               updated_at: new Date().toISOString()
-            }).eq('id', item.id));
-            else ok(await client().from('family_news').insert(data));
+            }).eq('id', item.id).select('id').single());
+            else ok(await client().from('family_news').insert(data).select('id').single());
           } catch (e) {
             if (uploaded.length) await client().storage.from('family-news').remove(uploaded);
             throw e;
@@ -2462,9 +2525,20 @@
           await loadNewsEditor();
           loadPublicNews();
         });
+        }
+        if(d.open)mount();
+        d.addEventListener('toggle',()=>{if(d.open)mount();});
       }
       editor(newsEditorBody, null);
-      list.forEach(x => editor(newsEditorBody, x));
+      const heading=make('h2',newsEditorBody,'الأخبار والإعلانات المحفوظة');
+      const filter=make('div',newsEditorBody);filter.className='card news-editor-filter';
+      const records=[];
+      list.forEach(x => {
+        editor(newsEditorBody, x);
+        records.push({el:newsEditorBody.lastElementChild,text:[x.title,newsLabels[x.category],x.published?'منشور':'مسودة'].join(' ')});
+      });
+      attachSearch(filter,'بحث في الإعلانات المحفوظة',records);
+      if(!list.length)make('p',newsEditorBody,'لا توجد أخبار محفوظة بعد.');
     } catch (e) {
       make('p', newsEditorBody, 'تعذر تحميل إدارة الأخبار. تحقق من الاتصال والصلاحية.');
     }
@@ -2493,7 +2567,7 @@
     const root=make('div',isAdmin?mailAdmin:mailMember);
     root.className='mail-private';
     const back=make('a',root,isAdmin?'العودة إلى لوحة الإدارة':'العودة إلى حسابي');
-    back.href=isAdmin?'#admin':'#account';back.className='btn btn-ghost';
+    back.href=isAdmin?'#admin':'#account';back.className='btn btn-ghost';if(isAdmin)back.dataset.adminTarget='overview';
     const notice=make('p',root,'جارٍ التحقق من الصلاحية…');notice.setAttribute('role','status');
     try{
       if(isAdmin){
@@ -2506,9 +2580,10 @@
         if(membership?.status!=='approved'){notice.textContent='إرسال المراسلات متاح للأعضاء المعتمدين فقط.';return;}
       }
       notice.textContent=isAdmin?'الرسائل الواردة من الأعضاء. اختر القسم والحالة لمتابعة المراسلات.':'راسل الأقسام الأربعة وتابع الردود هنا. هذه مراسلات داخل الموقع وليست بريدًا إلكترونيًا خارجيًا.';
+      let folder='all';
       if(!isAdmin){
-        const card=make('div',root);card.className='card';
-        make('h2',card,'رسالة جديدة');
+        const card=make('details',root);card.className='card mail-compose';
+        make('summary',card,'＋ إنشاء رسالة جديدة');
         const f=make('form',card);
         const dep=selectField(f,'القسم','department',mailDepartments);
         const subj=field(f,'الموضوع','subject','text',150);subj.required=true;subj.minLength=3;
@@ -2524,24 +2599,35 @@
           send.disabled=true;msg.textContent='جارٍ الإرسال…';
           try{
             ok(await client().from('family_correspondence').insert({department:dep.value,subject,body:message}));
-            if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد أدناه.';await refresh(true);}
+            if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد في الصادر.';folder='all';status.value='all';department.value='all';markFolder();await refresh(true);}
           }catch{if(current())msg.textContent='تعذر الإرسال. تحقق من الاتصال وصلاحية العضوية.';}
           finally{if(current())send.disabled=false;}
         });
       }
       const inbox=make('div',root);inbox.className='card';
-      make('h2',inbox,isAdmin?'صندوق الوارد':'مراسلاتي والردود');
-      const filters=make('div',inbox);filters.className='row';
+      make('h2',inbox,isAdmin?'صناديق الإدارة':'صناديق المراسلات');
+      const folders=make('div',inbox);folders.className='mail-folders';folders.setAttribute('role','group');folders.setAttribute('aria-label','صندوق المراسلات');
+      const folderDefs=isAdmin?[['all','كل الوارد'],['new','الجديدة'],['read','قيد المتابعة'],['answered','الردود المرسلة'],['closed','المغلقة']]:[['all','الصادر'],['replies','ردود الإدارة'],['waiting','بانتظار الرد'],['closed','المغلقة']];
+      const folderButtons=new Map();
+      function markFolder(){for(const [k,b] of folderButtons)b.setAttribute('aria-pressed',String(k===folder));}
+      for(const [key,label] of folderDefs){
+        const b=action(folders,label,()=>{folder=key;status.value='all';markFolder();refresh(true);});b.className='btn btn-ghost sm';folderButtons.set(key,b);
+      }
+      markFolder();
+      const filters=make('div',inbox);filters.className='dashboard-filter';
       const department=selectField(filters,'القسم','mail-filter',{all:'كل الأقسام',...mailDepartments});
       const status=selectField(filters,'الحالة','mail-status',{all:'كل الحالات',...mailStatuses});
-      const list=make('div',inbox);
+      const search=field(filters,'بحث في الصفحة الحالية','mail-search','search',150);
+      const list=make('div',inbox);list.className='mail-records';
+      search.oninput=()=>{const term=normalizeSearch(search.value);for(const row of list.children)row.hidden=!!term&&!normalizeSearch(row.dataset.search||'').includes(term);};
       const state=make('p',inbox);state.setAttribute('role','status');
       const actions=make('div',inbox);actions.className='row';
       const refreshButton=action(actions,'تحديث الرسائل',()=>refresh(true));
       const prev=action(actions,'السابق',()=>{if(offset>=20){offset-=20;refresh(false);}});
       const next=action(actions,'التالي',()=>{offset+=20;refresh(false);});
       let offset=0,seq=0;
-      department.onchange=status.onchange=()=>refresh(true);
+      department.onchange=()=>refresh(true);
+      status.onchange=()=>{folder='all';markFolder();refresh(true);};
       async function refresh(reset){
         if(!current())return;
         if(reset)offset=0;
@@ -2552,6 +2638,10 @@
           let q=client().from('family_correspondence').select('id,department,subject,body,reply,status,created_at',{count:'exact'});
           if(!isAdmin)q=q.eq('user_id',actor);
           if(department.value!=='all')q=q.eq('department',department.value);
+          if(folder==='replies')q=q.not('reply','is',null);
+          else if(folder==='waiting')q=q.is('reply',null).neq('status','closed');
+          else if(folder==='answered')q=q.not('reply','is',null);
+          else if(folder!=='all')q=q.eq('status',folder);
           if(status.value!=='all')q=q.eq('status',status.value);
           const result=await q.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+19);
           const rows=ok(result)||[];
@@ -2559,9 +2649,12 @@
           state.textContent=rows.length?'عرض '+(offset+1)+'–'+(offset+rows.length)+' من '+(result.count??rows.length):'لا توجد مراسلات مطابقة.';
           prev.disabled=offset===0;next.disabled=result.count===null?rows.length<20:offset+rows.length>=result.count;
           for(const item of rows){
-            const article=make('article',list);article.className='card';
-            make('span',article,mailDepartments[item.department]+' • '+mailStatuses[item.status]).className='eyebrow';
-            make('h3',article,item.subject);
+            const entry=make('details',list);entry.className='card dashboard-record mail-record';
+            entry.dataset.search=[item.subject,item.body,item.reply,mailDepartments[item.department],mailStatuses[item.status]].filter(Boolean).join(' ');
+            const summary=make('summary',entry);
+            make('strong',summary,item.subject);make('span',summary,mailStatuses[item.status]||'—').className='dashboard-state';
+            const article=make('div',entry);article.className='dashboard-record-body';
+            make('span',article,mailDepartments[item.department]||'قسم غير محدد').className='eyebrow';
             make('p',article,formatPortalTime(item.created_at));
             const body=make('p',article,item.body);body.style.whiteSpace='pre-wrap';body.style.overflowWrap='anywhere';
             if(!isAdmin){
@@ -2587,6 +2680,7 @@
               finally{if(active())save.disabled=false;}
             });
           }
+          search.oninput();
         }catch{if(active())state.textContent='تعذر تحميل المراسلات. أعد المحاولة.';}
         finally{if(active())refreshButton.disabled=false;}
       }
@@ -3599,7 +3693,9 @@
     recoveredSession = null;
 
   function clearPrivate() {
-    clearMail();mailShortcut.hidden=true;
+    photoCache.clear();
+    clearMail();mailShortcut.hidden=true;mailShortcut.textContent='مراسلاتي';
+    adminEpoch++;adminCMSIndex++;adminCMSTask=null;adminNavTop.hidden=true;
     securityEpoch++;stopSecurityRefresh();
     hubNavigate=null;activeHubGroup='overview';activeServicePanel='requests';memberQuick.hidden=true;
     hubBody.replaceChildren();
