@@ -1,0 +1,91 @@
+name: ISO operational evidence and recovery exercise
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'trust/**'
+      - 'compliance/**'
+      - 'tests/restore-drill.sh'
+      - 'tests/backup-smoke.sh'
+      - 'scripts/backup-*.sh'
+      - '.github/workflows/iso-operational-evidence.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '45 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  operational:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Security and quality regression
+        run: node --test tests/security.test.cjs tests/worker-guard.test.mjs
+      - name: Isolated PostgreSQL restoration and encryption exercise
+        run: |
+          bash tests/restore-drill.sh
+          bash tests/backup-smoke.sh
+      - name: Validate privacy intake and publication boundaries
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from urllib.parse import unquote
+          text=Path('index.html').read_text()
+          assert text.count('id="privacy-rights-procedure"') == 1
+          class Intake(HTMLParser):
+              links=[]
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if tag=='a': self.links.append(a)
+          parser=Intake()
+          start=text.index('id="privacy-rights-procedure"')
+          end=text.index('</section>',start)
+          parser.feed(text[start:end])
+          assert any(a.get('href')=='#member-hub' and a.get('data-hub-target')=='requests' for a in parser.links)
+          assert any(unquote(a.get('href',''))=='mailto:albarham.inc@gmail.com?subject=طلب حقوق الخصوصية' for a in parser.links)
+          assert 'إرسال الطلب ليس حذفًا تلقائيًا' in text[start:end]
+          assert 'لا ترسل كلمة مرور أو رمز تحقق' in text[start:end]
+          config=Path('_config.yml').read_text()
+          assert '\n  - compliance\n' in config and '\n  - isms\n' in config
+          print('Privacy intake route and public exclusion checks passed; no production user requests submitted.')
+          PY
+      - name: Check production publication and safe boundaries on both origins
+        run: |
+          python3 - <<'PY'
+          import http.client, ssl, time
+          hosts=('barham-ps.github.io','barham-ps-github-io.m0had-b0rh0m.workers.dev')
+          def fetch(host,path):
+              conn=http.client.HTTPSConnection(host,timeout=15,context=ssl.create_default_context())
+              try:
+                  conn.request('GET',path,headers={'User-Agent':'PortalSecurityMonitor/1.0','Cache-Control':'no-cache','Accept-Encoding':'identity'})
+                  response=conn.getresponse()
+                  return response.status,response.read(1024*1024)
+              finally:
+                  conn.close()
+          for attempt in range(12):
+              failed=[]
+              for host in hosts:
+                  try:
+                      home,body=fetch(host,'/')
+                      trust,trust_body=fetch(host,'/trust/')
+                      excluded,_=fetch(host,'/compliance/INTEGRATED-ISO.md')
+                      if not (home==200 and b'id="privacy-rights-procedure"' in body and trust==200 and b'ISO/IEC 27701:2025' in trust_body and excluded==404):
+                          failed.append(host)
+                      else:
+                          print(host,'public intake, trust, and exclusion PASS')
+                  except Exception:
+                      failed.append(host)
+              if not failed: break
+              if attempt==11: raise SystemExit('Public publication evidence unavailable or differs: '+', '.join(failed))
+              time.sleep(15)
+          PY
+      - name: Record limitations
+        if: always()
+        run: |
+          echo 'Limited operational evidence only: synthetic restore, source regression, and public read-only checks.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Not an ISO conformity audit; no production backups, private requests, independently audited legal obligations or certificates established.' >> "$GITHUB_STEP_SUMMARY"
