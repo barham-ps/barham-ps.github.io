@@ -91,7 +91,7 @@
   // Explicit entry via query string works even in browsers that strip URL fragments.
   var requestedPage = new URLSearchParams(location.search).get('page');
   if (['register', 'certificate', 'login', 'account', 'admin', 'member-hub', 'member-services-admin', 'reset',
-      'news-admin', 'martyrs-admin', 'mfa', 'security', 'correspondence', 'correspondence-admin'
+      'news-admin', 'martyrs-admin', 'mfa', 'security', 'correspondence', 'correspondence-admin', 'verify', 'news'
     ].includes(requestedPage) && !/access_token=|error=|code=/.test(location.hash)) {
     var entry = new URL(location.href);
     entry.searchParams.delete('page');
@@ -143,7 +143,7 @@
   }
 
   function phone(cc, v) {
-    v = v.trim().replace(/[٠-٩]/g, x => String('٠١٢٣٤٥٦٧٨٩'.indexOf(x))).replace(/[\s()-]/g, '');
+    v = String(v || '').trim().replace(/[٠-٩]/g, x => String('٠١٢٣٤٥٦٧٨٩'.indexOf(x))).replace(/[۰-۹]/g, x => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(x))).replace(/[\s()-]/g, '');
     if (v.startsWith('00')) v = '+' + v.slice(2);
     return v.startsWith('+') ? v : cc + v.replace(/^0+/, '');
   }
@@ -293,9 +293,9 @@
       p = phone($('#r-cc').value, $('#r-phone').value),
       w = same.checked ? p : phone($('#r-wcc').value, $('#r-wa').value);
     if (name.length < 4 || name.length > 200) return show('#r-msg', 'أدخل الاسم الكامل.', 1);
-    if (!/^\+[0-9]{7,15}$/.test(p)) return show('#r-msg', 'أدخل رقم الهاتف الصحيح واختر مفتاح الدولة.', 1);
-    if (!/^\+[0-9]{7,15}$/.test(w)) return show('#r-msg', 'تحقق من رقم واتساب.', 1);
-    if (!/^\S+@\S+\.\S+$/.test(email)) return show('#r-msg', 'أدخل بريدًا إلكترونيًا صحيحًا.', 1);
+    if (!/^\+[1-9][0-9]{6,14}$/.test(p)) return show('#r-msg', 'أدخل رقم الهاتف الصحيح واختر مفتاح الدولة.', 1);
+    if (!/^\+[1-9][0-9]{6,14}$/.test(w)) return show('#r-msg', 'تحقق من رقم واتساب.', 1);
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return show('#r-msg', 'أدخل بريدًا إلكترونيًا صحيحًا.', 1);
     if (!validNewPassword(pw)) return show('#r-msg', 'اختر كلمة مرور من ١٥ إلى ١٢٨ حرفًا.', 1);
     if (pw !== $('#r-pw2').value) return show('#r-msg', 'كلمتا المرور غير متطابقتين.', 1);
     if (!$('#r-ok').checked) return show('#r-msg', 'وافق على سياسة الخصوصية أولًا.', 1);
@@ -909,7 +909,7 @@
     const qr=qrNode.querySelector('canvas');
     if(!qr||!qr.width)throw Error('Certificate QR unavailable');
     round(149,1233,240,240,9,'#ffffff');ctx.imageSmoothingEnabled=false;ctx.drawImage(qr,173,1257,192,192);ctx.imageSmoothingEnabled=true;
-    text('رابط التحقق الإلكتروني',center,1522,27,white,true,'center');
+    text('رمز التحقق اليدوي: '+read('.md-manual-code'),center,1522,26,white,true,'center');
     text(verify.href,center,1558,22,blue,false,'center','ltr',1080,'Arial');
     text(read('.certificate-copy-time'),center,1598,23,muted,false,'center','rtl',1080);
     wrapped(read('.md-note'),center,1636,22,1080,28,2,'#c6d8e9',false,'center');
@@ -964,6 +964,10 @@
     });
     return qrLoad;
   }
+  async function manualCertificateCode(token) {
+    const digest = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(token).toLowerCase()+':manual-v1'));
+    return Array.from(new Uint8Array(digest).slice(0,8), x=>x.toString(16).padStart(2,'0')).join('').toUpperCase().match(/.{4}/g).join('-');
+  }
   async function loadCertificate() {
     certBody.replaceChildren();
     printButton.hidden = downloadCertificate.hidden = true;
@@ -989,6 +993,8 @@
         return;
       }
       var d = q.data[0];
+      const manualCode = await manualCertificateCode(d.verification_token);
+      if(location.hash!=='#certificate'||recoveredSession?.user.id!==sessionId)return;
       var box = make('article', certBody);
       box.className = 'membership-document';
       box.innerHTML = '<header class="md-head"><div><small>AL BARHAM / MEMBERSHIP OFFICE</small><h3>البوابة العائلية لآل برهم</h3><p>سجل العضوية الإلكتروني</p></div><img src="./barham-emblem.webp" alt="شعار آل برهم"></header><div class="md-main"><div class="md-kicker">MEMBERSHIP CERTIFICATE · 01</div><h1>شهادة اعتماد العضوية</h1><div class="md-en">OFFICIAL PORTAL MEMBERSHIP</div><p class="md-intro">بناءً على مراجعة طلب الانتساب واعتماده في سجل البوابة العائلية، تُمنح هذه الشهادة إلى</p><div class="md-person"><small>الاسم الكامل للعضو</small><h2 class="md-name"></h2><span>عضو معتمد في البوابة العائلية الرقمية</span></div><div class="md-fields"></div><div class="md-statement"><strong>نطاق الاعتماد</strong><p>تؤكد هذه الشهادة اعتماد صاحبها للاستفادة من خدمات العضوية والمشاركة في أنشطة المنصة وفق سياساتها المعمول بها.</p></div><div class="md-auth"><div class="md-sign"><div class="md-signature">إدارة آل برهم</div><strong>إدارة العضوية</strong><small>اعتماد مؤسسي إلكتروني</small></div><div class="md-seal"><span>AL BARHAM · PORTAL</span><span aria-hidden="true" style="font-size:19px;line-height:1.2">♔</span><strong>آل برهم</strong><small>اعتماد العضوية</small><span>✦ VERIFIED ✦</span></div><div class="md-qr"></div></div><p class="md-note">تُراجع صلاحية الوثيقة إلكترونيًا عند استخدامها. هذه شهادة عضوية خاصة بالبوابة وليست وثيقة حكومية أو إثبات نسب.</p></div><footer class="md-foot"><span>آل برهم | أصالة الجذور وعهد الأجيال</span><span dir="ltr">barham-ps.github.io</span></footer>';
@@ -1001,7 +1007,8 @@
       var url = location.origin + location.pathname + '#verify/' + d.verification_token;
       var qr = box.querySelector('.md-qr');
       var link = make('a',qr,'تحقق من صحة الوثيقة'); link.href=url;
-      make('small',qr,'امسح الرمز أو استخدم الرابط');
+      make('small',qr,'امسح رمز QR أو تحقّق يدويًا برقم العضوية والرمز:');
+      const proof=make('strong',qr,manualCode);proof.className='md-manual-code';proof.dir='ltr';
       const copyStamp=make('p',box.querySelector('.md-main'),'تاريخ ووقت إعداد النسخة: '+formatPortalTime(new Date()));copyStamp.className='certificate-copy-time';
       printButton.hidden = downloadCertificate.hidden = false;
       const renderQR=()=>{if(box.isConnected&&location.hash==='#certificate'&&recoveredSession?.user.id===sessionId){try{const qrBox=make('div',qr);qr.prepend(qrBox);new QRCode(qrBox,{text:url,width:112,height:112,correctLevel:QRCode.CorrectLevel.M});}catch(e){}}};
@@ -1016,13 +1023,14 @@
   const verifyForm=make('div',verify);verifyForm.className='verify-form';
   verify.insertBefore(verifyForm,verifyBody);
   make('h2',verifyForm,'تحقق من صحة العضوية');
-  make('p',verifyForm,'أدخل رقم العضوية أو رمز التحقق الموجود على الشهادة. هذه الخدمة متاحة للجميع دون حساب.');
+  make('p',verifyForm,'امسح رمز QR على الشهادة، أو أدخل رقم العضوية متبوعًا برمز التحقق اليدوي. لا يكفي الرقم وحده حمايةً لخصوصية الأعضاء.');
   const verifyRow=make('div',verifyForm);verifyRow.className='verify-row';
   var tokenInput = make('input', verifyRow);
   tokenInput.type = 'text';
-  tokenInput.placeholder = 'رقم العضوية أو رمز التحقق';
+  tokenInput.placeholder = 'AB-2026-000001  ABCD-EF12-3456-7890';
   tokenInput.dir = 'ltr';
-  tokenInput.maxLength=80;tokenInput.autocomplete='off';tokenInput.setAttribute('aria-label','رقم العضوية أو رمز التحقق');
+  tokenInput.maxLength=80;tokenInput.autocomplete='off';tokenInput.spellcheck=false;tokenInput.autocapitalize='off';tokenInput.setAttribute('aria-label','رقم العضوية ورمز التحقق أو رمز QR الكامل');
+  make('p',verifyForm,'الشهادات القديمة: استخدم QR الموجود عليها، أو نزّل نسخة حديثة لإظهار رمز التحقق اليدوي. لا تعرض نتيجة التحقق اسم العضو أو بيانات الاتصال.').className='hint';
   verifyBody.setAttribute('aria-live','polite');
   let verificationEpoch=0;
   const verifyButton=action(verifyRow, 'تحقق', () => verifyToken(tokenInput.value.trim()));
@@ -1033,15 +1041,15 @@
     const current=()=>epoch===verificationEpoch&&location.hash===requestedHash;
     verifyBody.replaceChildren();verifyBody.removeAttribute('aria-busy');verifyButton.disabled=false;
     token = String(token || '').trim().replace(/[٠-٩]/g, c => String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/[۰-۹]/g, c => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c)));
-    const byNumber = /^AB-\d{4}-\d{6}$/i.test(token);
-    if (!byNumber && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
-      make('p', verifyBody, 'أدخل رقم العضوية بصيغة AB-2026-000001 أو رمز التحقق الصحيح.');
+    const manual = token.match(/^(AB-\d{4}-\d{6})\s+([0-9a-f]{16}|[0-9a-f]{4}(?:[- ]?[0-9a-f]{4}){3})$/i);
+    if (!manual && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      make('p', verifyBody, 'أدخل رقم العضوية متبوعًا برمز التحقق اليدوي، أو امسح QR من الشهادة.');
       return;
     }
     verifyBody.setAttribute('aria-busy','true');verifyButton.disabled=true;
     make('p',verifyBody,'جارٍ التحقق…');
     try {
-      let q = byNumber ? await client().rpc('family_verify_membership_number', {p_number: token.toUpperCase()}) : await client().rpc('family_verify_certificate', {p_token: token.toLowerCase()});
+      let q = manual ? await client().rpc('family_verify_membership_number', {p_number: manual[1].toUpperCase(),p_code:manual[2].replace(/[- ]/g,'').toUpperCase()}) : await client().rpc('family_verify_certificate', {p_token: token.toLowerCase()});
       if(!current())return;
       verifyBody.replaceChildren();
       if (q.error) {
@@ -1159,7 +1167,9 @@
     suggestion: 'مقترح',
     occasion: 'مناسبة أو تهنئة',
     solidarity: 'طلب تكافل خاص',
-    archive: 'مساهمة أرشيفية أو تصحيح بيانات الشجرة',
+    archive: 'مساهمة أرشيفية',
+    birth: 'طلب إضافة مولود (خاص)',
+    correction: 'طلب تصحيح بيانات الشجرة',
     complaint: 'شكوى'
   };
 
@@ -1195,6 +1205,8 @@
   }
   var activeHubGroup = 'overview';
   var hubNavigate = null;
+  let nextRequestKind=new URLSearchParams(location.search).get('request')||'';
+  if(['birth','correction'].includes(nextRequestKind)){activeHubGroup='requests';const entry=new URL(location.href);entry.searchParams.delete('request');history.replaceState(null,'',entry); }else nextRequestKind='';
 
   // Explicit service keys prevent a missing or reordered card from changing the navigation.
   const hubGroups=[
@@ -1290,6 +1302,11 @@
     const link=e.target.closest?.('[data-hub-target]');
     if(!link)return;
     activeHubGroup=link.dataset.hubTarget;
+    if(['birth','correction'].includes(link.dataset.requestKind)){
+      nextRequestKind=link.dataset.requestKind;
+      const field=document.querySelector('#v-member-hub select[name=kind]');
+      if(field){field.value=nextRequestKind;nextRequestKind='';}
+    }
     if(location.hash==='#member-hub'&&hubNavigate){e.preventDefault();hubNavigate(activeHubGroup);}
   });
 
@@ -1437,7 +1454,12 @@
           make('p', card, 'رقم العضوية: ' + app.membership_number);
           make('p', card, 'عضوية معتمدة');
           var cq = ok(await prefetched.certificate);
-          if(cq.length)make('p',card,'تاريخ ووقت اعتماد الشهادة: '+formatPortalTime(cq[0].issued_at));
+          if(cq.length){
+            make('p',card,'تاريخ ووقت اعتماد الشهادة: '+formatPortalTime(cq[0].issued_at));
+            const code=await manualCertificateCode(cq[0].verification_token);
+            if(!card.isConnected||recoveredSession?.user.id!==uid||location.hash!=='#member-hub')return;
+            const label=make('p',card,'رمز التحقق اليدوي: ');make('bdi',label,code).dir='ltr';
+          }
           if (cq.length) await Promise.race([ensureQR(),new Promise(resolve=>setTimeout(resolve,1800))]);
           if (cq.length && window.QRCode) {
             var qr = make('div', card);
@@ -1703,6 +1725,8 @@
             rk = selectField(rf, 'نوع الطلب', 'kind', kinds),
             rt = field(rf, 'العنوان', 'title', 'text', 150),
             rb = field(rf, 'التفاصيل', 'body', 'textarea', 3000);
+          if(nextRequestKind && Object.hasOwn(kinds,nextRequestKind)){rk.value=nextRequestKind;nextRequestKind='';}
+          make('p',rf,'إضافة المواليد وتصحيح الأسماء للمراجعة الخاصة فقط؛ لا تُدخل وثائق هوية أو تواريخ ميلاد كاملة أو معلومات طفل آخر دون تفويض ولي أمره.').className='hint';
           rt.required = rb.required = true;
           rt.minLength = 3; rb.minLength = 5;
           const attachment=field(rf,'مرفق اختياري (صورة أو PDF حتى ١٠ ميجابايت)','request-attachment','file');
@@ -2232,6 +2256,11 @@
   function publicNewsQuery(){
     return client().from('family_news').select(newsFields).eq('published',true);
   }
+  async function fetchPublicNews(query){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),12000);
+    try{return ok(await query.abortSignal(controller.signal))||[];}finally{clearTimeout(timer);}
+  }
   function newsExcerpt(body, maxLength){
     const text=String(body||'').split(/\n/).map(t=>t.trim()).filter(t=>t&&!t.startsWith('بسم الله')&&!t.startsWith('﴿')).join(' ');
     const content=text||String(body||'').trim();
@@ -2328,7 +2357,7 @@
       try{
         let query=publicNewsQuery();
         if(category.value!=='all')query=query.eq('category',category.value);
-        const rows=ok(await query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+newsPageSize))||[];
+        const rows=await fetchPublicNews(query.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+newsPageSize));
         if(!active())return;
         hasMore=rows.length>newsPageSize;
         const page=rows.slice(0,newsPageSize);
@@ -2373,7 +2402,7 @@
       }
       make('p',target,'جارٍ تحميل الخبر…').className='portal-loading';
       const query=publicNewsQuery();
-      const rows=ok(await (selected?query.eq('id',selected):query.order('created_at',{ascending:false}).order('id',{ascending:false}).limit(1)))||[];
+      const rows=await fetchPublicNews(selected?query.eq('id',selected):query.order('created_at',{ascending:false}).order('id',{ascending:false}).limit(1));
       if(!current())return;
       target.replaceChildren();
       if(!rows.length){
@@ -2673,7 +2702,7 @@
         const dep=selectField(f,'القسم','department',mailDepartments);
         const subj=field(f,'الموضوع','subject','text',150);subj.required=true;subj.minLength=3;
         const body=field(f,'نص الرسالة','body','textarea',4000);body.required=true;body.minLength=10;body.rows=5;
-        make('p',f,'ستُحفظ الرسالة لدى الإدارة. لا ترسل كلمات المرور أو البيانات المالية.');
+        make('p',f,'ستُحفظ الرسالة لدى الإدارة. الحد الوقائي: ٣ رسائل في الدقيقة و١٠ رسائل خلال ٢٤ ساعة. لا ترسل كلمات المرور أو البيانات المالية.');
         const send=make('button',f,'إرسال الرسالة');send.type='submit';send.className='btn btn-gold';
         const msg=make('p',f);msg.setAttribute('role','status');
         f.addEventListener('submit',async e=>{
@@ -2685,7 +2714,7 @@
           try{
             ok(await client().from('family_correspondence').insert({department:dep.value,subject,body:message}));
             if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد في الصادر.';folder='all';status.value='all';department.value='all';search.value='';markFolder();await refresh(true);}
-          }catch{if(current())msg.textContent='تعذر الإرسال. تحقق من الاتصال وصلاحية العضوية.';}
+          }catch(err){if(current())msg.textContent=err?.code==='PT429'?'وصلت للحد الوقائي للمراسلات. أعد المحاولة لاحقًا.':'تعذر الإرسال. تحقق من الاتصال وصلاحية العضوية.';}
           finally{if(current())send.disabled=false;}
         });
       }

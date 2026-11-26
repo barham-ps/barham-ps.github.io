@@ -19,3 +19,24 @@
   window.addEventListener('hashchange',markRoute);markRoute();
   render();
 })();
+(function(){
+  'use strict';
+  const key='barham-text-size-v1', choices=['normal','large','largest'];
+  function render(value){
+    if(!choices.includes(value))value='normal';
+    document.documentElement.dataset.familyTextSize=value;
+    document.querySelectorAll('[data-family-text-size]').forEach(button=>{
+      button.setAttribute('aria-pressed',String(button.dataset.familyTextSize===value));
+    });
+    return value;
+  }
+  let size='normal';try{size=localStorage.getItem(key)||size;}catch{}
+  function init(){
+    render(size);
+    document.querySelectorAll('[data-family-text-size]').forEach(button=>button.addEventListener('click',()=>{
+      size=render(button.dataset.familyTextSize);
+      try{localStorage.setItem(key,size);}catch{}
+    }));
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();

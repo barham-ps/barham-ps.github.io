@@ -791,3 +791,35 @@ test('V96 recovery entry remains a real link and stale identity checks do not re
  assert.match(js,/retryRecovery\.hidden=false/);
  assert.match(js,/else if\(initialHash==='#reset'\)showReset\(\)/);
 });
+
+test('manual verification requires a domain-separated proof and preserves legacy QR format', async()=>{
+  const source=js.slice(js.indexOf('  async function manualCertificateCode('),js.indexOf('  async function loadCertificate('));
+  const {webcrypto,createHash}=require('node:crypto');
+  const fn=vm.runInNewContext('('+source.trim()+')',{crypto:webcrypto,TextEncoder});
+  const sample='fd800000-4aa1-4d04-8000-000000000001';
+  const expected=createHash('sha256').update(sample+':manual-v1').digest('hex').slice(0,16).toUpperCase().match(/.{4}/g).join('-');
+  assert.equal(await fn(sample),expected);
+  const sql=fs.readFileSync('database/launch_security_hardening.sql','utf8');
+  assert.match(sql,/REVOKE ALL ON FUNCTION public\.family_verify_membership_number\(text\) FROM PUBLIC,anon,authenticated/);
+  assert.match(sql,/p_number text,p_code text/);
+  assert.match(sql,/c\.id::text\|\|':manual-v1'/);
+  assert.match(sql,/w\.hits<12/);
+  assert.match(sql,/family_correspondence_rate_limit BEFORE INSERT/);
+  assert.match(js,/p_code:manual\[2\]/);
+  assert.match(js,/#verify\/' \+ d\.verification_token/);
+});
+
+test('static routing only forwards known same-origin paths and UUID fragments',()=>{
+  const code=fs.readFileSync('route-entry.js','utf8');
+  const id='fd800000-4aa1-4d04-8000-000000000001';
+  function route(pathname,hash=''){
+    let result;vm.runInNewContext(code,{location:{pathname,hash,replace:u=>result=u}});return result;
+  }
+  assert.equal(route('/news/'),' /#news'.trim());
+  assert.equal(route('/news/'+id),'/#news/'+id);
+  assert.equal(route('/verify/','#'+id),'/#verify/'+id);
+  assert.equal(route('/verify/','https://evil.invalid/'),'/#verify');
+  assert.equal(route('/other/'),undefined);
+  assert.equal(route('/news/../../admin'),undefined);
+  assert.equal(route('//evil.invalid'),undefined);
+});

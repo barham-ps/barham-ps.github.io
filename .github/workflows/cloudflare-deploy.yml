@@ -27,6 +27,8 @@ on:
       - 'about/**'
       - 'history/**'
       - 'membership/**'
+      - 'news/**'
+      - 'verify/**'
       - 'en/**'
       - 'genealogy/**'
       - 'martyrs/**'

@@ -1785,3 +1785,17 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
     :root[data-theme] :is(a,button,input,textarea,select,summary,[tabindex]):focus-visible{outline:3px solid Highlight}
   }
 }
+
+/* Launch accessibility: a user-selected display preference, never an account setting. */
+.family-accessibility{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:8px auto 12px;color:var(--fg2);font-size:14px}
+.family-accessibility button{font:inherit;min-height:40px;padding:6px 12px;border:1px solid var(--royal-line);border-radius:10px;background:var(--surface);color:var(--fg);cursor:pointer}
+.family-accessibility button[aria-pressed=true]{background:#e7ce90;color:#133728;border-color:#b4954d;font-weight:700}
+:root[data-family-text-size=large] main :is(p,li,label,input,select,textarea,button,.btn,.hint){font-size:17px;line-height:1.75}
+:root[data-family-text-size=largest] main :is(p,li,label,input,select,textarea,button,.btn,.hint){font-size:20px;line-height:1.75}
+:root[data-family-text-size=large] main :is(h1,h2,h3){overflow-wrap:anywhere}
+:root[data-family-text-size=largest] main :is(h1,h2,h3){overflow-wrap:anywhere}
+#v-verify .verify-form>.hint{margin-top:14px;line-height:1.7}
+#v-verify .verify-row input{font-size:clamp(12px,3.8vw,16px);letter-spacing:0}
+#v-certificate .md-manual-code{display:block;overflow-wrap:anywhere;font-size:12px;line-height:1.6;letter-spacing:.02em;margin-top:4px}
+@media(max-width:480px){.family-accessibility button{min-height:44px}.family-accessibility span{flex-basis:100%;text-align:center}}
+@media print{.family-accessibility{display:none!important}}

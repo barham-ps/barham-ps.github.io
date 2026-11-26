@@ -17,6 +17,12 @@ INSERT INTO public.family_profiles(user_id,display_name,directory_opt_in) VALUES
 INSERT INTO public.family_member_requests(user_id,kind,title,body) VALUES
 ('fd800000-4aa1-4d01-8000-000000000001','suggestion','Synthetic A','Synthetic fixture'),
 ('fd800000-4aa1-4d01-8000-000000000002','suggestion','Synthetic B','Synthetic fixture');
+INSERT INTO public.family_lineage(user_id,relative_name,relationship) VALUES
+('fd800000-4aa1-4d01-8000-000000000001','Synthetic relative A','other'),
+('fd800000-4aa1-4d01-8000-000000000002','Synthetic relative B','other');
+INSERT INTO public.family_correspondence(user_id,department,subject,body) VALUES
+('fd800000-4aa1-4d01-8000-000000000001','support','Synthetic message A','Synthetic fixture A'),
+('fd800000-4aa1-4d01-8000-000000000002','support','Synthetic message B','Synthetic fixture B');
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"fd800000-4aa1-4d01-8000-000000000001","role":"authenticated","aal":"aal1","session_id":"fd800000-4aa1-4d02-8000-000000000001"}',true);
 DO $$
@@ -29,6 +35,16 @@ BEGIN
  NOT EXISTS(SELECT 1 FROM public.family_member_requests WHERE user_id='fd800000-4aa1-4d01-8000-000000000001') OR
  EXISTS(SELECT 1 FROM public.family_member_requests WHERE user_id='fd800000-4aa1-4d01-8000-000000000002') THEN
  RAISE EXCEPTION 'Member A isolation failed'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.family_lineage WHERE user_id='fd800000-4aa1-4d01-8000-000000000001') OR
+ EXISTS(SELECT 1 FROM public.family_lineage WHERE user_id='fd800000-4aa1-4d01-8000-000000000002') OR
+ NOT EXISTS(SELECT 1 FROM public.family_correspondence WHERE user_id='fd800000-4aa1-4d01-8000-000000000001') OR
+ EXISTS(SELECT 1 FROM public.family_correspondence WHERE user_id='fd800000-4aa1-4d01-8000-000000000002') THEN
+ RAISE EXCEPTION 'Lineage or correspondence isolation failed'; END IF;
+ INSERT INTO public.family_correspondence(department,subject,body) VALUES('support','Synthetic 2','Synthetic fixture 2'),('support','Synthetic 3','Synthetic fixture 3');
+ BEGIN
+ INSERT INTO public.family_correspondence(department,subject,body) VALUES('support','Synthetic 4','Synthetic fixture 4');
+ RAISE EXCEPTION 'Correspondence limit missing';
+ EXCEPTION WHEN SQLSTATE 'PT429' THEN NULL; END;
  UPDATE public.family_profiles SET display_name='Unauthorized test' WHERE user_id='fd800000-4aa1-4d01-8000-000000000002';
  IF FOUND THEN RAISE EXCEPTION 'Cross-member update allowed'; END IF;
 END $$;

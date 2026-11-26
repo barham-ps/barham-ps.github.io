@@ -5,7 +5,7 @@ from pathlib import Path
 ALLOWED = frozenset("""
 index.html portal.js runtime.js footer.js portal.css icon.svg favicon.png barham-emblem.webp
 manifest.webmanifest sw.js security-config.js captcha.js _headers robots.txt sitemap.xml
-public.css 404.html about/index.html history/index.html membership/index.html
+public.css 404.html route-entry.js news/index.html verify/index.html about/index.html history/index.html membership/index.html
 en/index.html en/history/index.html en/membership/index.html
 genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.js genealogy/gaza.json
 martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/admin.js

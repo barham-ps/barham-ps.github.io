@@ -13,7 +13,7 @@ PAGES = {"/": "آل برهم", "/trust/": "مركز الثقة والأمان ا
          "/.well-known/security.txt": "Contact: mailto:", "/security.txt": "Contact: mailto:", "/about/": "عن البوابة", "/history/": "تاريخ العائلة",
          "/genealogy/": "شجرة العائلة", "/martyrs/": "شهداء آل برهم", "/en/": "Barham", "/robots.txt": "Sitemap:",
          "/sitemap.xml": "<urlset", "/membership/": "العضوية الإلكترونية",
-         "/en/history/": "Barham", "/en/membership/": "Barham",
+         "/news/": "أخبار آل برهم", "/verify/": "التحقق من العضوية", "/en/history/": "Barham", "/en/membership/": "Barham",
          "/martyrs/Barham_Martyrs_Register.html": 'name="robots" content="noindex, follow"'}
 MAX_BYTES = 400_000
 
