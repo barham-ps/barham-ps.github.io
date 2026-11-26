@@ -5,6 +5,17 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/cloudflare-deploy.yml'
+      - 'security-config.js'
+      - 'captcha.js'
+      - '_headers'
+      - 'wrangler.jsonc'
+      - 'scripts/build-pages.sh'
+      - 'scripts/validate_public_build.py'
+      - 'tests/security.test.cjs'
+      - 'index.html'
+      - 'portal.js'
+      - 'runtime.js'
+      - 'sw.js'
 permissions:
   contents: read
 concurrency:
@@ -20,6 +31,8 @@ jobs:
           persist-credentials: false
       - name: Build allowlisted static assets
         run: sh scripts/build-pages.sh
+      - name: Run security regression before deployment
+        run: node --test tests/security.test.cjs
       - name: Deploy to existing Cloudflare Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -34,7 +47,7 @@ jobs:
       - name: Verify all six live security controls
         run: |
           python3 - <<'PY'
-          import urllib.request, re, time
+          import urllib.request, re, time, pathlib
           url = "https://barham-ps-github-io.m0had-b0rh0m.workers.dev/"
           for attempt in range(5):
               try:
@@ -54,6 +67,10 @@ jobs:
                       for key, passed in checks.items():
                           print(key, "PASS" if passed else "FAIL")
                       if all(checks.values()):
+                          with urllib.request.urlopen(url + "security-config.js", timeout=20) as config:
+                              if config.read() != pathlib.Path("dist/security-config.js").read_bytes():
+                                  raise RuntimeError("Live security configuration differs from release")
+                          print("Live security configuration matches release")
                           break
               except Exception as exc:
                   print(type(exc).__name__, str(exc))
