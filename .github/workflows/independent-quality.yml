@@ -1,0 +1,78 @@
+name: Independent open-source quality diagnostics
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/independent-quality.yml'
+      - 'scripts/**'
+      - 'tests/**'
+      - '**.html'
+      - '**.css'
+      - '**.sql'
+      - '**.md'
+      - '**.yml'
+      - '**.yaml'
+      - 'manifest.webmanifest'
+      - 'sitemap.xml'
+      - 'icon.svg'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/independent-quality.yml'
+      - 'scripts/**'
+      - 'tests/**'
+      - '**.html'
+      - '**.css'
+      - '**.sql'
+      - '**.md'
+      - '**.yml'
+      - '**.yaml'
+      - 'manifest.webmanifest'
+      - 'sitemap.xml'
+      - 'icon.svg'
+  schedule:
+    - cron: '38 5 * * 3'
+permissions:
+  contents: read
+concurrency:
+  group: independent-quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Ubuntu archive packages (no third-party installer)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends shellcheck shfmt yamllint tidy libxml2-utils python3-bandit pyflakes3 vulture codespell sqlfluff markdownlint python3-jsonschema python3-tinycss2
+      - name: Test result classification
+        run: /usr/bin/python3 -m unittest discover -s tests -p test_independent_quality.py
+      - name: Run 13 independent diagnostics
+        run: /usr/bin/python3 scripts/independent_quality.py --report "$RUNNER_TEMP/independent-quality.json"
+      - name: Publish status only, not source snippets
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/independent-quality.json"; then
+            /usr/bin/python3 - "$RUNNER_TEMP/independent-quality.json" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          rows = json.load(open(sys.argv[1]))
+          print("## Independent diagnostics (advisory findings)")
+          print("| Tool | Package version | State |")
+          print("|---|---|---|")
+          for row in rows:
+              print(f"| {row['tool']} | {row['package_version']} | {row['state']} |")
+          print("\nA successful job means diagnostics ran; review-required is NOT a clean result.")
+          PY
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: independent-quality-status
+          path: ${{ runner.temp }}/independent-quality.json
+          if-no-files-found: warn
+          retention-days: 14
