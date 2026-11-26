@@ -3104,6 +3104,7 @@
       ['mfa','MFA / Zero Trust','تفرض قاعدة البيانات AAL2 على الإدارة. يلزم الفحص للتحقق من الجلسة الحالية.','warn','بانتظار الفحص'],
       ['data','RLS / RBAC / تخزين خاص','فحص مباشر للجداول والسجلات الخاصة ودوال الإدارة ومخازن الملفات.','warn','بانتظار الفحص'],
       ['ci','DevSecOps / فحوص الكود / SRI','يُقرأ آخر تشغيل للفرع الرئيسي من GitHub؛ راجع تفاصيل المهام.','warn','بانتظار النتيجة'],
+      ['runtime','AEGIS Operational — حماية حية','مراقبة يومية لترويسات Cloudflare والمسارات المحظورة ورفض الوصول المجهول لإدارة Supabase ورفض الدخول بلا CAPTCHA. لا تشمل حسابات حقيقية.','warn','بانتظار النتيجة'],
       ['cloudflare','Cloudflare Worker / HTTP Headers','النتيجة من مهمة النشر التي تفحص الترويسات الست وتطابق إعدادات الأمان؛ لا تثبت تفعيل WAF.','warn','بانتظار النتيجة'],
       ['edge','WAF / WAAP / DDoS / Bot Management','نشر Worker وترويسات HTTP منفصل عن إثبات قواعد WAF. نطاق github.io لا يخضع لمنطقة Cloudflare خاصة بك، وواجهة Supabase تحتاج حماية مستقلة.','warn','غير مؤكد'],
       ['captcha','CAPTCHA (hCaptcha / Turnstile)',window.familyCaptcha.enabled ? 'مفتاح عام موجود؛ يلزم إثبات فرض CAPTCHA في Auth.' : 'التكامل جاهز برمجيًا؛ لا يوجد مفتاح موقع مفعّل.','warn',window.familyCaptcha.enabled ? 'بانتظار التحقق' : 'غير مفعّل'],
@@ -3144,13 +3145,13 @@
     return update;
   }
 
-  function workflowEvidenceState(run, now = Date.now()) {
+  function workflowEvidenceState(run, now = Date.now(), maxAge = 7*86400000) {
     if (!run || !Number.isSafeInteger(run.id) || run.id <= 0) return ['warn','لا يظهر في العينة'];
     if (run.status !== 'completed') return ['warn','قيد التنفيذ'];
     if (run.conclusion === 'failure' || run.conclusion === 'timed_out' || run.conclusion === 'action_required') return ['fail','يحتاج تدخلاً'];
     if (run.conclusion !== 'success') return ['warn','لم يُؤكد النجاح'];
     const stamp = Date.parse(run.updated_at || run.created_at);
-    if (!Number.isFinite(stamp) || stamp > now + 300000 || now - stamp > 7*86400000) return ['warn','النتيجة قديمة أو غير مؤرخة'];
+    if (!Number.isFinite(stamp) || stamp > now + 300000 || now - stamp > maxAge) return ['warn','النتيجة قديمة أو غير مؤرخة'];
     return ['pass','نجح آخر تشغيل'];
   }
 
@@ -3162,11 +3163,11 @@
     const list=make('div',panel);
     const groups=[
       ['الإصدار وحافة الشبكة',[
-        ['cloudflare-deploy.yml','نشر Cloudflare وفحص الترويسات الست'],['cloudflare-security.yml','فحص Cloudflare المستقل وعزل المسارات'],['cloudflare-transport.yml','دليل TLS / HTTP3 / PQC'],['production-monitor.yml','المراقبة الخارجية'],['production-independent-evidence.yml','سلامة ملفات الإنتاج'],['live-release-evidence.yml','مطابقة الإصدار المنشور'],['release-provenance.yml','دليل منشأ الإصدار'],['@pages','نشر GitHub Pages']]],
+        ['aegis-operational-evidence.yml','AEGIS Operational — فحص يومي حي لحدود الأمان'],['cloudflare-deploy.yml','نشر Cloudflare وفحص الترويسات الست'],['cloudflare-security.yml','فحص Cloudflare المستقل وعزل المسارات'],['cloudflare-transport.yml','دليل TLS / HTTP3 / PQC'],['production-monitor.yml','المراقبة الخارجية'],['production-independent-evidence.yml','سلامة ملفات الإنتاج'],['live-release-evidence.yml','مطابقة الإصدار المنشور'],['release-provenance.yml','دليل منشأ الإصدار'],['@pages','نشر GitHub Pages']]],
       ['سلامة الكود وسلسلة التوريد',[
         ['security.yml','فحوص الأمان الأساسية'],['advanced-security.yml','الفحص المتقدم وسلسلة التوريد'],['scorecard.yml','OpenSSF Scorecard'],['@dependabot','Dependabot — مراقبة الاعتماديات'],['upgrade-checks.yml','فحص الترقيات'],['cross-browser.yml','التوافق بين المتصفحات'],['browser-upgrade.yml','فحص تحديث المتصفح']]],
       ['الحماية الإضافية AEGIS',[
-        ['aegis-defense.yml','مصفوفة الدفاع AEGIS'],['aegis-integrity.yml','سلامة AEGIS المستقلة'],['aegis-generation-three.yml','AEGIS III'],['aegis-absolute.yml','AEGIS IV'],['aegis-guardian.yml','Guardian'],['aegis-nemesis.yml','Nemesis'],['aegis-cosmic.yml','Cosmic Core'],['aegis-atlas-independent.yml','Atlas'],['aegis-axiom-independent.yml','Axiom'],['aegis-eternity-independent.yml','Eternity'],['aegis-horizon-independent.yml','Horizon'],['aegis-neural-independent.yml','Neural'],['aegis-prism-independent.yml','Prism'],['aegis-singularity-independent.yml','Singularity'],['aegis-vault-independent.yml','Vault']]],
+        ['aegis-defense.yml','مصفوفة الدفاع AEGIS'],['aegis-integrity.yml','سلامة AEGIS المستقلة'],['aegis-generation-three.yml','AEGIS III'],['aegis-absolute.yml','AEGIS IV'],['aegis-guardian.yml','Guardian'],['aegis-nemesis.yml','Nemesis'],['aegis-cosmic.yml','Cosmic Core'],['aegis-atlas-independent.yml','Atlas'],['aegis-axiom-independent.yml','Axiom'],['aegis-eternity-independent.yml','Eternity'],['aegis-horizon-independent.yml','Horizon'],['aegis-neural-independent.yml','Neural — قياس شذوذ أزمنة CI (لا يرصد الهجمات)'],['aegis-prism-independent.yml','Prism'],['aegis-singularity-independent.yml','Singularity'],['aegis-vault-independent.yml','Vault — تدقيق صلاحيات سير العمل (لا يدير الأسرار)']]],
       ['التعافي والحوكمة',[
         ['recovery-drill.yml','تمرين الاستعادة (ليس استعادة بيانات الإنتاج)'],['resilience-validation.yml','اختبارات المرونة'],['compliance-readiness.yml','أدلة جاهزية الامتثال'],['governance-evidence.yml','أدلة الحوكمة']]]
     ];
@@ -3180,7 +3181,7 @@
       let passed=0,failed=0,unknown=0;
       for(const [name,entries] of groups){const detail=make('details',list);detail.className='scan-history';detail.open=true;make('summary',detail,name);
         for(const [key,label] of entries){
-          const run=latest.get(key);const [state,message]=workflowEvidenceState(run);
+          const run=latest.get(key);const [state,message]=workflowEvidenceState(run,Date.now(),key==='aegis-operational-evidence.yml'?2*86400000:7*86400000);
           if(state==='pass')passed++;else if(state==='fail')failed++;else unknown++;
           const row=make('div',detail);row.className='scan-result';const caption=make('div',row);make('strong',caption,label);
           if(run&&Number.isSafeInteger(run.id)&&run.id>0){const sha=typeof run.head_sha==='string'&&/^[0-9a-f]{40}$/.test(run.head_sha)?run.head_sha.slice(0,7):'—';make('small',caption,formatPortalTime(run.updated_at||run.created_at)+' · '+sha);}
@@ -3189,6 +3190,7 @@
         }}
       const deploy=latest.get('cloudflare-deploy.yml'),[edgeState,edgeMessage]=workflowEvidenceState(deploy);
       updateInfrastructure('cloudflare',edgeState,edgeMessage);
+      const [runtimeState,runtimeMessage]=workflowEvidenceState(latest.get('aegis-operational-evidence.yml'),Date.now(),2*86400000);updateInfrastructure('runtime',runtimeState,runtimeMessage);
       const [ciState,ciMessage]=workflowEvidenceState(latest.get('security.yml'));updateInfrastructure('ci',ciState,ciMessage);
       status.textContent='نتائج حديثة ناجحة: '+securityCount(passed)+' · تحتاج تدخلاً: '+securityCount(failed)+' · غير محسومة: '+securityCount(unknown)+' · آخر قراءة: '+formatPortalTime(new Date());
     }

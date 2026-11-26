@@ -1,0 +1,40 @@
+name: AEGIS Operational security evidence
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aegis-operational-evidence.yml'
+      - 'scripts/aegis_operational.py'
+      - 'tests/test_aegis_operational.py'
+permissions:
+  contents: read
+concurrency:
+  group: aegis-operational-evidence
+  cancel-in-progress: false
+jobs:
+  verified-canaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate canary logic with synthetic responses
+        run: python3 -m unittest discover -s tests -p test_aegis_operational.py
+      - name: Verify live edge policy and Supabase authorization
+        run: |
+          set -euo pipefail
+          python3 scripts/aegis_operational.py | tee "$RUNNER_TEMP/aegis-operational.txt"
+      - name: Record sanitized evidence
+        if: always()
+        run: |
+          echo '## AEGIS operational evidence' >> "$GITHUB_STEP_SUMMARY"
+          if test -f "$RUNNER_TEMP/aegis-operational.txt"; then
+            cat "$RUNNER_TEMP/aegis-operational.txt" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Live canaries were not completed.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo 'No real credentials, member data, response bodies or email delivery tests. No claim of WAF, full penetration testing, antivirus engine deployment or backup restoration.' >> "$GITHUB_STEP_SUMMARY"
