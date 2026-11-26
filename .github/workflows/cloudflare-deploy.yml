@@ -7,6 +7,7 @@ on:
       - '.github/workflows/cloudflare-deploy.yml'
       - 'scripts/build-pages.sh'
       - 'scripts/validate_public_build.py'
+      - 'scripts/public_contract.py'
       - 'tests/worker-guard.test.mjs'
       - 'tests/security.test.cjs'
       - 'worker/**'

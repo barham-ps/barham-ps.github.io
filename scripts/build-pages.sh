@@ -29,3 +29,4 @@ cp .well-known/security.txt dist/.well-known/
 cp .well-known/security.txt dist/security.txt
 
 python3 scripts/validate_public_build.py dist
+python3 scripts/public_contract.py dist
