@@ -2223,7 +2223,7 @@
         'id,title,body,category,image_path,image_paths,cover_paths,created_at').eq('published', true);
       var rows = ok(await (selected ? query.eq('id', selected) : query.order('created_at', {
         ascending: false
-      }).order('id',{ascending:false}).limit(isHome ? 4 : 50)));
+      }).order('id',{ascending:false}).limit(isHome ? 1 : 50)));
       if (epoch !== newsEpoch || (location.hash || '#home') !== hash) return;
       target.replaceChildren();
       if (!rows.length) {
