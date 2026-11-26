@@ -43,7 +43,7 @@ jobs:
             echo "::error::Cloudflare deployment credentials are not configured in GitHub Actions."
             exit 1
           fi
-          npx --yes wrangler@4.50.0 deploy
+          npx --yes wrangler@4.168.0 deploy
       - name: Verify all six live security controls
         run: |
           python3 - <<'PY'
