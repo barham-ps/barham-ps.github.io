@@ -746,6 +746,8 @@ test('production MFA gate is restrictive and covers private RPCs and storage',()
  assert.match(sql,/function public\.submit_family_application[\s\S]*?not family_private\.member_mfa_session_allowed\(\)/i);
  assert.match(regression,/AAL1 enrolled member can read profile/);
  assert.match(regression,/AAL2 isolation failed/);
+ assert.match(regression,/Missing assurance was not denied/);
+ assert.match(sql,/coalesce\(auth\.jwt\(\)->>'aal'='aal2',false\)/);
  assert.match(regression,/ROLLBACK;\s*$/);
 });
 

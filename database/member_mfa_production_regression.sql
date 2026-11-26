@@ -56,6 +56,14 @@ DO $$ BEGIN
  RAISE EXCEPTION 'AAL1 submission accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
+SELECT set_config('request.jwt.claims','{"sub":"fd800000-4aa1-4d01-8000-000000000002","role":"authenticated","session_id":"fd800000-4aa1-4d02-8000-000000000002"}',true);
+DO $$ BEGIN
+ IF EXISTS(SELECT 1 FROM public.family_profiles WHERE user_id='fd800000-4aa1-4d01-8000-000000000002') THEN RAISE EXCEPTION 'Missing assurance was not denied'; END IF;
+ BEGIN
+ PERFORM public.submit_family_application('Synthetic B','+970500000000','+970500000000',true);
+ RAISE EXCEPTION 'Missing assurance submission accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
 SELECT set_config('request.jwt.claims','{"sub":"fd800000-4aa1-4d01-8000-000000000002","role":"authenticated","aal":"aal2","session_id":"fd800000-4aa1-4d02-8000-000000000002"}',true);
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.family_profiles WHERE user_id='fd800000-4aa1-4d01-8000-000000000002') OR EXISTS(SELECT 1 FROM public.family_profiles WHERE user_id='fd800000-4aa1-4d01-8000-000000000001') THEN RAISE EXCEPTION 'AAL2 isolation failed'; END IF;

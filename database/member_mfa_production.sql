@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION family_private.member_mfa_session_allowed()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO '' AS $$
  SELECT family_private.member_session_active() AND (
   NOT EXISTS (SELECT 1 FROM auth.mfa_factors f WHERE f.user_id=auth.uid() AND f.status='verified')
-  OR auth.jwt()->>'aal'='aal2'
+  OR coalesce(auth.jwt()->>'aal'='aal2',false)
  );
 $$;
 REVOKE ALL ON FUNCTION family_private.member_mfa_session_allowed() FROM PUBLIC, anon;
