@@ -141,7 +141,7 @@ jobs:
           python3 - <<'PY'
           import http.client, ssl, time
           host="barham-ps-github-io.m0had-b0rh0m.workers.dev"
-          checks=(("GET","/security-firewall-check",204,"active"),("GET","/.env",404,"path-blocked"),("POST","/security-firewall-check",405,"method-blocked"))
+          checks=(("GET","/security-firewall-check",204,"active"),("GET","/.env",404,"path-blocked"),("POST","/security-firewall-check",405,"method-blocked"),("GET","/tests/security.test.cjs",404,"path-blocked"),("GET","/compliance/README.md",404,"path-blocked"),("GET","/wrangler.jsonc",404,"path-blocked"))
           for attempt in range(5):
               failed=[]
               for method,path,status,marker in checks:
