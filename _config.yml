@@ -18,6 +18,8 @@ exclude:
   - OPERATIONS.md
   - backups
   - isms
+  - compliance
+  - SECURITY-GOVERNANCE.md
 
 # Publish the RFC 9116 vulnerability disclosure contact.
 include:
