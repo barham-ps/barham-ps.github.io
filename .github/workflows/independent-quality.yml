@@ -69,7 +69,7 @@ jobs:
           fi
           git diff -- tests/*.sh > "$RUNNER_TEMP/safe-quality-fix.patch"
       - name: Upload tested candidate (never deploy from this job)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: safe-quality-candidate
           path: |
@@ -91,7 +91,7 @@ jobs:
           print("\nA successful job means diagnostics ran; review-required is NOT a clean result.")
           PY
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: independent-quality-status
