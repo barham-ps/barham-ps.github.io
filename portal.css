@@ -1631,3 +1631,15 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
   #logForm .family-recovery-link{margin-block:10px;text-align:start}
   #logForm .family-recovery-link a{display:inline-flex;align-items:center;min-height:44px;margin:0;text-decoration:underline;text-underline-offset:4px;color:var(--gold-ink)}
 }
+
+/* V97 — reserve the async feature's footprint; do not shift the footer while news loads. */
+@media screen{
+  #home-latest-news{min-block-size:335px}
+  #home-latest-news>.portal-loading,#home-latest-news>.news-empty{min-block-size:335px;display:grid;place-content:center;text-align:center;margin:0}
+  #v-home .home-news-grid .news-feature{min-block-size:335px}
+  #v-home .family-welcome{min-block-size:318px}
+  @media(max-width:700px){
+    #v-home .family-welcome{min-block-size:380px}
+    #home-latest-news,#home-latest-news>.portal-loading,#home-latest-news>.news-empty,#v-home .home-news-grid .news-feature{min-block-size:535px}
+  }
+}
