@@ -41,6 +41,29 @@ const base='http://127.0.0.1:8765/';
    await page.emulateMedia({reducedMotion:'reduce'});
    assert.equal(await cta.evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
    await page.emulateMedia({reducedMotion:'no-preference'});
+   // V100 — test the rendered Arabic title and actual Z-depth, not just CSS strings.
+   const title=page.locator('#v-home .family-hero-copy h1');
+   const seal=page.locator('#v-home .family-emblem-ring');
+   await page.evaluate(()=>document.documentElement.dataset.lowData='false');
+   await visible('#v-home .family-emblem-ring');
+   const ink=()=>title.evaluate(el=>{const c=getComputedStyle(el);return {animation:c.animationName,font:c.fontFamily,gradient:c.backgroundImage,fill:c.webkitTextFillColor}});
+   const animated=await ink();
+   assert.match(animated.font,/Amiri/);
+   assert.match(animated.gradient,/linear-gradient/);
+   assert.match(animated.animation,/royal-ink-sweep/);
+   assert.match(await seal.evaluate(el=>getComputedStyle(el,'::before').transform),/matrix3d/);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.equal((await ink()).animation,'none');
+   assert.equal(await seal.evaluate(el=>getComputedStyle(el,'::before').transform),'none');
+   if(width<=700){
+     const bounds=await page.evaluate(()=>({seal:document.querySelector('.family-emblem-ring').getBoundingClientRect().bottom,title:document.querySelector('.family-hero-copy h1').getBoundingClientRect().top}));
+     assert.ok(bounds.seal<=bounds.title+3,'mobile seal must not overlap the Arabic title at '+width);
+   }
+   await page.emulateMedia({reducedMotion:'no-preference'});
+   await page.evaluate(()=>document.documentElement.dataset.lowData='true');
+   assert.equal((await ink()).animation,'none');
+   assert.notEqual((await ink()).fill,'rgba(0, 0, 0, 0)');
+   await page.evaluate(()=>document.documentElement.dataset.lowData='false');
    // V75 regression: computed text colors on actual account markup (no login or data access).
    const rgb=(hex)=>hex.match(/../g).map(x=>parseInt(x,16));
    const lum=(v)=>v.map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);

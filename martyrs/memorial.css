@@ -262,3 +262,17 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
   @media(prefers-reduced-transparency:reduce){:root[data-theme] :is(.hero-frame,.honor-list,.mem-note,.region-nav){background:var(--navy)}}
   @media(prefers-reduced-motion:reduce){:is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry){transition:none;transform:none}}
 }
+
+/* V15 — a single, dignified illumination of the Arabic memorial heading. */
+@media screen{
+  :root{--mem-ink:linear-gradient(108deg,#e4c98f,#fff4d9 32%,#f0d9a4 44%,#fff8e5 52%,#e4c98f 80%)}
+  :root[data-theme=light]{--mem-ink:linear-gradient(108deg,#26384a,#4e5a5a 32%,#70521f 44%,#365044 52%,#26384a 80%)}
+  h1{font-kerning:normal;font-variant-ligatures:common-ligatures contextual;text-wrap:balance}
+  @keyframes memorial-ink-sweep{from{background-position:100% 50%}to{background-position:0% 50%}}
+  @supports ((background-clip:text) or (-webkit-background-clip:text)){
+    h1{background-color:var(--ivory);background-image:var(--mem-ink);background-size:230% 100%;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none}
+    @media(prefers-reduced-motion:no-preference){:root:not([data-low-data=true]) h1{animation:memorial-ink-sweep 3s ease-out .25s 1 both}}
+  }
+  :root[data-low-data=true] h1{background:none;-webkit-text-fill-color:currentColor;animation:none}
+  @media(prefers-reduced-motion:reduce),(prefers-reduced-data:reduce),(forced-colors:active),(prefers-contrast:more){h1{background:none;-webkit-text-fill-color:currentColor;animation:none!important;transform:none!important}}
+}

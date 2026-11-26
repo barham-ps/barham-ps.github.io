@@ -92,3 +92,19 @@
   @media(prefers-reduced-transparency:reduce){.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface)}}
   :root[data-low-data=true] .genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface);box-shadow:none}
 }
+
+/* V10 — metallic Arabic title and 3D arrival; never move chart nodes. */
+@media screen{
+  .genealogy-page .tree-hero h1{font-kerning:normal;font-variant-ligatures:common-ligatures contextual;text-wrap:balance}
+  @supports ((background-clip:text) or (-webkit-background-clip:text)){
+    .genealogy-page .tree-hero h1{color:var(--royal-ink-base);background-color:var(--royal-ink-base);background-image:var(--royal-ink-metal);background-size:245% 100%;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .genealogy-page .tree-hero h1 em{-webkit-text-fill-color:currentColor}
+    @media(prefers-reduced-motion:no-preference){
+      :root:not([data-low-data=true]) .genealogy-page .tree-hero h1{animation:royal-ink-sweep 3.2s var(--royal-motion-ease) .25s 1 both,royal-type-arrival .65s var(--royal-motion-ease) 1 both}
+    }
+  }
+  :root[data-low-data=true] .genealogy-page .tree-hero h1{background:none;-webkit-text-fill-color:currentColor;animation:none}
+  @media(prefers-reduced-motion:reduce),(prefers-reduced-data:reduce),(forced-colors:active),(prefers-contrast:more){
+    .genealogy-page .tree-hero h1{background:none;-webkit-text-fill-color:currentColor;animation:none!important;transform:none!important}
+  }
+}

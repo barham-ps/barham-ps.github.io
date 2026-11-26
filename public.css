@@ -191,3 +191,21 @@ a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
   @media(prefers-reduced-motion:reduce){.public-card a{transition:none;transform:none}}
   @media(forced-colors:active){.public-card :is(.action,.secondary-action){border:1px solid ButtonText;box-shadow:none}}
 }
+
+/* V11 — royal ink motion across the independent informational pages. */
+@media screen{
+  :root{--page-ink:linear-gradient(108deg,#e9ce86,#fff5d8 25%,#f0d590 40%,#fffdf0 50%,#f2d999 60%,#fff5d8 75%,#e9ce86)}
+  @media(prefers-color-scheme:light){:root{--page-ink:linear-gradient(108deg,#153d30,#345a43 25%,#6f501c 40%,#3b5f45 50%,#6f501c 60%,#345a43 75%,#153d30)}}
+  .public-card :is(h1,h2){font-kerning:normal;font-variant-ligatures:common-ligatures contextual;text-wrap:balance}
+  @keyframes page-royal-sweep{from{background-position:100% 50%}to{background-position:0% 50%}}
+  @keyframes page-royal-arrival{from{transform:perspective(900px) translateY(5px) rotateX(6deg)}to{transform:none}}
+  @supports ((background-clip:text) or (-webkit-background-clip:text)){
+    .public-card h1{background-color:var(--page-heading);background-image:var(--page-ink);background-size:245% 100%;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    @media(prefers-reduced-motion:no-preference){
+      .public-card h1{animation:page-royal-sweep 3.2s cubic-bezier(.22,.77,.23,1) .25s 1 both,page-royal-arrival .65s ease-out 1 both}
+    }
+  }
+  @media(prefers-reduced-motion:reduce),(prefers-reduced-data:reduce),(forced-colors:active),(prefers-contrast:more){
+    .public-card h1{animation:none;transform:none;background:none;-webkit-text-fill-color:currentColor}
+  }
+}

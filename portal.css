@@ -1799,3 +1799,183 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
 #v-certificate .md-manual-code{display:block;overflow-wrap:anywhere;font-size:12px;line-height:1.6;letter-spacing:.02em;margin-top:4px}
 @media(max-width:480px){.family-accessibility button{min-height:44px}.family-accessibility span{flex-basis:100%;text-align:center}}
 @media print{.family-accessibility{display:none!important}}
+
+/* V100 — Royal Motion 3D. Real Arabic shaping, restrained CSS motion,
+   native scroll triggers when available, and contrast-safe day/night ink.
+   No animation loops, new fonts, external assets, or application state changes. */
+@media screen{
+  :root,:root[data-theme=dark]{
+    --royal-ink-base:#f6e4b6;
+    --royal-ink-metal:linear-gradient(108deg,#e9ce86 0%,#fff5d8 24%,#f0d590 40%,#fffdf0 50%,#f2d999 60%,#fff5d8 78%,#e9ce86 100%);
+    --royal-title-depth:0 1px 0 #071e17,0 3px 9px #071e1740;
+    --royal-inlay:#e0bd6f45;
+    --royal-motion-ease:cubic-bezier(.22,.77,.23,1);
+  }
+  :root[data-theme=light]{
+    --royal-ink-base:#194638;
+    --royal-ink-metal:linear-gradient(108deg,#153d30 0%,#345a43 24%,#6f501c 40%,#3b5f45 50%,#6f501c 60%,#345a43 78%,#153d30 100%);
+    --royal-title-depth:0 1px 0 #fffef8,0 3px 9px #2e50391a;
+    --royal-inlay:#b5954b48;
+  }
+  /* Never split Arabic into individual animated glyphs: keep shaping, diacritics
+     and accessibility tree intact. Keep ordinary body copy still and readable. */
+  :root[data-theme] #v-home .family-hero-copy h1,
+  :root[data-theme] main .view:not(#v-certificate) :is(.phero h1,form.auth h1,.home-section-head h2,.home-news-card h3),
+  :root[data-theme] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+    font-kerning:normal;font-variant-ligatures:common-ligatures contextual;
+    letter-spacing:normal;word-spacing:normal;text-wrap:balance;
+  }
+  :root[data-theme] #v-home .family-hero-copy h1{
+    font-size:clamp(36px,4.5vw,55px);line-height:1.55;
+    color:var(--royal-ink-base);text-shadow:var(--royal-title-depth);
+  }
+  :root[data-theme] #v-home .family-welcome{
+    position:relative;
+    border-color:var(--depth-rim);
+  }
+  :root[data-theme] #v-home .family-welcome::before{
+    content:"";position:absolute;inset:7px;border:1px solid var(--royal-inlay);
+    border-radius:16px;pointer-events:none;
+  }
+  /* The seal now has actual separate 3D planes: metallic rim, enamel, raised crest. */
+  :root[data-theme] #v-home .family-emblem-ring{
+    position:relative;transform-style:preserve-3d;
+    background:radial-gradient(circle at 34% 18%,#477f5a 0%,#1b5140 39%,#0a3026 79%);
+    border-color:#e1c47f;
+    box-shadow:inset 0 2px 5px #fff3bd59,inset 0 -12px 24px #00140e80,0 7px 0 #7e632d,0 0 0 8px #b99b5422,0 18px 30px #072d2445;
+  }
+  :root[data-theme] #v-home .family-emblem-ring::before,
+  :root[data-theme] #v-home .family-emblem-ring::after{
+    content:"";position:absolute;border-radius:50%;pointer-events:none;
+  }
+  :root[data-theme] #v-home .family-emblem-ring::before{
+    inset:5px;border:1px solid #e6ce9369;box-shadow:inset 0 0 0 2px #071e1763;
+    transform:translateZ(4px);
+  }
+  :root[data-theme] #v-home .family-emblem-ring::after{
+    inset:11px;border:1px solid #dabc7044;
+    box-shadow:inset 0 1px 3px #fff2b94f;
+    transform:translateZ(12px);
+  }
+  :root[data-theme] #v-home .family-emblem-ring img{transform:translateZ(20px)}
+  :root[data-theme] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true]){
+    position:relative;
+  }
+  :root[data-theme] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true])::after{
+    content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(112deg,transparent 22%,#fff9e452 46%,#fffdf466 50%,#fff9e452 54%,transparent 78%);
+    background-size:260% 100%;background-position:100% 50%;opacity:0;
+  }
+  @keyframes royal-ink-sweep{
+    from{background-position:100% 50%}
+    to{background-position:0% 50%}
+  }
+  @keyframes royal-type-arrival{
+    from{transform:perspective(900px) translateY(5px) rotateX(6deg)}
+    to{transform:perspective(900px) translateY(0) rotateX(0)}
+  }
+  @keyframes royal-seal-arrival{
+    0%{transform:rotateX(7deg) rotateY(-12deg)}
+    65%{transform:rotateX(-2deg) rotateY(3deg)}
+    100%{transform:rotateX(0deg) rotateY(0deg)}
+  }
+  /* Keep a solid text color as a fallback; the ink remains legible even if
+     clipping, forced colors or animation is unavailable. */
+  @supports ((background-clip:text) or (-webkit-background-clip:text)){
+    :root[data-theme] #v-home .family-hero-copy h1,
+    :root[data-theme] main .view:not(#v-certificate) :is(.phero h1,form.auth h1),
+    :root[data-theme] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+      color:var(--royal-ink-base);background-color:var(--royal-ink-base);background-image:var(--royal-ink-metal);
+      background-size:245% 100%;background-position:100% 50%;background-clip:text;
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;
+    }
+    /* The original separator deliberately keeps its accent hue. */
+    :root[data-theme] #v-home .family-hero-copy h1 span{-webkit-text-fill-color:currentColor}
+    @media(prefers-reduced-motion:no-preference){
+      :root[data-theme][data-low-data=false] #v-home .family-hero-copy h1,
+      :root[data-theme][data-low-data=false] main .view:not(#v-certificate) :is(.phero h1,form.auth h1),
+      :root[data-theme][data-low-data=false] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+        animation:royal-ink-sweep 3.2s var(--royal-motion-ease) .25s 1 both,
+                  royal-type-arrival .65s var(--royal-motion-ease) 1 both;
+      }
+    }
+  }
+  @media(prefers-reduced-motion:no-preference){
+    :root[data-theme][data-low-data=false] #v-home .family-emblem-ring{animation:royal-seal-arrival 1.2s var(--royal-motion-ease) .15s 1 backwards}
+    :root[data-theme][data-low-data=false] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true])::after{
+      transition:opacity .18s ease,background-position .7s var(--royal-motion-ease)
+    }
+    :root[data-theme][data-low-data=false] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true]):focus-visible::after,
+    :root[data-theme][data-low-data=false] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true]):active::after{
+      opacity:.38;background-position:0% 50%
+    }
+    @media(hover:hover) and (pointer:fine){
+      :root[data-theme][data-low-data=false] #v-home .family-hero-emblem:hover .family-emblem-ring{animation:none;transform:rotateX(9deg) rotateY(-14deg)}
+      :root[data-theme][data-low-data=false] :is(.btn-gold,.btn-dark):not(:disabled):not([aria-disabled=true]):hover::after{opacity:.42;background-position:0% 50%}
+    }
+    /* 2026 scroll-trigger support: only headings move, never hide content.
+       Older engines use an ordinary scroll-driven animation or static text. */
+    @supports (animation-timeline:view()){
+      :root[data-theme][data-low-data=false] #v-home .home-section-head h2,
+      :root[data-theme][data-low-data=false] #v-home .home-news-card h3{
+        animation:royal-type-arrival linear both;animation-timeline:view();
+        animation-range:entry 0% entry 100%;
+      }
+    }
+    @supports (timeline-trigger:--royal-scroll view() contain / cover) and (animation-trigger:--royal-scroll play-forwards){
+      :root[data-theme][data-low-data=false] #v-home .home-section-head h2,
+      :root[data-theme][data-low-data=false] #v-home .home-news-card h3{
+        timeline-trigger:--royal-scroll view() contain / cover;
+        trigger-scope:--royal-scroll;
+        animation:royal-type-arrival .65s var(--royal-motion-ease) both;
+        animation-trigger:--royal-scroll play-forwards play-backwards;
+      }
+    }
+  }
+  @media(max-width:700px){
+    :root[data-theme] #v-home .family-hero-copy h1{font-size:clamp(32px,8.5vw,39px)}
+    :root[data-theme] #v-home .family-welcome::before{inset:5px;border-radius:13px}
+  }
+  /* Respect bandwidth and accessibility preferences. Keep actual text visible. */
+  :root[data-theme][data-low-data=true] #v-home .family-hero-copy h1,
+  :root[data-theme][data-low-data=true] main .view:not(#v-certificate) :is(.phero h1,form.auth h1),
+  :root[data-theme][data-low-data=true] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+    background:none;-webkit-text-fill-color:currentColor;animation:none;transform:none;text-shadow:none;
+  }
+  :root[data-theme][data-low-data=true] #v-home .family-emblem-ring::before,
+  :root[data-theme][data-low-data=true] #v-home .family-emblem-ring::after{transform:none}
+  @media(prefers-reduced-motion:reduce){
+    :root[data-theme] #v-home .family-emblem-ring::before,
+    :root[data-theme] #v-home .family-emblem-ring::after,
+    :root[data-theme] #v-home :is(.family-hero-copy h1,.family-emblem-ring,.family-emblem-ring img,.home-section-head h2,.home-news-card h3),
+    :root[data-theme] main .view:not(#v-certificate) :is(.phero h1,form.auth h1),
+    :root[data-theme] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+      animation:none!important;transition:none!important;transform:none!important
+    }
+  }
+  @media(forced-colors:active),(prefers-contrast:more){
+    :root[data-theme] #v-home .family-hero-copy h1,
+    :root[data-theme] main .view:not(#v-certificate) :is(.phero h1,form.auth h1),
+    :root[data-theme] :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security)>.wrap>h1{
+      background:none;-webkit-text-fill-color:currentColor;text-shadow:none;animation:none;transform:none
+    }
+  }
+}
+
+@media screen and (max-width:700px){
+  :root[data-theme] #v-home .family-hero-emblem{
+    display:grid;position:absolute;inset-block-start:17px;inset-inline-end:17px;
+    margin:0;width:54px;gap:0;grid-row:auto;justify-items:center;
+  }
+  :root[data-theme] #v-home .family-emblem-ring{
+    width:50px;box-shadow:inset 0 1px 2px #fff2b953,0 3px 0 #7e632d,0 0 0 4px #b99b5422,0 5px 9px #072d2438;
+  }
+  :root[data-theme] #v-home .family-emblem-ring::before{inset:2px}
+  :root[data-theme] #v-home .family-emblem-ring::after{inset:5px}
+  :root[data-theme] #v-home .family-emblem-ring img{transform:translateZ(6px);filter:none}
+  :root[data-theme] #v-home .family-hero-copy :is(.greet,.family-kicker){max-width:calc(100% - 62px)}
+  :root[data-theme] #v-home .family-hero-copy .family-kicker{min-block-size:2.1em}
+  @media(prefers-reduced-motion:reduce){
+    :root[data-theme] #v-home .family-emblem-ring img{transform:none!important}
+  }
+}
