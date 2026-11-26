@@ -1,7 +1,11 @@
 import {createClient} from "npm:@supabase/supabase-js@2.119.2";
-const headers={"Access-Control-Allow-Origin":"https://barham-ps.github.io","Access-Control-Allow-Headers":"authorization, apikey, x-client-info, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Cache-Control":"no-store","Content-Type":"application/json"};
-const reply=(status:number,data:object)=>new Response(JSON.stringify(data),{status,headers});
+const allowedOrigins=new Set(["https://barham-ps.github.io","https://barham-ps-github-io.m0had-b0rh0m.workers.dev"]);
 Deno.serve(async(req)=>{
+ const origin=req.headers.get("Origin");
+ const headers:Record<string,string>={"Vary":"Origin","Access-Control-Allow-Headers":"authorization, apikey, x-client-info, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Cache-Control":"no-store","Content-Type":"application/json"};
+ if(origin&&allowedOrigins.has(origin))headers["Access-Control-Allow-Origin"]=origin;
+ const reply=(status:number,data:object)=>new Response(JSON.stringify(data),{status,headers});
+ if(origin&&!allowedOrigins.has(origin))return reply(403,{error:"origin"});
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers});
  if(req.method!=="POST")return reply(405,{error:"method"});
  const token=req.headers.get("Authorization");
