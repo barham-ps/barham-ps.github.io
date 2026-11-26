@@ -20,6 +20,8 @@ exclude:
   - isms
   - compliance
   - SECURITY-GOVERNANCE.md
+  - GOVERNANCE.md
+  - SCALE-READINESS.md
 
 # Publish the RFC 9116 vulnerability disclosure contact.
 include:
