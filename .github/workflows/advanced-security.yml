@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '43 4 * * 2'
+    - cron: '43 4 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -103,3 +103,18 @@ jobs:
           path: ${{ runner.temp }}/zap-report/
           retention-days: 14
           if-no-files-found: warn
+  cloudflare-toolchain-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build allowlisted static portal
+        run: sh scripts/build-pages.sh
+      - name: Test the pinned current Wrangler release without credentials or deployment
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -eu
+          npm exec --yes --package=wrangler@4.168.0 -- wrangler deploy --dry-run --outdir "$RUNNER_TEMP/wrangler-dry-run"
