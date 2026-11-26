@@ -35,7 +35,12 @@ DECLARE e jsonb:=event->'email_data'; u jsonb:=event->'user'; action text:=e->>'
 BEGIN
  IF event IS NULL OR action IS NULL OR octet_length(event::text)>100000 THEN RETURN jsonb_build_object('error',jsonb_build_object('http_code',400,'message','Invalid email request')); END IF;
  SELECT monthly_limit INTO budget FROM family_private.auth_mail_settings WHERE singleton AND enabled;
- IF budget IS NULL THEN RETURN jsonb_build_object('error',jsonb_build_object('http_code',503,'message','Email temporarily unavailable')); END IF;
+ -- Preserve identical public recovery responses for known and unknown accounts
+ -- during maintenance. The portal checks the public operational status first.
+ IF budget IS NULL THEN
+  IF action='recovery' THEN RETURN '{}'::jsonb; END IF;
+  RETURN jsonb_build_object('error',jsonb_build_object('http_code',503,'message','Email temporarily unavailable'));
+ END IF;
  IF action='email_change' THEN
   IF coalesce(hash_new,'')<>'' THEN
    items:=items||jsonb_build_array(jsonb_build_object('to',recipient,'action',action,'token',token,'token_hash',hash_new));
@@ -72,6 +77,14 @@ END $$;
 REVOKE ALL ON FUNCTION family_private.family_auth_mail_hook(jsonb) FROM PUBLIC,anon,authenticated,service_role;
 GRANT USAGE ON SCHEMA family_private TO supabase_auth_admin;
 GRANT EXECUTE ON FUNCTION family_private.family_auth_mail_hook(jsonb) TO supabase_auth_admin;
+
+-- Public operational status only: no account input, recipient, quota or token.
+CREATE OR REPLACE FUNCTION public.family_auth_mail_available()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT COALESCE((SELECT enabled FROM family_private.auth_mail_settings WHERE singleton),false);
+$$;
+REVOKE ALL ON FUNCTION public.family_auth_mail_available() FROM PUBLIC,anon,authenticated,service_role,supabase_auth_admin;
+GRANT EXECUTE ON FUNCTION public.family_auth_mail_available() TO anon,authenticated,service_role;
 
 CREATE OR REPLACE FUNCTION public.family_auth_mail_reserve(p_limit integer DEFAULT 5)
 RETURNS TABLE(job_id uuid) LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$

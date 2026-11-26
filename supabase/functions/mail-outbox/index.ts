@@ -73,7 +73,7 @@ Deno.serve(async(req:Request)=>{
     try{
      if(!email(authJob.to))throw Error('Invalid recipient');
      const rendered=renderAuthEmail(authJob.action,authJob.token,authJob.token_hash);
-     const graph_body=JSON.stringify({message:{subject:rendered.subject,body:{contentType:'HTML',content:rendered.html},toRecipients:[{emailAddress:{address:authJob.to}}]},saveToSentItems:true});
+     const graph_body=JSON.stringify({message:{subject:rendered.subject,body:{contentType:'Text',content:rendered.text},toRecipients:[{emailAddress:{address:authJob.to}}],internetMessageHeaders:[{name:'x-albarham-job-id',value:body.job_id}]},saveToSentItems:true});
      return response(200,{job_id:body.job_id,graph_body});
     }catch{await rpc('family_auth_mail_finish',{p_job:body.job_id,p_outcome:'failed'});return response(422,{error:'Job invalid'});}
    }

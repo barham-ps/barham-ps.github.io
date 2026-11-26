@@ -90,13 +90,19 @@ export function renderAuthEmail(action, token, tokenHash) {
   };
   if(!Object.hasOwn(actionToKey,action))throw new Error('Unknown Auth event');
   const t=AUTH_TEMPLATES[actionToKey[action]];
-  let code,link=t.link;
+  let code,link=t.link,plainLink=t.link;
   if(t.code){if(typeof token!=='string'||!/^\d{4,10}$/.test(token))throw new Error('Invalid OTP');code=esc(token);}
   if(link==='confirmation'){
     if(typeof tokenHash!=='string'||!(/^[A-Za-z0-9_-]{16,255}$/).test(tokenHash))throw new Error('Invalid token hash');
     const u=new URL('https://vfxxghfmkmgdqrczeowx.supabase.co/auth/v1/verify');
     u.searchParams.set('token',tokenHash);u.searchParams.set('type',action);u.searchParams.set('redirect_to',SITE);
-    link=esc(u.toString());
+    plainLink=u.toString();
+    link=esc(plainLink);
   }
-  return {subject:t.subject,html:shell(t,{code,link})};
+  // Auth mail intentionally uses plain text over Graph; retain branded HTML for native fallback.
+  // Recovery and reauthentication codes contain no links, tracking or attachments.
+  const text = t.code
+    ? ['آل برهم', '', action==='recovery'?'رمز استعادة كلمة المرور:':'رمز تأكيد الهوية:', code, '', 'أدخل الرمز في صفحة البوابة التي طلبت منه الرمز. لا تشارك الرمز مع أي شخص. إذا لم تطلبه، تجاهل الرسالة.'].join('\n')
+    : ['آل برهم', '', t.title, '', ...t.paragraphs, ...(plainLink?['',t.action,plainLink]:[]), '', t.safety||commonSafety].join('\n');
+  return {subject:t.subject,html:shell(t,{code,link}),text};
 }

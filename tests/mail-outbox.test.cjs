@@ -5,13 +5,13 @@ const REF='00000000-0000-4000-a000-000000000002';
 const ADMIN='albarham.inc@hotmail.com';
 const secrets={MAIL_DISPATCH_SECRET:'synthetic-dispatch-key-for-tests-only-42',MAIL_MAKE_PULL_SECRET:'synthetic-pull-key-for-tests-only-42',MAIL_MAKE_WEBHOOK_KEY:'synthetic-webhook-key-for-tests-only-42',MAIL_MAKE_WEBHOOK_URL:'https://hook.us2.make.com/syntheticWebhookPathForTestOnly',SUPABASE_URL:'https://project.example.invalid',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service-key-not-a-credential'};
 test('outbox handler rejects unauthorized/oversized/arbitrary content and transmits only opaque IDs',async()=>{
- let handler,calls=[],claimable=true;
+ let handler,calls=[],claimable=true,authClaimable=false;
  const oldFetch=global.fetch;global.Deno={env:{get:key=>secrets[key]},serve:fn=>{handler=fn;}};
  global.fetch=async(input,init)=>{
   const URLtext=String(input);const payload=JSON.parse(init.body);calls.push({url:URLtext,payload,headers:init.headers});
   if(URLtext.endsWith('/family_mail_reserve'))return Response.json([{job_id:ID}]);
   if(URLtext.endsWith('/family_mail_claim')){const rows=claimable?[{template_key:'request_complaint_received',source_id:REF,audience:'member',recipient_email:'fixture@example.invalid'}]:[];claimable=false;return Response.json(rows);}
-  if(URLtext.endsWith('/family_auth_mail_claim'))return Response.json(null);
+  if(URLtext.endsWith('/family_auth_mail_claim')){const job=authClaimable?{to:'fixture@example.invalid',action:'recovery',token:'12345678',token_hash:'synthetic_1234567890abcdef'}:null;authClaimable=false;return Response.json(job);}
   if(URLtext.endsWith('/family_mail_finish'))return Response.json(true);
   if(URLtext.startsWith('https://hook.us2.make.com/'))return new Response('Accepted',{status:200});
   throw Error('Unexpected request');
@@ -26,6 +26,16 @@ test('outbox handler rejects unauthorized/oversized/arbitrary content and transm
   const dispatch=await call('dispatch',secrets.MAIL_DISPATCH_SECRET);assert.equal(dispatch.status,200);assert.equal((await dispatch.json()).queued_to_make,1);
   const hook=calls.find(c=>c.url.startsWith('https://hook.us2.make.com/'));assert.deepEqual(hook.payload,{job_id:ID});assert.equal(hook.headers['x-make-apikey'],secrets.MAIL_MAKE_WEBHOOK_KEY);assert.ok(!JSON.stringify(hook.payload).includes('@'));
   const claim=await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID});assert.equal(claim.status,200);assert.equal(claim.headers.get('Cache-Control'),'no-store');const body=await claim.json();assert.equal(body.to,'fixture@example.invalid');const graph=JSON.parse(body.graph_body);assert.equal(graph.message.toRecipients[0].emailAddress.address,body.to);assert.equal(graph.message.subject,body.subject);assert.equal(graph.message.body.content,body.html);assert.equal(graph.message.body.contentType,'HTML');assert.equal(graph.saveToSentItems,true);assert.equal(body.job_id,ID);assert.match(body.subject,/الشكوى/);assert.match(body.html,/حفاظاً على خصوصيتك/);assert.doesNotMatch(body.html,/fixture@example\.invalid/);
+  assert.equal((await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID})).status,409);
+  authClaimable=true;
+  const authResponse=await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID});
+  assert.equal(authResponse.status,200);
+  const authBody=await authResponse.json(), authGraph=JSON.parse(authBody.graph_body);
+  assert.equal(authGraph.message.body.contentType,'Text');
+  assert.match(authGraph.message.body.content,/12345678/);
+  assert.doesNotMatch(authGraph.message.body.content,/https?:|<[^>]+>/);
+  assert.equal(authGraph.message.internetMessageHeaders[0].value,ID);
+  assert.deepEqual(Object.keys(authBody).sort(),['graph_body','job_id']);
   assert.equal((await call('claim',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID})).status,409);
   assert.equal((await call('finish',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID,outcome:'arbitrary'})).status,400);
   assert.equal((await call('finish',secrets.MAIL_MAKE_PULL_SECRET,{job_id:ID,outcome:'sent'})).status,200);

@@ -239,6 +239,18 @@
   }
 
   // Only the first five SHA-1 hex characters leave this browser, and only on submission.
+  const authMailMaintenance = 'خدمة إرسال البريد متوقفة مؤقتًا للصيانة. لا تطلب رمزًا جديدًا الآن؛ حاول لاحقًا.';
+  async function authEmailAvailable() {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      try {
+        const result = await client().rpc('family_auth_mail_available').abortSignal(controller.signal);
+        return !result.error && result.data === true;
+      } finally { clearTimeout(timer); }
+    } catch (_) { return false; }
+  }
+
   async function passwordLeakState(password, fetcher = fetch, cryptoApi = crypto) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -302,6 +314,7 @@
     b.disabled = true;
     show('#r-msg', 'جارٍ الاتصال بخدمة التسجيل...', 0);
     try {
+      if (!await authEmailAvailable()) return show('#r-msg', authMailMaintenance, 1);
       const leakMessage = await requirePasswordScreen(pw);
       if (leakMessage) return show('#r-msg', leakMessage, 1);
       // One SDK path for all signups, with the same CAPTCHA integration.
@@ -2989,6 +3002,7 @@
     const targetEmail=selectedRecoveryEmail(),version=recoveryEpoch;
     try{
       await assertRecoveryOwner();
+      if (!await authEmailAvailable()) throw Error(authMailMaintenance);
       await otpFlow().request(targetEmail,{redirectTo:location.origin+location.pathname+'?page=reset',captchaToken:await window.familyCaptcha.token(resetForm)});
       if(version!==recoveryEpoch||location.hash!=='#reset')return;
       recoverySentAt=Date.now();recoveryLinkMode=false;resetInput.value=targetEmail;startCode();
