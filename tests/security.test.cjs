@@ -669,3 +669,34 @@ test('royal home polish is screen-only and preserves public navigation and acces
  assert.match(runtime,/family=Amiri:wght@700&display=optional/);
  assert.match(runtime,/window\.addEventListener\('load',loadRoyalHeadingFont/);
 });
+
+test('unified security evidence never passes missing, stale, skipped or still running workflows',()=>{
+  const source=js.slice(js.indexOf('function workflowEvidenceState('),js.indexOf('function mountSecurityEvidence('));
+  const state=vm.runInNewContext('('+source.trim()+')');
+  const now=Date.parse('2026-11-26T10:00:00Z');
+  const valid={id:123,status:'completed',conclusion:'success',updated_at:'2026-11-26T09:00:00Z'};
+  assert.equal(state(valid,now)[0],'pass');
+  assert.equal(state(null,now)[0],'warn');
+  assert.equal(state({...valid,id:-1},now)[0],'warn');
+  assert.equal(state({...valid,status:'in_progress'},now)[0],'warn');
+  assert.equal(state({...valid,conclusion:'skipped'},now)[0],'warn');
+  assert.equal(state({...valid,conclusion:'failure'},now)[0],'fail');
+  assert.equal(state({...valid,updated_at:'2026-11-01T09:00:00Z'},now)[0],'warn');
+  assert.equal(state({...valid,updated_at:'invalid'},now)[0],'warn');
+});
+test('security inventory covers five private buckets and preserves administration gates',()=>{
+  const sql=fs.readFileSync('database/security_observability.sql','utf8');
+  assert.match(sql,/security_inventory/);
+  assert.match(sql,/family-request-files/);
+  assert.match(sql,/family-martyr-photos/);
+  assert.match(sql,/family-public-content/);
+  assert.match(sql,/n=5 and not exists\(select 1 from storage\.buckets where public\)/);
+  assert.match(sql,/if not public\.family_is_admin\(\) then raise exception 'Forbidden'/i);
+  assert.match(sql,/REVOKE EXECUTE ON FUNCTION public\.family_run_security_scan\(\) FROM PUBLIC,anon/i);
+  const src=js.slice(js.indexOf('function verifiedCheckState('),js.indexOf('function mountInfrastructureStatus('));
+  const check=vm.runInNewContext('('+src.trim()+')');
+  assert.equal(check({checks:[{id:'storage',state:'pass',value:2}]},['storage']),'warn');
+  assert.equal(check({checks:[{id:'storage',state:'pass',value:5}]},['storage']),'pass');
+  assert.match(js,/credentials:'omit',cache:'no-store',redirect:'error',signal:abort.signal/);
+  assert.match(js,/cloudflare-deploy\.yml/);
+});

@@ -2874,6 +2874,20 @@
       ['آخر فحص',checks.length?securityCount(failed)+' خلل':'لم يُفحص',checks.length?securityCount(warn)+' تنبيه':'لا نتيجة لهذا المسؤول',checks.length?(failed?'fail':warn?'warn':'pass'):'warn']
     ];
     for(const [title,value,detail,state] of cards){const c=make('div',grid);c.className='soc-metric '+state;make('small',c,title);make('strong',c,value);make('span',c,detail);}
+    const inventory=d.security_inventory;
+    const inventoryBox=make('div',target);inventoryBox.className='soc-detail';
+    make('h3',inventoryBox,'الجرد الأمني المباشر من قاعدة البيانات');
+    if(!inventory){make('p',inventoryBox,'إصدار الخادم لا يعرض الجرد الموسّع؛ لا يمكن تأكيد تغطية المخازن.');}
+    else{
+      const rows=[
+        ['عزل الجداول العامة RLS',inventory.public_tables>0&&inventory.missing_rls===0?inventory.public_tables+' / '+inventory.public_tables:securityCount(inventory.missing_rls)+' دون RLS',inventory.public_tables>0&&inventory.missing_rls===0],
+        ['عزل مخازن الملفات الخمسة',securityCount(inventory.required_private_buckets)+' / ٥',inventory.required_private_buckets===5&&inventory.public_buckets===0],
+        ['مخازن عامة',securityCount(inventory.public_buckets),inventory.public_buckets===0],
+        ['قيود الحجم وأنواع الملفات',securityCount(inventory.upload_limits_verified)+' / ٥',inventory.upload_limits_verified===5]
+      ];
+      for(const [label,value,pass] of rows){const row=make('div',inventoryBox);row.className='scan-result';make('strong',row,label);const mark=make('span',row,value);mark.className='scan-state '+(pass?'pass':'fail');}
+      make('small',inventoryBox,'الجرد يثبت الإعدادات المحددة الآن؛ لا يُعدّ اختبار اختراق أو فحصًا لمحتويات الملفات.');
+    }
     const alerts=make('div',target);alerts.className='soc-alerts';
     if(!d.auth_latest_at)make('p',alerts,'لا توجد سجلات مصادقة متاحة في قاعدة البيانات؛ لا يعني ذلك أن محاولات الدخول معدومة.');
     if(!checks.length)make('p',alerts,'شغّل فحص الحماية للحصول على نتائج موثقة.');
@@ -2925,7 +2939,7 @@
         if(refreshing||!current()||document.hidden)return;
         refreshing=true;
         try{const updated=ok(await client().rpc('family_security_summary'));if(!current())return;renderSecurityDashboard(dashboard,updated);drawEvents(updated.recent_events);updateMsg.textContent='تم تحديث مؤشرات الخادم.';}
-        catch(_){if(current())updateMsg.textContent='تعذر تحديث المؤشرات؛ آخر قراءة معروضة قديمة.';}
+        catch(_){if(current()){stopSecurityRefresh();securityEpoch++;secBody.replaceChildren();make('p',secBody,'تعذر تأكيد صلاحية الإدارة من الخادم. أُخفيت البيانات لحماية خصوصيتك.');action(secBody,'إعادة التحقق',loadSecurity).className='btn btn-gold';}}
         finally{refreshing=false;}
       }
       action(commandActions,'تحديث المؤشرات',refreshDashboard).className='btn btn-gold';
@@ -3013,8 +3027,8 @@
     admin_rpc: ['حماية دوال الإدارة', 'دوال متاحة للزوار'],
     mfa: ['التحقق الثنائي', 'عوامل مصادقة مؤكدة'],
     session: ['سلامة جلسة الإدارة', 'جلسة الإدارة الحالية'],
-    storage: ['خصوصية مخازن الملفات', 'مخازن خاصة من أصل 2'],
-    upload_limits: ['قيود رفع الملفات', 'مخازن مطابقة من أصل 2'],
+    storage: ['خصوصية مخازن الملفات', 'عدد المخازن الخاصة المطابقة'],
+    upload_limits: ['قيود رفع الملفات', 'عدد المخازن المطابقة'],
     files: ['سلامة مراجع الملفات', 'ملفات غير موجودة'],
     audit: ['التدقيق الأمني', 'آليات تدقيق مفعّلة من أصل 4'],
     rate: ['تقييد طلبات الأعضاء', 'آلية تقييد مفعّلة'],
@@ -3048,8 +3062,9 @@
         name = scanNames[x.id] || [x.id, 'النتيجة'];
       make('strong', label, name[0]);
       make('small', label, name[1] + ': ' + x.value);
-      var state = make('span', row, x.state === 'pass' ? '✓ اجتاز' : x.state === 'warn' ? '! تنبيه' : '× خلل');
-      state.className = 'scan-state ' + x.state;
+      const resultState = x.state === 'pass' && ['storage','upload_limits'].includes(x.id) && x.value !== 5 ? 'warn' : x.state;
+      var state = make('span', row, resultState === 'pass' ? '✓ اجتاز' : resultState === 'warn' ? '! تنبيه / فحص قديم' : '× خلل');
+      state.className = 'scan-state ' + resultState;
       if (x.id === 'mfa' && x.state === 'warn') {
         var a = make('a', label, 'تفعيل التحقق الثنائي');
         a.href = '#mfa';
@@ -3078,7 +3093,7 @@
     const checks = Array.isArray(report?.checks) ? report.checks : [];
     const matching = required.map(id => checks.find(x => x.id === id));
     if (matching.some(x => x?.state === 'fail')) return 'fail';
-    if (matching.every(x => x?.state === 'pass')) return 'pass';
+    if (matching.every((x,i) => x?.state === 'pass' && (!['storage','upload_limits'].includes(required[i]) || x.value === 5))) return 'pass';
     return 'warn';
   }
 
@@ -3088,14 +3103,17 @@
     const items = [
       ['mfa','MFA / Zero Trust','تفرض قاعدة البيانات AAL2 على الإدارة. يلزم الفحص للتحقق من الجلسة الحالية.','warn','بانتظار الفحص'],
       ['data','RLS / RBAC / تخزين خاص','فحص مباشر للجداول والسجلات الخاصة ودوال الإدارة ومخازن الملفات.','warn','بانتظار الفحص'],
-      ['ci','DevSecOps / CodeQL / SRI','يُقرأ آخر تشغيل للفرع الرئيسي من GitHub.','warn','بانتظار النتيجة'],
-      ['edge','WAF / WAAP / DDoS / Bot Management','تحتاج حماية خارجية على مزود الاستضافة، وحماية API بصورة مستقلة.','warn','غير مؤكد'],
+      ['ci','DevSecOps / فحوص الكود / SRI','يُقرأ آخر تشغيل للفرع الرئيسي من GitHub؛ راجع تفاصيل المهام.','warn','بانتظار النتيجة'],
+      ['cloudflare','Cloudflare Worker / HTTP Headers','النتيجة من مهمة النشر التي تفحص الترويسات الست وتطابق إعدادات الأمان؛ لا تثبت تفعيل WAF.','warn','بانتظار النتيجة'],
+      ['edge','WAF / WAAP / DDoS / Bot Management','نشر Worker وترويسات HTTP منفصل عن إثبات قواعد WAF. نطاق github.io لا يخضع لمنطقة Cloudflare خاصة بك، وواجهة Supabase تحتاج حماية مستقلة.','warn','غير مؤكد'],
       ['captcha','CAPTCHA (hCaptcha / Turnstile)',window.familyCaptcha.enabled ? 'مفتاح عام موجود؛ يلزم إثبات فرض CAPTCHA في Auth.' : 'التكامل جاهز برمجيًا؛ لا يوجد مفتاح موقع مفعّل.','warn',window.familyCaptcha.enabled ? 'بانتظار التحقق' : 'غير مفعّل'],
       ['passkeys','Passkeys / FIDO2','تم تجهيز تسجيل مفتاح المرور والدخول به؛ يلزم تفعيل Supabase وتحديد نطاق WebAuthn واختبار الاستعادة.','warn','غير مفعّل'],
       ['pqc','PQC / RASP','يلزم دعم مزود TLS أو بيئة تشغيل خلفية مناسبة.','warn','غير مؤكد'],
       ['siem','SIEM / XDR','سجل التدقيق الداخلي ليس SIEM؛ يلزم مزود تنبيهات ومراقبة مستقل.','warn','غير متكامل'],
       ['backup','Immutable Backups','يلزم وجهة مستقلة ذات قفل احتفاظ واختبار استعادة البيانات والملفات.','warn','غير مؤكد'],
-      ['password','كلمات المرور المسربة','فحص HIBP في واجهة إنشاء وتغيير كلمة المرور؛ فرضه على خادم Supabase يتطلب خطة Pro وتفعيل الإعداد.','warn','فحص الواجهة فقط']
+      ['password','كلمات المرور المسربة','فحص HIBP في واجهة إنشاء وتغيير كلمة المرور؛ فرضه على خادم Supabase يتطلب خطة مناسبة وتفعيل الإعداد.','warn','فحص الواجهة فقط'],
+      ['mail','تسليم البريد الإلكتروني','يلزم تثبيت تسليم رسائل التسجيل والاستعادة وتغيير البريد عبر SMTP واختبار صندوق بريد حقيقي.','warn','بحاجة إلى تحقق'],
+      ['antivirus','فحص المرفقات بمكافح الفيروسات','العزل قائم؛ لا تُقبل المرفقات قبل نجاح المحرك. ربط وفحص محرك خاص يحتاج دليلًا مستقلًا.','warn','المحرك غير مؤكد']
     ];
     const marks = new Map();
     for (const [id,name,detail,status,statusLabel] of items) {
@@ -3112,15 +3130,84 @@
     };
     const links = section(parent, 'استكمال إعدادات الحماية');
     for (const [name, url] of [
-      ['Vercel — إعداد الحماية والاستضافة', 'https://vercel.com/dashboard'],
-      ['hCaptcha — حماية المصادقة', 'https://dashboard.hcaptcha.com/'],
+      ['Cloudflare — لوحة إدارة Worker وWAF وTurnstile', 'https://dash.cloudflare.com/'],
+      ['Cloudflare — الموقع المنشور المحمي بالترويسات', 'https://barham-ps-github-io.m0had-b0rh0m.workers.dev/'],
       ['Supabase — إعداد المصادقة', 'https://supabase.com/dashboard/project/vfxxghfmkmgdqrczeowx/auth/providers'],
       ['Supabase — مستشار الأمان', 'https://supabase.com/dashboard/project/vfxxghfmkmgdqrczeowx/advisors/security'],
-      ['GitHub — إعدادات المستودع', 'https://github.com/barham-ps/barham-ps.github.io/settings']
+      ['GitHub — إعدادات المستودع', 'https://github.com/barham-ps/barham-ps.github.io/settings'],
+      ['Supabase — النسخ الاحتياطية', 'https://supabase.com/dashboard/project/vfxxghfmkmgdqrczeowx/database/backups'],
+      ['Supabase — وظائف الخادم وفحص المرفقات', 'https://supabase.com/dashboard/project/vfxxghfmkmgdqrczeowx/functions'],
+      ['Supabase — قوالب البريد والمصادقة', 'https://supabase.com/dashboard/project/vfxxghfmkmgdqrczeowx/auth/templates']
     ]) {
       const a = make('a', links, name); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.className = 'btn btn-ghost';
     }
     return update;
+  }
+
+  function workflowEvidenceState(run, now = Date.now()) {
+    if (!run || !Number.isSafeInteger(run.id) || run.id <= 0) return ['warn','لا يظهر في العينة'];
+    if (run.status !== 'completed') return ['warn','قيد التنفيذ'];
+    if (run.conclusion === 'failure' || run.conclusion === 'timed_out' || run.conclusion === 'action_required') return ['fail','يحتاج تدخلاً'];
+    if (run.conclusion !== 'success') return ['warn','لم يُؤكد النجاح'];
+    const stamp = Date.parse(run.updated_at || run.created_at);
+    if (!Number.isFinite(stamp) || stamp > now + 300000 || now - stamp > 7*86400000) return ['warn','النتيجة قديمة أو غير مؤرخة'];
+    return ['pass','نجح آخر تشغيل'];
+  }
+
+  function mountSecurityEvidence(parent, updateInfrastructure) {
+    const panel=section(parent,'مركز الأدلة الموحد — Cloudflare وGitHub والحماية المتقدمة');
+    make('p',panel,'نتائج تشغيل GitHub العامة للفرع الرئيسي، وليست شهادة أن كل تقنيات الحماية تعمل في الإنتاج. تعرض أحدث ١٠٠ تشغيل فقط؛ غياب نتيجة أو قِدمها لا يُحسب نجاحًا.');
+    const status=make('p',panel,'بانتظار قراءة سجل التشغيل.');status.setAttribute('role','status');
+    const button=action(panel,'تحديث أدلة الحماية',refresh);button.className='btn btn-gold';
+    const list=make('div',panel);
+    const groups=[
+      ['الإصدار وحافة الشبكة',[
+        ['cloudflare-deploy.yml','نشر Cloudflare وفحص الترويسات الست'],['cloudflare-security.yml','فحص Cloudflare المستقل وعزل المسارات'],['cloudflare-transport.yml','دليل TLS / HTTP3 / PQC'],['production-monitor.yml','المراقبة الخارجية'],['production-independent-evidence.yml','سلامة ملفات الإنتاج'],['live-release-evidence.yml','مطابقة الإصدار المنشور'],['release-provenance.yml','دليل منشأ الإصدار'],['@pages','نشر GitHub Pages']]],
+      ['سلامة الكود وسلسلة التوريد',[
+        ['security.yml','فحوص الأمان الأساسية'],['advanced-security.yml','الفحص المتقدم وسلسلة التوريد'],['scorecard.yml','OpenSSF Scorecard'],['@dependabot','Dependabot — مراقبة الاعتماديات'],['upgrade-checks.yml','فحص الترقيات'],['cross-browser.yml','التوافق بين المتصفحات'],['browser-upgrade.yml','فحص تحديث المتصفح']]],
+      ['الحماية الإضافية AEGIS',[
+        ['aegis-defense.yml','مصفوفة الدفاع AEGIS'],['aegis-integrity.yml','سلامة AEGIS المستقلة'],['aegis-generation-three.yml','AEGIS III'],['aegis-absolute.yml','AEGIS IV'],['aegis-guardian.yml','Guardian'],['aegis-nemesis.yml','Nemesis'],['aegis-cosmic.yml','Cosmic Core'],['aegis-atlas-independent.yml','Atlas'],['aegis-axiom-independent.yml','Axiom'],['aegis-eternity-independent.yml','Eternity'],['aegis-horizon-independent.yml','Horizon'],['aegis-neural-independent.yml','Neural'],['aegis-prism-independent.yml','Prism'],['aegis-singularity-independent.yml','Singularity'],['aegis-vault-independent.yml','Vault']]],
+      ['التعافي والحوكمة',[
+        ['recovery-drill.yml','تمرين الاستعادة (ليس استعادة بيانات الإنتاج)'],['resilience-validation.yml','اختبارات المرونة'],['compliance-readiness.yml','أدلة جاهزية الامتثال'],['governance-evidence.yml','أدلة الحوكمة']]]
+    ];
+    const repo='https://github.com/barham-ps/barham-ps.github.io';
+    const keyOf=path=>path==='dynamic/pages/pages-build-deployment'?'@pages':path?.startsWith('dynamic/dependabot/')?'@dependabot':path?.replace(/^\.github\/workflows\//,'').split('@')[0];
+    let lastRead=0;
+    function draw(runs){
+      const latest=new Map();
+      for(const run of runs){const key=keyOf(typeof run?.path==='string'?run.path:'');if(key&&(!latest.has(key)||Date.parse(run.created_at)>Date.parse(latest.get(key).created_at)))latest.set(key,run);}
+      list.replaceChildren();
+      let passed=0,failed=0,unknown=0;
+      for(const [name,entries] of groups){const detail=make('details',list);detail.className='scan-history';detail.open=true;make('summary',detail,name);
+        for(const [key,label] of entries){
+          const run=latest.get(key);const [state,message]=workflowEvidenceState(run);
+          if(state==='pass')passed++;else if(state==='fail')failed++;else unknown++;
+          const row=make('div',detail);row.className='scan-result';const caption=make('div',row);make('strong',caption,label);
+          if(run&&Number.isSafeInteger(run.id)&&run.id>0){const sha=typeof run.head_sha==='string'&&/^[0-9a-f]{40}$/.test(run.head_sha)?run.head_sha.slice(0,7):'—';make('small',caption,formatPortalTime(run.updated_at||run.created_at)+' · '+sha);}
+          const mark=make('span',row,message);mark.className='scan-state '+state;
+          const link=make('a',caption,'فتح الدليل');link.href=run&&Number.isSafeInteger(run.id)&&run.id>0?repo+'/actions/runs/'+run.id:key.startsWith('@')?repo+'/actions':repo+'/actions/workflows/'+key;link.target='_blank';link.rel='noopener noreferrer';link.className='more';
+        }}
+      const deploy=latest.get('cloudflare-deploy.yml'),[edgeState,edgeMessage]=workflowEvidenceState(deploy);
+      updateInfrastructure('cloudflare',edgeState,edgeMessage);
+      const [ciState,ciMessage]=workflowEvidenceState(latest.get('security.yml'));updateInfrastructure('ci',ciState,ciMessage);
+      status.textContent='نتائج حديثة ناجحة: '+securityCount(passed)+' · تحتاج تدخلاً: '+securityCount(failed)+' · غير محسومة: '+securityCount(unknown)+' · آخر قراءة: '+formatPortalTime(new Date());
+    }
+    async function refresh(){
+      if(button.disabled||!panel.isConnected)return;
+      if(Date.now()-lastRead<60000){status.textContent='تمت القراءة قبل أقل من دقيقة؛ انتظر قليلاً لتجنب تجاوز حدود GitHub.';return;}
+      button.disabled=true;status.textContent='جارٍ قراءة نتائج الأدلة…';
+      const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15000);
+      try{
+        lastRead=Date.now();
+        const response=await fetch('https://api.github.com/repos/barham-ps/barham-ps.github.io/actions/runs?branch=main&per_page=100',{credentials:'omit',cache:'no-store',redirect:'error',signal:abort.signal,headers:{Accept:'application/vnd.github+json'}});
+        if(!response.ok)throw Error('Unavailable');
+        const data=await response.json();if(!Array.isArray(data.workflow_runs))throw Error('Invalid data');
+        if(panel.isConnected)draw(data.workflow_runs);
+      }catch(_){if(panel.isConnected){status.textContent='تعذر جلب الأدلة؛ لا يمكن تأكيد النتائج الحالية.';draw([]);status.textContent='تعذر جلب الأدلة؛ النتائج غير مؤكدة. افتح السجلات مباشرة.';}}
+      finally{clearTimeout(timeout);button.disabled=false;}
+    }
+    draw([]);status.textContent='بانتظار قراءة أدلة GitHub.';
+    void refresh();
   }
 
   async function mountSecurityScanner(parent) {
@@ -3187,6 +3274,7 @@
     });
     headerBtn.className = 'btn btn-dark';
     const updateInfrastructure = mountInfrastructureStatus(parent);
+    mountSecurityEvidence(parent, updateInfrastructure);
     const production=section(parent,'المراقبة الخارجية للموقع المنشور');
     make('p',production,'فحص اصطناعي للصفحات العامة وشهادة TLS كل ست ساعات تقريبًا عبر GitHub Actions، دون حسابات أو تتبع الزوار. قد تتأخر الجدولة؛ التحذيرات لا تعني توقف الموقع.');
     const prodMsg=make('p',production,'لم تُقرأ نتيجة الفحص بعد.');prodMsg.setAttribute('role','status');
