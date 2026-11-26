@@ -122,14 +122,25 @@ jobs:
       - name: Verify live request interception
         run: |
           python3 - <<'PY'
-          import http.client, ssl
+          import http.client, ssl, time
           host="barham-ps-github-io.m0had-b0rh0m.workers.dev"
-          for method,path,status,marker in (("GET","/security-firewall-check",204,"active"),("GET","/.env",404,"path-blocked"),("POST","/security-firewall-check",405,"method-blocked")):
-              c=http.client.HTTPSConnection(host,timeout=20,context=ssl.create_default_context())
-              try:
-                  c.request(method,path,headers={"User-Agent":"PortalSecurityMonitor/1.0"})
-                  r=c.getresponse()
-                  assert r.status==status and r.headers.get("X-Family-Guard")==marker, f"{marker} not verified (HTTP {r.status})"
-                  print(marker,"PASS")
-              finally: c.close()
+          checks=(("GET","/security-firewall-check",204,"active"),("GET","/.env",404,"path-blocked"),("POST","/security-firewall-check",405,"method-blocked"))
+          for attempt in range(5):
+              failed=[]
+              for method,path,status,marker in checks:
+                  c=http.client.HTTPSConnection(host,timeout=15,context=ssl.create_default_context())
+                  try:
+                      c.request(method,path,headers={"User-Agent":"PortalSecurityMonitor/1.0","Cache-Control":"no-cache"})
+                      r=c.getresponse()
+                      if r.status==status and r.headers.get("X-Family-Guard")==marker:
+                          print(marker,"PASS")
+                      else:
+                          failed.append(marker)
+                          print(marker,"not verified","HTTP",r.status)
+                  except Exception:
+                      failed.append(marker)
+                  finally: c.close()
+              if not failed: break
+              if attempt==4: raise SystemExit("Live request interception not confirmed: "+", ".join(failed))
+              time.sleep(15)
           PY
