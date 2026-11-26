@@ -3,17 +3,27 @@ Never targets production, authentication, APIs, or private records."""
 import argparse
 import concurrent.futures
 import http.client
+import ssl
 import json
 import math
 import re
 import time
+
+def verified_tls_context():
+    """Explicitly reject obsolete TLS; require hostname and certificate verification."""
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    return context
+
 
 def check_host(host):
     if not re.fullmatch(r"[a-z0-9-]+\.[a-z0-9-]+\.pages\.dev", host):
         raise ValueError("Use an explicit Cloudflare Pages preview hostname (not production)")
 
 def sample(host):
-    conn=http.client.HTTPSConnection(host, timeout=10)
+    conn=http.client.HTTPSConnection(host, timeout=10, context=verified_tls_context())
     start=time.monotonic()
     try:
         conn.request("GET","/portal.css",headers={"User-Agent":"AlBarham-Staging-Baseline/1.0","Accept-Encoding":"gzip"})

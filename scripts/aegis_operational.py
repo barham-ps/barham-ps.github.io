@@ -16,6 +16,15 @@ JSON_LIMIT = 4096
 PROTECTED_RPC = ("family_security_summary", "family_security_scan_history", "family_is_admin")
 HEADERS = {"User-Agent": "PortalSecurityMonitor/1.0", "Accept-Encoding": "identity", "Cache-Control": "no-cache"}
 
+def verified_tls_context():
+    """Explicitly reject obsolete TLS; require hostname and certificate verification."""
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    return context
+
+
 def request(host, path, method="GET", key=None, payload=None, limit=0, read_status=()):
     if host not in (EDGE, API):
         raise ValueError("Unapproved host")
@@ -28,7 +37,7 @@ def request(host, path, method="GET", key=None, payload=None, limit=0, read_stat
     if payload is not None:
         body = json.dumps(payload, separators=(",", ":")).encode()
         headers["Content-Type"] = "application/json"
-    conn = http.client.HTTPSConnection(host, timeout=18, context=ssl.create_default_context())
+    conn = http.client.HTTPSConnection(host, timeout=18, context=verified_tls_context())
     try:
         conn.request(method, path, body=body, headers=headers)
         response = conn.getresponse()
