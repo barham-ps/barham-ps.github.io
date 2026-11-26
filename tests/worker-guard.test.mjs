@@ -35,3 +35,14 @@ test('unavailable rate binding still blocks protected paths',async()=>{
  const x=setup();x.env.ABUSE_LIMIT.limit=async()=>{throw Error('unavailable');};
  assert.equal((await x.probe('/.env')).status,404);assert.equal(x.calls.length,0);
 });
+
+test('internal documents, encoded traversal and pathological decoding never reach assets',async()=>{
+ const x=setup();
+ for(const path of ['/compliance/README.md','/tests/a','/isms/a','/_config.yml','/wrangler.jsonc','/vercel.json','/GOVERNANCE.md','/x/%252e%252e/compliance/a','/%25252egit%25252fconfig','/nested%2f..%2fRECOVERY.md']){
+  const r=await x.probe(path);assert.equal(r.status,404,path);assert.equal(await r.text(),'');
+ }
+ for(const path of ['/%25252525252egit/config','/bad%00path','/%ZZ']){
+  const r=await x.probe(path);assert.equal(r.status,400,path);
+ }
+ assert.ok(!x.calls.some(y=>y[0]==='asset'));
+});

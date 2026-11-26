@@ -1,5 +1,5 @@
 // Live defense for sensitive and unmatched routes. Public static assets remain asset-first.
-const SECRET_PATH = /^\/(?:\.git(?:\/|$)|\.github(?:\/|$)|\.env(?:[./]|$)|database(?:\/|$)|scripts(?:\/|$)|supabase(?:\/|$)|worker(?:\/|$)|backups(?:\/|$)|wp-admin(?:\/|$)|wp-login\.php(?:\/|$))/i;
+const SECRET_PATH = /^\/(?:\.git(?:\/|$)|\.github(?:\/|$)|\.env(?:[./]|$)|database(?:\/|$)|tests(?:\/|$)|compliance(?:\/|$)|isms(?:\/|$)|(?:_config\.yml|wrangler\.jsonc|vercel\.json|[^/]+\.md)(?:\/|$)|scripts(?:\/|$)|supabase(?:\/|$)|worker(?:\/|$)|backups(?:\/|$)|wp-admin(?:\/|$)|wp-login\.php(?:\/|$))/i;
 function blocked(status, label, method) {
   const headers = new Headers({
     "Cache-Control":"no-store",
@@ -15,12 +15,18 @@ function blocked(status, label, method) {
 }
 function pathOf(url) {
   let p = new URL(url).pathname;
-  for (let i=0; i<2; i++) {
+  for (let i=0; i<4; i++) {
     const decoded=decodeURIComponent(p);
     if(decoded===p)break;
     p=decoded;
   }
-  return p.replace(/\\/g,"/").replace(/\/{2,}/g,"/");
+  if (/%[0-9a-f]{2}/i.test(p) || /[\u0000-\u001f\u007f]/.test(p)) throw new Error("ambiguous path");
+  const parts = [];
+  for (const segment of p.replace(/\\/g,"/").split("/")) {
+    if (segment === "..") parts.pop();
+    else if (segment && segment !== ".") parts.push(segment);
+  }
+  return "/" + parts.join("/") + (p.endsWith("/") && parts.length ? "/" : "");
 }
 export default {
   async fetch(request, env) {
