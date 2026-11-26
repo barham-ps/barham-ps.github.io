@@ -733,3 +733,30 @@ test('unused device features are denied consistently while passkeys remain allow
  assert.ok(edge.includes('publickey-credentials-get=(self)'));
  assert.ok(edge.includes('publickey-credentials-create=(self)'));
 });
+
+test('production MFA gate is restrictive and covers private RPCs and storage',()=>{
+ const sql=fs.readFileSync('database/member_mfa_production.sql','utf8');
+ const regression=fs.readFileSync('database/member_mfa_production_regression.sql','utf8');
+ assert.match(sql,/AS RESTRICTIVE FOR ALL TO authenticated/);
+ for (const t of ['member_applications','family_lineage','family_member_requests','family_member_notices','family_member_content','family_profiles']) assert.ok(sql.includes("'"+t+"'"));
+ assert.match(sql,/bucket_id NOT IN \('family-request-files','family-archive'\)/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION family_private\.member_mfa_session_allowed\(\) FROM PUBLIC, anon/);
+ assert.match(sql,/auth\.jwt\(\)->>'aal'='aal2'/);
+ assert.match(sql,/function public\.family_my_certificate\(\)[\s\S]*?where family_private\.member_mfa_session_allowed\(\)/i);
+ assert.match(sql,/function public\.submit_family_application[\s\S]*?not family_private\.member_mfa_session_allowed\(\)/i);
+ assert.match(regression,/AAL1 enrolled member can read profile/);
+ assert.match(regression,/AAL2 isolation failed/);
+ assert.match(regression,/Missing assurance was not denied/);
+ assert.match(sql,/coalesce\(auth\.jwt\(\)->>'aal'='aal2',false\)/);
+ assert.match(regression,/ROLLBACK;\s*$/);
+});
+
+test('genealogy privacy notice and edge cache restrictions are explicit',()=>{
+ const tree=fs.readFileSync('genealogy/index.html','utf8');
+ assert.ok(tree.includes('السجل التاريخي منشور للعامة'));
+ assert.ok(tree.includes('حقوق الخصوصية وطلب الحجب'));
+ assert.match(fs.readFileSync('_headers','utf8'),/\/genealogy\/\*\n  Cache-Control: no-store\n  X-Robots-Tag: noindex, noarchive/);
+ const v=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ assert.ok(v.headers.some(h=>h.source==='/genealogy/(.*)'&&h.headers.some(x=>x.key==='Cache-Control'&&x.value==='no-store')));
+ assert.ok(html.includes('الهدف التشغيلي هو تأكيد الاستلام خلال ٧ أيام'));
+});

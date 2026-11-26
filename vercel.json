@@ -98,6 +98,19 @@
           "value": "no-store"
         }
       ]
+    },
+    {
+      "source": "/genealogy/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, noarchive"
+        }
+      ]
     }
   ]
 }
