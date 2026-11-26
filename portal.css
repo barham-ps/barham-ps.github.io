@@ -1504,7 +1504,7 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
   }
   :root #v-home .family-hero-copy h1 span,:root #v-home :is(.family-kicker,.family-lead),:root #v-home .family-hero-copy .greet{color:var(--royal-accent)}
   :root #v-home :is(.family-description,.family-lead){font-family:var(--royal-ui);line-height:1.8}
-  :root #v-home .family-description{color:var(--royal-hero-text)}
+  :root #v-home .family-hero-copy .family-description{color:var(--royal-hero-text)}
   :root #v-home .family-kicker{font-size:12px;font-weight:600}
   :root #v-home .family-emblem-ring{border-color:var(--royal-line);background:radial-gradient(circle,#174b3a,#0a2b22 77%);box-shadow:0 0 0 10px #c4a56a18,0 10px 22px #0b30252a}
   :root #v-home .home-section-head{border-color:var(--royal-line)}
