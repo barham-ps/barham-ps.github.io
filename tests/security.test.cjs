@@ -71,7 +71,7 @@ test('Arabic search normalizes common orthography and diacritics', () => {
   assert.equal(normalize('مُصطفى'), 'مصطفي');
   assert.equal(normalize(null), '');
 });
-test('Vercel security headers and hCaptcha opt-in configuration', () => {
+test('Vercel security headers and active Turnstile configuration', () => {
   const config = JSON.parse(fs.readFileSync('vercel.json','utf8'));
   const headers = Object.fromEntries(config.headers[0].headers.map(x=>[x.key,x.value]));
   assert.equal(headers['X-Frame-Options'],'DENY');
@@ -80,7 +80,34 @@ test('Vercel security headers and hCaptcha opt-in configuration', () => {
   const env = {window:{}};
   vm.runInNewContext(fs.readFileSync('security-config.js','utf8'), env);
   vm.runInNewContext(fs.readFileSync('captcha.js','utf8'), env);
-  assert.equal(env.window.familyCaptcha.enabled, false);
+  assert.equal(env.window.FAMILY_SECURITY_CONFIG.hcaptchaSiteKey, '');
+  assert.match(env.window.FAMILY_SECURITY_CONFIG.turnstileSiteKey, /^0x4[A-Za-z0-9_-]+$/);
+  assert.equal(env.window.familyCaptcha.enabled, true);
+  assert.equal(env.window.familyCaptcha.provider, 'turnstile');
+  assert.match(headers['Content-Security-Policy'], /https:\/\/challenges\.cloudflare\.com/);
+});
+
+test('CAPTCHA disabled fixture and active Turnstile token lifecycle', async () => {
+  const source = fs.readFileSync('captcha.js','utf8');
+  const disabled = {window:{FAMILY_SECURITY_CONFIG:{hcaptchaSiteKey:'',turnstileSiteKey:''}}};
+  vm.runInNewContext(source, disabled);
+  assert.equal(disabled.window.familyCaptcha.enabled, false);
+  assert.equal(await disabled.window.familyCaptcha.token({}), undefined);
+  let callbacks, resets = 0;
+  const form = {insertBefore(){},querySelector(){return null;}};
+  const env = {window:{FAMILY_SECURITY_CONFIG:{turnstileSiteKey:'fixture-key'},turnstile:{render(container, options){callbacks=options;return 1;},reset(){resets++;}}},document:{createElement(){return {setAttribute(){}};}}};
+  vm.runInNewContext(source,env);
+  await env.window.familyCaptcha.prepare(form);
+  assert.equal(callbacks.sitekey, 'fixture-key');
+  await assert.rejects(env.window.familyCaptcha.token(form), /التحقق الأمني/);
+  callbacks.callback('fixture-token');
+  assert.equal(await env.window.familyCaptcha.token(form), 'fixture-token');
+  await assert.rejects(env.window.familyCaptcha.token(form), /التحقق الأمني/);
+  callbacks.callback('expired-token');
+  callbacks['expired-callback']();
+  await assert.rejects(env.window.familyCaptcha.token(form), /التحقق الأمني/);
+  env.window.familyCaptcha.reset(form);
+  assert.equal(resets, 1);
 });
 
 test('pinned external libraries carry SRI and anonymous CORS', () => {
