@@ -37,6 +37,14 @@ jobs:
           errors = []
           for path in ("/", "/index.html"):
               status, h = probe(path)
+              if path == "/index.html" and status in (301, 302, 307, 308):
+                  # Workers static assets canonicalize index.html to the directory URL.
+                  # Accept only the exact same-origin HTTPS root, never arbitrary redirects.
+                  location = h.get("location", "")
+                  if location not in ("/", f"https://{host}/"):
+                      errors.append(f"{path}: unexpected redirect destination")
+                  else:
+                      status, h = probe("/")
               if status != 200:
                   errors.append(f"{path}: HTTP {status}")
               for key in ("content-security-policy", "strict-transport-security", "x-frame-options", "x-content-type-options", "referrer-policy", "permissions-policy", "cross-origin-opener-policy"):
