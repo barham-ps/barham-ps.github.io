@@ -87,7 +87,7 @@
   // Explicit entry via query string works even in browsers that strip URL fragments.
   var requestedPage = new URLSearchParams(location.search).get('page');
   if (['register', 'certificate', 'login', 'account', 'admin', 'member-hub', 'member-services-admin', 'reset',
-      'news-admin', 'martyrs-admin', 'mfa', 'security'
+      'news-admin', 'martyrs-admin', 'mfa', 'security', 'correspondence', 'correspondence-admin'
     ].includes(requestedPage) && !/access_token=|error=|code=/.test(location.hash)) {
     var entry = new URL(location.href);
     entry.searchParams.delete('page');
@@ -193,6 +193,7 @@
     $('#member-number').textContent = q.data?.membership_number || 'لم يصدر بعد';
     $('#member-certificate').hidden = q.data?.status !== 'approved';
     hubLink.hidden = q.data?.status !== 'approved';
+    mailShortcut.hidden = q.data?.status !== 'approved';
     memberQuick.hidden = q.data?.status !== 'approved';
     if(q.data?.full_name)$('#member-welcome').textContent='أهلًا بك، '+q.data.full_name;
     if (q.data?.status === 'approved') {
@@ -319,7 +320,7 @@
       var next = sessionStorage.getItem('family_after_login');
       sessionStorage.removeItem('family_after_login');
       location.hash = ['certificate', 'admin', 'member-hub', 'member-services-admin', 'news-admin', 'martyrs-admin', 'mfa',
-        'security'
+        'security', 'correspondence', 'correspondence-admin'
       ].includes(next) ? next : 'account';
     } catch (err) {
       show('#l-msg', 'تعذر الدخول. تحقق من البيانات والاتصال وتأكيد البريد الإلكتروني.', 1);
@@ -508,6 +509,7 @@
     }
     dashboardLink(adminNavigation,'#martyrs-admin','إدارة الشهداء والصور','السجل ومعارض الصور','heart');
     const inboxLink=dashboardLink(adminNavigation,'#member-services-admin','الطلبات والرسائل','الشكاوى والمساهمات والردود','inbox');inboxLink.dataset.adminService='requests';
+    dashboardLink(adminNavigation,'#correspondence-admin','إدارة المراسلات','صناديق الأقسام الأربعة والردود','inbox');
     dashboardLink(adminNavigation,'#security','الإعدادات والأمان','التحقق الثنائي وسجل العمليات','shield');
     dashboardLink(adminNavigation,'#account','حسابي','العودة إلى حساب العضو','user');
     adminNavigation.hidden=false;
@@ -1018,6 +1020,7 @@
   certShortcut.href = '#certificate';
   certShortcut.className = 'btn btn-dark';
   certShortcut.hidden = true;
+  const mailShortcut=make('a',accountLinks,'مراسلاتي');mailShortcut.href='#correspondence';mailShortcut.className='btn btn-dark';mailShortcut.hidden=true;
   var adminShortcut = make('a', accountLinks, 'لوحة الإدارة');
   adminShortcut.href = '#admin';
   adminShortcut.className = 'btn btn-dark';
@@ -2467,8 +2470,136 @@
     }
   }
 
+
+  // Private correspondence: uses the existing verified session, MFA and RLS.
+  const mailDepartments = {info:'الاستفسارات العامة',admin:'إدارة الموقع',contact:'التواصل والمقترحات',support:'الدعم الفني'};
+  const mailStatuses = {new:'جديدة',read:'مقروءة',answered:'تم الرد',closed:'مغلقة'};
+  const mailMember = newView('correspondence','مركز المراسلات');
+  const mailAdmin = newView('correspondence-admin','إدارة المراسلات');
+  let mailEpoch = 0;
+  function clearMail(){
+    mailEpoch++;
+    for(const host of [mailMember,mailAdmin]){
+      host.querySelectorAll('.mail-private').forEach(el=>el.remove());
+    }
+  }
+  window.addEventListener('hashchange',clearMail);
+  async function loadMail(isAdmin){
+    clearMail();
+    const routeName=isAdmin?'#correspondence-admin':'#correspondence';
+    const actor=recoveredSession?.user.id, epoch=mailEpoch;
+    const current=()=>location.hash===routeName && mailEpoch===epoch && !!actor && recoveredSession?.user.id===actor;
+    if(!current())return;
+    const root=make('div',isAdmin?mailAdmin:mailMember);
+    root.className='mail-private';
+    const back=make('a',root,isAdmin?'العودة إلى لوحة الإدارة':'العودة إلى حسابي');
+    back.href=isAdmin?'#admin':'#account';back.className='btn btn-ghost';
+    const notice=make('p',root,'جارٍ التحقق من الصلاحية…');notice.setAttribute('role','status');
+    try{
+      if(isAdmin){
+        const allowed=ok(await client().rpc('family_is_admin'));
+        if(!current())return;
+        if(allowed!==true){notice.textContent='هذه الصفحة للمشرف المخوّل بعد التحقق الثنائي فقط.';return;}
+      }else{
+        const membership=ok(await client().from('member_applications').select('status').eq('auth_user_id',actor).maybeSingle());
+        if(!current())return;
+        if(membership?.status!=='approved'){notice.textContent='إرسال المراسلات متاح للأعضاء المعتمدين فقط.';return;}
+      }
+      notice.textContent=isAdmin?'الرسائل الواردة من الأعضاء. اختر القسم والحالة لمتابعة المراسلات.':'راسل الأقسام الأربعة وتابع الردود هنا. هذه مراسلات داخل الموقع وليست بريدًا إلكترونيًا خارجيًا.';
+      if(!isAdmin){
+        const card=make('div',root);card.className='card';
+        make('h2',card,'رسالة جديدة');
+        const f=make('form',card);
+        const dep=selectField(f,'القسم','department',mailDepartments);
+        const subj=field(f,'الموضوع','subject','text',150);subj.required=true;subj.minLength=3;
+        const body=field(f,'نص الرسالة','body','textarea',4000);body.required=true;body.minLength=10;body.rows=5;
+        make('p',f,'ستُحفظ الرسالة لدى الإدارة. لا ترسل كلمات المرور أو البيانات المالية.');
+        const send=make('button',f,'إرسال الرسالة');send.type='submit';send.className='btn btn-gold';
+        const msg=make('p',f);msg.setAttribute('role','status');
+        f.addEventListener('submit',async e=>{
+          e.preventDefault();
+          if(!current()||send.disabled)return;
+          const subject=subj.value.trim(),message=body.value.trim();
+          if(subject.length<3||message.length<10){msg.textContent='أدخل موضوعًا من ٣ أحرف ورسالة من ١٠ أحرف على الأقل.';return;}
+          send.disabled=true;msg.textContent='جارٍ الإرسال…';
+          try{
+            ok(await client().from('family_correspondence').insert({department:dep.value,subject,body:message}));
+            if(current()){f.reset();msg.textContent='تم إرسال الرسالة بنجاح. تابع الرد أدناه.';await refresh(true);}
+          }catch{if(current())msg.textContent='تعذر الإرسال. تحقق من الاتصال وصلاحية العضوية.';}
+          finally{if(current())send.disabled=false;}
+        });
+      }
+      const inbox=make('div',root);inbox.className='card';
+      make('h2',inbox,isAdmin?'صندوق الوارد':'مراسلاتي والردود');
+      const filters=make('div',inbox);filters.className='row';
+      const department=selectField(filters,'القسم','mail-filter',{all:'كل الأقسام',...mailDepartments});
+      const status=selectField(filters,'الحالة','mail-status',{all:'كل الحالات',...mailStatuses});
+      const list=make('div',inbox);
+      const state=make('p',inbox);state.setAttribute('role','status');
+      const actions=make('div',inbox);actions.className='row';
+      const refreshButton=action(actions,'تحديث الرسائل',()=>refresh(true));
+      const prev=action(actions,'السابق',()=>{if(offset>=20){offset-=20;refresh(false);}});
+      const next=action(actions,'التالي',()=>{offset+=20;refresh(false);});
+      let offset=0,seq=0;
+      department.onchange=status.onchange=()=>refresh(true);
+      async function refresh(reset){
+        if(!current())return;
+        if(reset)offset=0;
+        const version=++seq, active=()=>current()&&version===seq;
+        list.replaceChildren();state.textContent='جارٍ تحميل المراسلات…';
+        prev.disabled=next.disabled=refreshButton.disabled=true;
+        try{
+          let q=client().from('family_correspondence').select('id,department,subject,body,reply,status,created_at',{count:'exact'});
+          if(!isAdmin)q=q.eq('user_id',actor);
+          if(department.value!=='all')q=q.eq('department',department.value);
+          if(status.value!=='all')q=q.eq('status',status.value);
+          const result=await q.order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+19);
+          const rows=ok(result)||[];
+          if(!active())return;
+          state.textContent=rows.length?'عرض '+(offset+1)+'–'+(offset+rows.length)+' من '+(result.count??rows.length):'لا توجد مراسلات مطابقة.';
+          prev.disabled=offset===0;next.disabled=result.count===null?rows.length<20:offset+rows.length>=result.count;
+          for(const item of rows){
+            const article=make('article',list);article.className='card';
+            make('span',article,mailDepartments[item.department]+' • '+mailStatuses[item.status]).className='eyebrow';
+            make('h3',article,item.subject);
+            make('p',article,formatPortalTime(item.created_at));
+            const body=make('p',article,item.body);body.style.whiteSpace='pre-wrap';body.style.overflowWrap='anywhere';
+            if(!isAdmin){
+              make('h4',article,'رد الإدارة');
+              const reply=make('p',article,item.reply||'بانتظار الرد');reply.style.whiteSpace='pre-wrap';reply.style.overflowWrap='anywhere';
+              continue;
+            }
+            const form=make('form',article);
+            const reply=field(form,'رد الإدارة','reply','textarea',4000);reply.value=item.reply||'';reply.rows=4;
+            const statusEdit=selectField(form,'تغيير الحالة','status',mailStatuses);statusEdit.value=item.status;
+            const save=make('button',form,'حفظ الرد والحالة');save.type='submit';save.className='btn btn-gold';
+            const feedback=make('p',form);feedback.setAttribute('role','status');
+            form.addEventListener('submit',async e=>{
+              e.preventDefault();if(!active()||save.disabled)return;
+              const answer=reply.value.trim();
+              if(statusEdit.value==='answered'&&!answer){feedback.textContent='اكتب الرد قبل تحديد حالة تم الرد.';return;}
+              save.disabled=true;
+              try{
+                const updated=ok(await client().from('family_correspondence').update({reply:answer||null,status:answer&&['new','read'].includes(statusEdit.value)?'answered':statusEdit.value}).eq('id',item.id).select('id').single());
+                if(!updated?.id)throw Error('Update rejected');
+                if(active()){feedback.textContent='تم حفظ الرد والحالة.';await refresh(false);}
+              }catch{if(active())feedback.textContent='تعذر الحفظ. تحقق من الاتصال وصلاحية الإدارة.';}
+              finally{if(active())save.disabled=false;}
+            });
+          }
+        }catch{if(active())state.textContent='تعذر تحميل المراسلات. أعد المحاولة.';}
+        finally{if(active())refreshButton.disabled=false;}
+      }
+      await refresh(true);
+    }catch{if(current())notice.textContent='تعذر التحقق من الصلاحية أو الاتصال. أعد فتح الصفحة.';}
+  }
+
   function extraRoute() {
     var nh = location.hash;
+    if (['#correspondence','#correspondence-admin'].includes(nh)) {
+      if(authReady) guardPrivate(()=>loadMail(nh==='#correspondence-admin'));
+      return;
+    }
     if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate', '#mfa',
         '#security'
       ].includes(nh) && !authReady) return;
@@ -3430,7 +3561,7 @@
 
   function markDock() {
     var r = (location.hash || '#home').slice(1).split('/')[0];
-    if (['login','register','reset','member-hub','member-services-admin','news-admin','martyrs-admin','admin','certificate','verify','membership','security','mfa','card'].includes(r)) r = 'account';
+    if (['login','register','reset','member-hub','member-services-admin','news-admin','martyrs-admin','admin','certificate','verify','membership','security','mfa','card','correspondence','correspondence-admin'].includes(r)) r = 'account';
     if (['history','heritage','archive','stories'].includes(r)) r = 'tree';
     if (r === 'events') r = 'news';
     Array.from(dock.querySelectorAll('a')).forEach(a => {
@@ -3468,6 +3599,7 @@
     recoveredSession = null;
 
   function clearPrivate() {
+    clearMail();mailShortcut.hidden=true;
     securityEpoch++;stopSecurityRefresh();
     hubNavigate=null;activeHubGroup='overview';activeServicePanel='requests';memberQuick.hidden=true;
     hubBody.replaceChildren();
@@ -3528,7 +3660,7 @@
       if (event === 'SIGNED_OUT') {
         clearPrivate();
         if (['#account', '#admin', '#member-hub', '#member-services-admin', '#news-admin', '#martyrs-admin', '#certificate',
-            '#security', '#mfa'
+            '#security', '#mfa', '#correspondence', '#correspondence-admin'
           ].includes(location.hash)) location.hash = 'home';
       }
       if (event === 'SIGNED_IN' && location.hash === '#login') setTimeout(() => {
