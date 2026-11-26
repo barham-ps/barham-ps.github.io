@@ -722,3 +722,14 @@ test('Cloudflare deployment paths cover every published asset',()=>{
  const excluded=config.split('exclude:\n')[1].split('\n\n')[0].split('\n').map(line=>line.trim().replace(/^-\s*/,''));
  for(const name of fs.readdirSync('.').filter(name=>name.endsWith('.md'))) assert.ok(excluded.includes(name),'Public build exclusion missing: '+name);
  });
+
+test('unused device features are denied consistently while passkeys remain allowed',()=>{
+ const edge=fs.readFileSync('_headers','utf8').match(/^  Permissions-Policy: (.+)$/m)[1];
+ const vercel=JSON.parse(fs.readFileSync('vercel.json','utf8')).headers[0].headers.find(h=>h.key==='Permissions-Policy').value;
+ assert.equal(edge,vercel);
+ for(const feature of ['payment','usb','serial','hid','display-capture','accelerometer','gyroscope','magnetometer']){
+  assert.ok(edge.split(', ').includes(feature+'=()'),feature);
+ }
+ assert.ok(edge.includes('publickey-credentials-get=(self)'));
+ assert.ok(edge.includes('publickey-credentials-create=(self)'));
+});

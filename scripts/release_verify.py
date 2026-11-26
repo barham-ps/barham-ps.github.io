@@ -10,8 +10,17 @@ import ssl
 HOST="barham-ps.github.io"
 MAX_BYTES=1024*1024
 
+def verified_tls_context():
+    """Explicitly reject obsolete TLS; require hostname and certificate verification."""
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    return context
+
+
 def fetch(host,path):
-    conn=http.client.HTTPSConnection(host,timeout=15,context=ssl.create_default_context())
+    conn=http.client.HTTPSConnection(host,timeout=15,context=verified_tls_context())
     try:
         conn.request("GET",path,headers={"User-Agent":"AlBarham-Release-Check/1.0",
                      "Accept-Encoding":"identity","Cache-Control":"no-cache"})

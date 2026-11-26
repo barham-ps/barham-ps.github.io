@@ -114,7 +114,7 @@ jobs:
                       "HSTS": bool(hsts and int(hsts.group(1)) >= 31536000),
                       "MIME": h.get("X-Content-Type-Options", "").lower() == "nosniff",
                       "Referrer": h.get("Referrer-Policy", "").lower() == "no-referrer",
-                      "Permissions": all(re.search(r"(?:^|,)\s*" + f + r"\s*=\s*\(\s*\)\s*(?:,|$)", policy) for f in ("camera", "microphone", "geolocation")),
+                      "Permissions": all(re.search(r"(?:^|,)\s*" + f + r"\s*=\s*\(\s*\)\s*(?:,|$)", policy) for f in ("camera", "microphone", "geolocation", "payment", "usb", "serial", "hid", "display-capture", "accelerometer", "gyroscope", "magnetometer")),
                   }
                   for key, passed in checks.items():
                       print(key, "PASS" if passed else "FAIL")

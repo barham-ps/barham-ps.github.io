@@ -17,8 +17,17 @@ PAGES = {"/": "آل برهم", "/trust/": "مركز الثقة والأمان ا
          "/martyrs/Barham_Martyrs_Register.html": 'name="robots" content="noindex, follow"'}
 MAX_BYTES = 400_000
 
-def get(path, host=HOST):
+def verified_tls_context():
+    """Explicitly reject obsolete TLS; require hostname and certificate verification."""
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    return context
+
+
+def get(path, host=HOST, *, read_body=True):
+    context = verified_tls_context()
     conn = http.client.HTTPSConnection(host, timeout=20, context=context)
     try:
         started = time.monotonic()
@@ -27,7 +36,10 @@ def get(path, host=HOST):
         cert["tls_protocol"] = conn.sock.version()
         conn.request("GET", path, headers={"User-Agent": "AlBarham-Public-Health-Monitor/1.0", "Accept": "*/*"})
         response = conn.getresponse()
-        body = response.read(MAX_BYTES).decode("utf-8", errors="replace")
+        raw = response.read(MAX_BYTES + 1) if read_body else b""
+        if len(raw) > MAX_BYTES:
+            raise ValueError("Public response exceeds read budget")
+        body = raw.decode("utf-8", errors="replace")
         return response.status, {k.lower(): v for k, v in response.getheaders()}, body, round((time.monotonic()-started)*1000), cert
     finally:
         conn.close()
@@ -66,6 +78,8 @@ def main():
                     failures.append("Homepage CSP meta policy missing")
                 expires = ssl.cert_time_to_seconds(cert["notAfter"])
                 days = int((expires-time.time())/86400)
+                if cert.get("tls_protocol") not in ("TLSv1.2", "TLSv1.3"):
+                    failures.append("Unexpected negotiated TLS protocol")
                 if days < 14:
                     failures.append("TLS certificate expiry below 14 days")
                 results.append({"tls_certificate_days_remaining": days,
@@ -76,7 +90,7 @@ def main():
             failures.append(path + ": " + type(exc).__name__)
     for path in ["/database/verify_access.sql", "/scripts/production_monitor.py", "/tests/security.test.cjs", "/supabase/functions/scan-request-attachment/index.ts", "/isms/README.md"]:
         try:
-            status, _, _, elapsed, _ = get(path, args.host)
+            status, _, _, elapsed, _ = get(path, args.host, read_body=False)
             results.append({"path": path, "status": status, "milliseconds": elapsed, "excluded": status == 404})
             if status != 404:
                 failures.append(path + ": development asset must not be published")

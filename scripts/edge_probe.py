@@ -2,6 +2,7 @@
 import argparse
 import gzip
 import http.client
+import ssl
 import json
 import re
 import sys
@@ -11,12 +12,21 @@ ASSET = "/portal.css"
 MAX_WIRE = 1024 * 1024
 MAX_DECODED = 2 * 1024 * 1024
 
+def verified_tls_context():
+    """Explicitly reject obsolete TLS; require hostname and certificate verification."""
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    return context
+
+
 def request(host, encoding, etag=None):
     headers = {"Accept-Encoding": encoding, "User-Agent": "AlBarham-Edge-Probe/1.0"}
     if etag:
         headers["If-None-Match"] = etag
     start = time.monotonic()
-    conn = http.client.HTTPSConnection(host, timeout=15)
+    conn = http.client.HTTPSConnection(host, timeout=15, context=verified_tls_context())
     try:
         conn.request("GET", ASSET, headers=headers)
         res = conn.getresponse()

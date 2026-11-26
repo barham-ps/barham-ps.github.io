@@ -13,7 +13,8 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -m 700 "$work/socket"
-export PGHOST="$work/socket" PGPORT=55432 PGUSER="$(id -un)"
+PGUSER="$(id -un)"
+export PGHOST="$work/socket" PGPORT=55432 PGUSER
 unset PGDATABASE PGHOSTADDR PGSERVICE PGSERVICEFILE PGPASSWORD PGOPTIONS
 "$bin/initdb" -D "$work/db" --auth=trust --no-locale --encoding=UTF8 >/dev/null
 "$bin/pg_ctl" -D "$work/db" -l "$work/server.log" -o "-c listen_addresses='' -k $work/socket -p $PGPORT" -w start >/dev/null
