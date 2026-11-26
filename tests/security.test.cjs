@@ -775,7 +775,7 @@ test('V96 official family endorsement, privacy intake, and security contact stay
  assert.match(trust,/WebAuthn \/ FIDO2 غير مفعّلة/);
  const disclosure=fs.readFileSync('.well-known/security.txt','utf8');
  const contact=disclosure.match(/^Contact: mailto:(.+)$/m)[1];
- assert.equal(contact,'albarham.inc@hotmail.com');
+ assert.equal(contact,'albarham.inc@yahoo.com');
  assert.ok(html.includes('mailto:'+contact+'?subject='));
  assert.ok(fs.readFileSync('SECURITY.md','utf8').includes(contact));
  assert.ok(fs.readFileSync('.github/workflows/iso-operational-evidence.yml','utf8').includes('mailto:'+contact+'?subject='));

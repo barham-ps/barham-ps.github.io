@@ -47,7 +47,7 @@ jobs:
           end=text.index('</section>',start)
           parser.feed(text[start:end])
           assert any(a.get('href')=='#member-hub' and a.get('data-hub-target')=='requests' for a in parser.links)
-          assert any(unquote(a.get('href',''))=='mailto:albarham.inc@hotmail.com?subject=طلب حقوق الخصوصية' for a in parser.links)
+          assert any(unquote(a.get('href',''))=='mailto:albarham.inc@yahoo.com?subject=طلب حقوق الخصوصية' for a in parser.links)
           assert 'إرسال الطلب ليس حذفًا تلقائيًا' in text[start:end]
           assert 'لا ترسل كلمة مرور أو رمز تحقق' in text[start:end]
           config=Path('_config.yml').read_text()

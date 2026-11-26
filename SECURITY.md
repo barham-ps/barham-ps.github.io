@@ -1,6 +1,6 @@
 # Security policy
 
-Report suspected vulnerabilities privately using the family portal's official contact email: albarham.inc@hotmail.com. Do not publish member records, credentials, tokens or proof-of-concept material containing personal data in public issues.
+Report suspected vulnerabilities privately using the family portal's official contact email: albarham.inc@yahoo.com. Do not publish member records, credentials, tokens or proof-of-concept material containing personal data in public issues.
 
 The supported production version is the current main branch. Test only systems you own or have explicit authorization to test, without accessing other members' data or disrupting service.
 

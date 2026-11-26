@@ -77,7 +77,7 @@ Deno.serve(async(req:Request)=>{
      return response(200,{job_id:body.job_id,graph_body});
     }catch{await rpc('family_auth_mail_finish',{p_job:body.job_id,p_outcome:'failed'});return response(422,{error:'Job invalid'});}
    }
-   const to=job.audience==='admin'?'albarham.inc@hotmail.com':job.recipient_email;
+   const to=job.audience==='admin'?'albarham.inc@yahoo.com':job.recipient_email;
    try{
     if(!email(to)||!uuid(job.source_id))throw Error('Invalid recipient');
     const rendered=job.template_key==='admin_delivery_test'&&job.audience==='admin'?renderDeliveryTest():renderEvent(job.template_key,job.source_id);
