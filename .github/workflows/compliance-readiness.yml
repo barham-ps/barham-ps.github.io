@@ -19,16 +19,30 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          for name in ('README','CONTROL-MATRIX','RISK-REGISTER','POLICIES','AUDIT-PLAN','EVIDENCE'):
+          for name in ('README','CONTROL-MATRIX','RISK-REGISTER','POLICIES','AUDIT-PLAN','EVIDENCE','INTEGRATED-ISO'):
               assert Path('compliance',name+'.md').stat().st_size > 0
           matrix=Path('compliance/CONTROL-MATRIX.md').read_text()
-          for i in range(1,17):
+          for i in range(1,21):
               assert f'| C{i:02d} |' in matrix
           assert 'not certification' in Path('compliance/README.md').read_text()
-          print('Readiness document inventory verified; not a conformity audit.')
+          integrated=Path('compliance/INTEGRATED-ISO.md').read_text()
+          trust=Path('trust/index.html').read_text()
+          standards=('ISO/IEC 27001:2022','ISO/IEC 27701:2025','ISO 22301:2019','ISO 9001:2026','ISO/IEC 27017:2026')
+          for standard in standards:
+              assert standard in integrated and standard in trust, standard
+          for prefix in ('IS','PI','BC','QM','CL'):
+              for i in range(1,4):
+                  assert f'| {prefix}{i:02d} |' in integrated
+          assert 'no independent certification' in integrated
+          assert 'قيد الإعداد — غير معتمد' in trust
+          assert 'لا توجد شهادة رسمية أو رقم اعتماد' in trust
+          assert 'ضوابط استرشادية' in trust
+          print('Five ISO readiness standards and 15 evidence gates verified; not a conformity audit.')
           PY
       - name: Verify compliance records excluded from static release
         run: |
           sh scripts/build-pages.sh
           test ! -e dist/compliance
           test ! -e dist/SECURITY-GOVERNANCE.md
+          test ! -e dist/isms
+          cmp trust/index.html dist/trust/index.html
