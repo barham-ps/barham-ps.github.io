@@ -3170,7 +3170,7 @@
       ['الحماية الإضافية AEGIS',[
         ['aegis-defense.yml','مصفوفة الدفاع AEGIS'],['aegis-integrity.yml','سلامة AEGIS المستقلة'],['aegis-generation-three.yml','AEGIS III'],['aegis-absolute.yml','AEGIS IV'],['aegis-guardian.yml','Guardian'],['aegis-nemesis.yml','Nemesis'],['aegis-cosmic.yml','Cosmic Core'],['aegis-atlas-independent.yml','Atlas'],['aegis-axiom-independent.yml','Axiom'],['aegis-eternity-independent.yml','Eternity'],['aegis-horizon-independent.yml','Horizon'],['aegis-neural-independent.yml','Neural — قياس شذوذ أزمنة CI (لا يرصد الهجمات)'],['aegis-prism-independent.yml','Prism'],['aegis-singularity-independent.yml','Singularity'],['aegis-vault-independent.yml','Vault — تدقيق صلاحيات سير العمل (لا يدير الأسرار)']]],
       ['التعافي والحوكمة',[
-        ['recovery-drill.yml','تمرين الاستعادة (ليس استعادة بيانات الإنتاج)'],['resilience-validation.yml','اختبارات المرونة'],['compliance-readiness.yml','أدلة جاهزية الامتثال'],['governance-evidence.yml','أدلة الحوكمة']]]
+        ['recovery-drill.yml','تمرين الاستعادة (ليس استعادة بيانات الإنتاج)'],['resilience-validation.yml','اختبارات المرونة'],['compliance-readiness.yml','أدلة جاهزية الامتثال'],['iso-operational-evidence.yml','أدلة ISO التشغيلية (ليست شهادة اعتماد)'],['governance-evidence.yml','أدلة الحوكمة']]]
     ];
     const repo='https://github.com/barham-ps/barham-ps.github.io';
     const keyOf=path=>path==='dynamic/pages/pages-build-deployment'?'@pages':path?.startsWith('dynamic/dependabot/')?'@dependabot':path?.replace(/^\.github\/workflows\//,'').split('@')[0];
