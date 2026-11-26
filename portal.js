@@ -988,7 +988,7 @@
       if(!current())return;
       verifyBody.replaceChildren();
       if (q.error) {
-        make('p', verifyBody, 'تعذر التحقق الآن.');
+        make('p', verifyBody, q.error.code==='PT429'||q.status===429?'تم تجاوز حد التحقق مؤقتًا. أعد المحاولة بعد دقيقة.':'تعذر التحقق الآن.');
         return;
       }
       if (!q.data.length) {
@@ -3105,7 +3105,8 @@
       ['data','RLS / RBAC / تخزين خاص','فحص مباشر للجداول والسجلات الخاصة ودوال الإدارة ومخازن الملفات.','warn','بانتظار الفحص'],
       ['ci','DevSecOps / فحوص الكود / SRI','يُقرأ آخر تشغيل للفرع الرئيسي من GitHub؛ راجع تفاصيل المهام.','warn','بانتظار النتيجة'],
       ['runtime','AEGIS Operational — حماية حية','مراقبة يومية لترويسات Cloudflare والمسارات المحظورة ورفض الوصول المجهول لإدارة Supabase ورفض الدخول بلا CAPTCHA. لا تشمل حسابات حقيقية.','warn','بانتظار النتيجة'],
-      ['cloudflare','Cloudflare Worker / HTTP Headers','النتيجة من مهمة النشر التي تفحص الترويسات الست وتطابق إعدادات الأمان؛ لا تثبت تفعيل WAF.','warn','بانتظار النتيجة'],
+      ['membership-rate','حد التحقق من أرقام العضوية','يفرض خادم قاعدة البيانات ٦٠ محاولة بالدقيقة لكل مصدر؛ اختبار معزول أثبت منع المحاولة ٦١. لا تُخزّن عناوين IP الخام. لا ينطبق على رمز QR العشوائي.','neutral','اختُبر بالخادم'],
+      ['cloudflare','Cloudflare Worker / اعتراض الطلبات','النتيجة من مهمة النشر التي تفحص الترويسات الست وحجب مسارات خاصة ورفض طرق HTTP غير المسموحة؛ لا تثبت تفعيل Managed WAF.','warn','بانتظار النتيجة'],
       ['edge','WAF / WAAP / DDoS / Bot Management','نشر Worker وترويسات HTTP منفصل عن إثبات قواعد WAF. نطاق github.io لا يخضع لمنطقة Cloudflare خاصة بك، وواجهة Supabase تحتاج حماية مستقلة.','warn','غير مؤكد'],
       ['captcha','CAPTCHA (hCaptcha / Turnstile)',window.familyCaptcha.enabled ? 'مفتاح عام موجود؛ يلزم إثبات فرض CAPTCHA في Auth.' : 'التكامل جاهز برمجيًا؛ لا يوجد مفتاح موقع مفعّل.','warn',window.familyCaptcha.enabled ? 'بانتظار التحقق' : 'غير مفعّل'],
       ['passkeys','Passkeys / FIDO2','تم تجهيز تسجيل مفتاح المرور والدخول به؛ يلزم تفعيل Supabase وتحديد نطاق WebAuthn واختبار الاستعادة.','warn','غير مفعّل'],

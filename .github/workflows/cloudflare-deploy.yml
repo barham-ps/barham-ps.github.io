@@ -9,6 +9,8 @@ on:
       - 'captcha.js'
       - '_headers'
       - 'wrangler.jsonc'
+      - 'worker/guard.mjs'
+      - 'tests/worker-guard.test.mjs'
       - 'scripts/build-pages.sh'
       - 'scripts/validate_public_build.py'
       - 'tests/security.test.cjs'
@@ -32,7 +34,7 @@ jobs:
       - name: Build allowlisted static assets
         run: sh scripts/build-pages.sh
       - name: Run security regression before deployment
-        run: node --test tests/security.test.cjs
+        run: node --test tests/security.test.cjs tests/worker-guard.test.mjs
       - name: Deploy to existing Cloudflare Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,4 +118,18 @@ jobs:
               if attempt == 4:
                   raise SystemExit("Live security verification failed")
               time.sleep(15)
+          PY
+      - name: Verify live request interception
+        run: |
+          python3 - <<'PY'
+          import http.client, ssl
+          host="barham-ps-github-io.m0had-b0rh0m.workers.dev"
+          for method,path,status,marker in (("GET","/security-firewall-check",204,"active"),("GET","/.env",404,"path-blocked"),("POST","/security-firewall-check",405,"method-blocked")):
+              c=http.client.HTTPSConnection(host,timeout=20,context=ssl.create_default_context())
+              try:
+                  c.request(method,path,headers={"User-Agent":"PortalSecurityMonitor/1.0"})
+                  r=c.getresponse()
+                  assert r.status==status and r.headers.get("X-Family-Guard")==marker, f"{marker} not verified (HTTP {r.status})"
+                  print(marker,"PASS")
+              finally: c.close()
           PY

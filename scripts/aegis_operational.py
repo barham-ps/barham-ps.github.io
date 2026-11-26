@@ -41,9 +41,10 @@ def request(host, path, method="GET", key=None, payload=None, limit=0, read_stat
 
 def public_key(source):
     keys = re.findall(r"createClient\(\s*['\"]https://"+re.escape(API)+r"['\"]\s*,\s*['\"](sb_publishable_[A-Za-z0-9_-]+)['\"]", source)
+    keys = set(keys)
     if len(keys) != 1:
         raise ValueError("Expected exactly one publishable key for owned project")
-    return keys[0]
+    return next(iter(keys))
 
 def header_checks(status, h):
     csp = h.get("content-security-policy", "")

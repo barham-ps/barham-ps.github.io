@@ -2,7 +2,21 @@
   "name": "barham-ps-github-io",
   "compatibility_date": "2026-11-23",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/.git/*",
+      "/.github/*",
+      "/.env*",
+      "/database/*",
+      "/scripts/*",
+      "/supabase/*",
+      "/worker/*",
+      "/backups/*",
+      "/wp-admin/*",
+      "/wp-login.php",
+      "/security-firewall-check"
+    ]
   },
   "observability": {
     "enabled": true,
@@ -11,5 +25,16 @@
       "enabled": true,
       "invocation_logs": false
     }
-  }
+  },
+  "main": "worker/guard.mjs",
+  "ratelimits": [
+    {
+      "name": "ABUSE_LIMIT",
+      "namespace_id": "621126",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ]
 }

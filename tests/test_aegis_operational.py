@@ -6,7 +6,8 @@ class OperationalTests(unittest.TestCase):
     def test_public_key_is_restricted_to_owned_project_and_publishable_key(self):
         source = "createClient('https://"+p.API+"', 'sb_publishable_fixture', {})"
         self.assertEqual(p.public_key(source), "sb_publishable_fixture")
-        for bad in (source.replace("sb_publishable_", "sb_secret_"), source.replace(p.API,"example.invalid"), source+source):
+        self.assertEqual(p.public_key(source+source), "sb_publishable_fixture")
+        for bad in (source.replace("sb_publishable_", "sb_secret_"), source.replace(p.API,"example.invalid"), source+source.replace('fixture','different')):
             with self.assertRaises(ValueError):
                 p.public_key(bad)
         with self.assertRaises(ValueError):

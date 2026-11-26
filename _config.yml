@@ -3,6 +3,8 @@
 exclude:
   - database
   - scripts
+  - worker
+  - wrangler.jsonc
   - tests
   - supabase
   - dist
