@@ -10,6 +10,9 @@ en/index.html en/history/index.html en/membership/index.html
 genealogy/index.html genealogy/tree.css genealogy/tree.js genealogy/explorer.js genealogy/gaza.json
 martyrs/index.html martyrs/memorial.css martyrs/memorial.js martyrs/admin.js
 martyrs/Barham_Martyrs_Register.html trust/index.html .well-known/security.txt security.txt
+fonts/royal.css
+fonts/amiri-400-arabic.woff2 fonts/amiri-400-latin.woff2 fonts/amiri-700-arabic.woff2 fonts/amiri-700-latin.woff2 fonts/plex-arabic-400-arabic.woff2 fonts/plex-arabic-400-latin.woff2 fonts/plex-arabic-600-arabic.woff2 fonts/plex-arabic-600-latin.woff2 fonts/plex-arabic-700-arabic.woff2 fonts/plex-arabic-700-latin.woff2
+fonts/amiri-OFL.txt fonts/plex-OFL.txt
 """.split())
 
 def validate(root, allow_incomplete=False):

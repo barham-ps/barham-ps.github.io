@@ -56,7 +56,7 @@ test('visitor priorities are visible without authentication and print design rem
  assert.doesNotMatch(h,/<nav class="visitor-entry"|id="features"/);
  assert.match(h,/<nav class="home-fallback"[\s\S]*?href="\.\/genealogy\/"/);
  assert.match(h,/<a href="\.\/genealogy\/" data-r="tree">شجرة العائلة<\/a>/);
- assert.ok(tree.includes('portal.css?v=75')&&tree.includes('tree.css?v=7'));
+ assert.ok(tree.includes('portal.css?v=94')&&tree.includes('tree.css?v=8'));
  assert.ok(css.includes('.verify-form')&&css.includes('.visitor-entry'));
 });
 
@@ -163,4 +163,38 @@ test('V83 moderate background glass and original default theme',()=>{
  assert.match(css,/--glass-card:rgba\(255,253,248,\.82\)/);
  assert.match(css,/--glass-blur:8px/);
  for(const path of ['portal.css','genealogy/tree.css','martyrs/memorial.css','public.css'])assert.match(read(path),/prefers-reduced-transparency:reduce/);
+});
+
+test('royal design ships licensed local fonts for every public surface and retains theme contrast',()=>{
+ const assets=read('fonts/royal.css'),files=[...assets.matchAll(/url\(\.\/([^\)]+)\)/g)].map(x=>x[1]);
+ assert.equal(files.length,10);assert.equal(new Set(files).size,10);
+ for(const file of files){
+  assert.ok(file.endsWith('.woff2'));
+  assert.equal(fs.readFileSync('fonts/'+file).subarray(0,4).toString(),'wOF2');
+  assert.deepEqual(fs.readFileSync('dist/fonts/'+file),fs.readFileSync('fonts/'+file));
+ }
+ assert.match(read('fonts/amiri-OFL.txt'),/SIL Open Font License/);
+ assert.match(read('fonts/plex-OFL.txt'),/SIL Open Font License/);
+ assert.doesNotMatch(assets,/https?:\/\//);
+ for(const page of ['index.html','about/index.html','history/index.html','membership/index.html','en/index.html','en/history/index.html','en/membership/index.html','genealogy/index.html','martyrs/index.html','trust/index.html']){
+  const pageHtml=read(page);
+  assert.match(pageHtml,/fonts\/royal\.css\?v=1/,page);
+  assert.match(pageHtml,/font-src 'self'/,page);
+  assert.doesNotMatch(pageHtml,/fonts\.googleapis\.com|fonts\.gstatic\.com/,page);
+ }
+ const css=read('portal.css').split('/* V94 —')[1];
+ assert.match(css,/--royal-card:rgba\(18,61,49,\.89\)/);
+ assert.match(css,/--royal-card:rgba\(255,253,248,\.92\)/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/prefers-reduced-transparency:reduce/);
+ assert.match(css,/--royal-ui:'IBM Plex Sans Arabic'/);
+ assert.match(css,/--royal-ar:'Amiri'/);
+ assert.match(read('index.html'),/آلُ بَرْهَم/);
+ const rgb=h=>h.match(/../g).map(x=>parseInt(x,16));
+ const lum=v=>v.map(x=>x/255).map(x=>x<=0.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);
+ const blend=(a,b,alpha)=>a.map((x,i)=>x*alpha+b[i]*(1-alpha));
+ const contrast=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+ for(const [foreground,surface,base,alpha] of [['E8CB79','123D31','17543C',.89],['D4E5DE','123D31','17543C',.89],['164638','FFFDF8','DFECE2',.92],['8A641C','FFFDF8','DFECE2',.92],['374151','FFFDF8','F2E7CC',.92]]){
+  assert.ok(contrast(rgb(foreground),blend(rgb(surface),rgb(base),alpha))>=4.5,foreground+' contrast');
+ }
 });

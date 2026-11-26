@@ -31,6 +31,7 @@ on:
       - 'genealogy/**'
       - 'martyrs/**'
       - 'trust/**'
+      - 'fonts/**'
 permissions:
   contents: read
 concurrency:

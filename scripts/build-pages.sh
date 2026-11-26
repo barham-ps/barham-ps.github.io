@@ -5,6 +5,8 @@ mkdir -p dist
 python3 scripts/validate_public_build.py --allow-incomplete dist
 cp index.html portal.js runtime.js footer.js portal.css icon.svg favicon.png barham-emblem.webp manifest.webmanifest sw.js security-config.js captcha.js _headers dist/
 cp robots.txt sitemap.xml public.css 404.html dist/
+mkdir -p dist/fonts
+cp fonts/royal.css fonts/*.woff2 fonts/*OFL.txt dist/fonts/
 for page in about history membership en en/history en/membership; do
   mkdir -p "dist/$page"
   cp "$page/index.html" "dist/$page/"

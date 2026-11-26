@@ -65,3 +65,21 @@
  :root[data-theme="light"] .genealogy-page :is(.visual-card,.path-item,.view-tab,.result-nav button){border-color:var(--control-edge)}
  :root[data-theme="light"] .genealogy-page .visual-card.is-focused{border-color:var(--gold-on-green);color:var(--on-green)}
 }
+
+/* V8 — typography and translucent surfaces shared with the portal, readable tree nodes. */
+@media screen{
+  .genealogy-page .tree-hero{background:var(--royal-hero-bg);border-block-end:1px solid var(--royal-line)}
+  .genealogy-page .tree-hero h1{font-family:var(--royal-ar);font-size:clamp(36px,6vw,58px);letter-spacing:normal;line-height:1.55;color:var(--royal-hero-title)}
+  .genealogy-page .tree-hero :is(p,.eyebrow){color:var(--royal-hero-text)}
+  .genealogy-page .tree-hero :is(h1 em,.eyebrow){color:var(--royal-accent)}
+  .genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--royal-card);border-color:var(--royal-line);border-radius:16px;box-shadow:var(--royal-elevation);backdrop-filter:none;-webkit-backdrop-filter:none}
+  .genealogy-page :is(.explorer-switch h2,.tree-toolbar h2,.visual-head h3,.source-panel h2){font-family:var(--royal-ar);line-height:1.55}
+  .genealogy-page .visual-card-name{font-family:var(--royal-ui);font-weight:600;font-size:18px;line-height:1.6}
+  .genealogy-page .visual-card-meta,.genealogy-page .tree .person{font-family:var(--royal-ui);letter-spacing:normal}
+  .genealogy-page :is(.view-tab,.path-item,.visual-card,.result-nav button){border-radius:10px}
+  .genealogy-page .visual-chart{background:var(--band);border-color:var(--line);border-radius:14px}
+  :root[data-theme=light] .genealogy-page .tree-hero .btn-ghost{color:var(--fg);background:var(--surface);border-color:var(--control-edge)}
+  :root[data-theme=light] .genealogy-page .tree-hero .btn-dark{color:#fffdf8}
+  @media(max-width:420px){.genealogy-page .tree-hero h1{font-size:36px}.genealogy-page .visual-card-name{font-size:16px}.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel){box-shadow:none}}
+  @media(prefers-reduced-transparency:reduce){.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface)}}
+}

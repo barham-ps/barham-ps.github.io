@@ -621,7 +621,8 @@ test('home navigation is rendered without third-party scripts or render-blocking
  assert.equal((html.match(/data-dock-route="/g)||[]).length,5);
  assert.equal((html.match(/data-r="/g)||[]).length,7);
  assert.ok(js.includes("const dock=document.querySelector('.mobile-dock')"));
- assert.match(fs.readFileSync('runtime.js','utf8'),/if\(isHome\|\|lowData\(\)/);
+ assert.match(head,/href="\.\/fonts\/royal\.css\?v=1"/);
+ assert.doesNotMatch(fs.readFileSync('runtime.js','utf8'),/fonts\.googleapis|fonts\.gstatic/);
 });
 
 
@@ -660,14 +661,16 @@ test('public homepage has no network controls or diagnostic result markup',()=>{
 
 test('royal home polish is screen-only and preserves public navigation and accessibility',()=>{
  const css=fs.readFileSync('portal.css','utf8');
- const royal=css.slice(css.indexOf('/* Royal public home typography'));
+ const royal=css.slice(css.indexOf('/* Royal public home typography'),css.indexOf('/* V94 —'));
  assert.match(royal,/@media screen/);assert.match(royal,/--royal-ar:'Amiri'/);
  assert.match(royal,/prefers-reduced-motion:reduce/);assert.match(royal,/data-low-data=true/);
  assert.doesNotMatch(royal,/grid-template|position:fixed|display:none|#v-certificate/);
  const runtime=fs.readFileSync('runtime.js','utf8');
- assert.match(runtime,/if\(lowData\(\)\|\|navigator\.onLine===false/);
- assert.match(runtime,/family=Amiri:wght@700&display=optional/);
- assert.match(runtime,/window\.addEventListener\('load',loadRoyalHeadingFont/);
+ assert.doesNotMatch(runtime,/fonts\.googleapis|fonts\.gstatic/);
+ const localFonts=fs.readFileSync('fonts/royal.css','utf8');
+ assert.match(localFonts,/font-family: 'Amiri'/);
+ assert.match(localFonts,/font-family: 'IBM Plex Sans Arabic'/);
+ assert.match(localFonts,/font-display: swap/);
 });
 
 test('unified security evidence never passes missing, stale, skipped or still running workflows',()=>{

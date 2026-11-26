@@ -1446,3 +1446,154 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
  @media(prefers-reduced-motion:reduce){:root #v-home :is(.family-entry-actions,.home-news-card) .btn,:root header.site:not(.tree-header) :is(.menu-btn,.family-theme-toggle),:root body>.mobile-dock a{transition:none!important;animation:none!important;transform:none!important}}
  html[data-low-data=true] #v-home :is(.family-entry-actions,.home-news-card) .btn,html[data-low-data=true] body>.mobile-dock a{transition:none!important;animation:none!important}
 }
+
+/* V94 — royal day/night design. Screen-only, no change to print documents or account logic. */
+@media screen {
+  :root,:root[data-theme="dark"]{
+    --royal-ar:'Amiri','Noto Naskh Arabic','Traditional Arabic',Tahoma,serif;
+    --royal-ui:'IBM Plex Sans Arabic','Noto Sans Arabic',Tahoma,Arial,system-ui,sans-serif;
+    --body:var(--royal-ui);--display:var(--royal-ar);
+    --bg:#082b23;--surface:#123d31;--band:#10382d;--fg:#fbfcf8;--fg2:#d4e5de;
+    --line:#789586;--gold-ink:#E8CB79;--heading:#E8CB79;
+    --royal-line:rgba(205,181,121,.48);--royal-card:rgba(18,61,49,.89);
+    --royal-chrome:rgba(7,39,30,.94);--royal-field:#10362c;
+    --royal-elevation:0 8px 24px #001b1424;
+    --royal-shine:inset 0 1px 0 #ffffff10;
+    --royal-hero-bg:radial-gradient(ellipse at 8% 0%,#2b59424d,transparent 58%),linear-gradient(145deg,#092e24,#153d31);
+    --royal-hero-card:rgba(19,60,48,.84);--royal-hero-title:#fff5df;--royal-hero-text:#e2eee7;--royal-accent:#efd48c;
+    --glass-card:var(--royal-card);--glass-chrome:var(--royal-chrome);--glass-border:var(--royal-line);--glass-field:var(--royal-field);--glass-blur:6px;
+    --glass-canvas:radial-gradient(ellipse at 12% 8%,#17543c 0%,transparent 46%),radial-gradient(ellipse at 94% 55%,#a27f3720 0%,transparent 46%),var(--bg);
+  }
+  :root[data-theme="light"]{
+    --bg:#f8f6ee;--surface:#fffdf8;--band:#edf2ec;--fg:#164638;--fg2:#374151;
+    --line:#abbcb0;--gold-ink:#8A641C;--heading:#164638;
+    --royal-line:rgba(105,127,104,.52);--royal-card:rgba(255,253,248,.92);--royal-chrome:rgba(255,253,248,.96);
+    --royal-field:#fffefb;--royal-elevation:0 6px 24px #12352c0b;--royal-shine:inset 0 1px 0 #ffffffc0;
+    --royal-hero-bg:radial-gradient(ellipse at 10% 10%,#dceade,transparent 65%),linear-gradient(145deg,#eef3eb,#f5efdf);
+    --royal-hero-card:rgba(255,253,248,.86);--royal-hero-title:#164638;--royal-hero-text:#374151;--royal-accent:#79591c;
+    --glass-canvas:radial-gradient(ellipse at 10% 8%,#dfece2 0%,transparent 52%),radial-gradient(ellipse at 98% 60%,#f2e7cc 0%,transparent 45%),var(--bg);
+  }
+  :root[data-home-route=true]{--body:var(--royal-ui);--display:var(--royal-ar)}
+  body{font-family:var(--royal-ui);font-size:16px;line-height:1.85;background:var(--glass-canvas);background-attachment:scroll;color:var(--fg)}
+  :root body :is(input,textarea,select,button){font-family:var(--royal-ui)}
+  :root main .view:not(#v-certificate) :is(h1,h2,h3),.tree-header .brand b,.tree-hero h1{
+    font-family:var(--royal-ar);font-weight:700;letter-spacing:normal;line-height:1.55;word-spacing:normal
+  }
+  :root main .view:not(#v-certificate) :is(h4,.dashboard-tile strong,.dashboard-record summary,.news-editor-filter label){font-family:var(--royal-ui);font-weight:600}
+  :root main .view:not(#v-certificate) :is(p,li,dd,summary,label){overflow-wrap:anywhere}
+  :root main .view:not(#v-certificate) .card p{line-height:1.85}
+  :root main .view:not(#v-certificate) .card > h3{font-size:clamp(21px,2.4vw,27px)}
+  :root main .view:not(#v-certificate) .card > h2{font-size:clamp(24px,3vw,32px)}
+  :root :is(header.site,.mobile-dock){
+    background:var(--royal-chrome);border-color:var(--royal-line);box-shadow:var(--royal-elevation);backdrop-filter:none;-webkit-backdrop-filter:none
+  }
+  :root header.site .brand .brand-ar{font-family:var(--royal-ar);font-weight:700;line-height:1.45}
+  :root header.site nav.main a{font:600 14px/1.5 var(--royal-ui);letter-spacing:normal;border-radius:10px;border-block-end:2px solid transparent}
+  :root[data-theme=dark] header.site nav.main a{color:var(--fg2)}
+  :root[data-theme=light] header.site nav.main a{color:var(--fg)}
+  :root header.site nav.main a[aria-current=page]{color:var(--gold-ink);background:var(--band);border-block-end-color:var(--gold-ink)}
+  :root header.site nav.main a:hover{color:var(--gold-ink);background:var(--band)}
+  :root :is(header.site,.mobile-dock) :is(.family-theme-toggle,.menu-btn){font-family:var(--royal-ui);font-weight:600;box-shadow:none}
+  :root #v-home .home-intro{background:var(--royal-hero-bg);border-block-color:var(--royal-line)}
+  :root #v-home .family-welcome{
+    background:var(--royal-hero-card);border:1px solid var(--royal-line);border-radius:22px;
+    box-shadow:var(--royal-shine),var(--royal-elevation);color:var(--royal-hero-text)
+  }
+  :root #v-home .family-hero-copy h1{
+    font-family:var(--royal-ar);font-size:clamp(34px,4.5vw,51px);line-height:1.55;color:var(--royal-hero-title);text-shadow:none;margin-block:6px
+  }
+  :root #v-home .family-hero-copy h1 span,:root #v-home :is(.family-kicker,.family-lead),:root #v-home .family-hero-copy .greet{color:var(--royal-accent)}
+  :root #v-home :is(.family-description,.family-lead){font-family:var(--royal-ui);line-height:1.8}
+  :root #v-home .family-description{color:var(--royal-hero-text)}
+  :root #v-home .family-kicker{font-size:12px;font-weight:600}
+  :root #v-home .family-emblem-ring{border-color:var(--royal-line);background:radial-gradient(circle,#174b3a,#0a2b22 77%);box-shadow:0 0 0 10px #c4a56a18,0 10px 22px #0b30252a}
+  :root #v-home .home-section-head{border-color:var(--royal-line)}
+  :root #v-home .home-section-head h2{font-family:var(--royal-ar);font-size:clamp(26px,3vw,35px);line-height:1.5;color:var(--heading)}
+  :root #v-home .home-section-head .more{color:var(--gold-ink)}
+  :root #v-home .home-news-grid .home-news-card{
+    background:var(--royal-card);border:1px solid var(--royal-line);border-radius:18px;box-shadow:var(--royal-shine),var(--royal-elevation)
+  }
+  :root #v-home .home-news-grid .home-news-card h3{font-family:var(--royal-ar);font-size:clamp(25px,3vw,32px);line-height:1.6;color:var(--royal-hero-title);text-shadow:none}
+  :root #v-home .home-news-grid .home-news-card p{color:var(--fg2);font-size:15px;line-height:1.8}
+  :root #v-home .home-news-grid .home-news-card .news-date{color:var(--fg2)}
+  :root #v-home .home-news-grid .home-news-card .home-news-label{background:#ead7a3;color:#173629;border:1px solid #e8cb79}
+  :root #v-home .home-news-grid .home-news-card .btn-ghost,:root #v-home .home-news-grid .home-news-card .gallery-open{background:var(--band);color:var(--gold-ink);border-color:var(--royal-line)}
+  :root[data-theme=light] #v-home .family-entry-actions .btn-ghost{background:var(--surface);color:var(--fg);border-color:var(--control-edge)}
+  :root[data-theme=light] #v-home .family-entry-actions .btn-gold,:root[data-theme=light] #v-home .home-news-card .btn-gold{background:linear-gradient(145deg,#f5e6b8,#e1c47e);color:#16382d;border-color:#b4934b}
+  :root #v-home .news-media,:root #v-news .news-media{background:var(--band);border-color:var(--royal-line)}
+  :root #v-home .news-media img,:root #v-news .news-media img{background:var(--band);object-fit:contain}
+  :root .view:not(#v-home)>.phero{
+    background:var(--royal-hero-bg);border-block-end:1px solid var(--royal-line);color:var(--royal-hero-title);box-shadow:none
+  }
+  :root .view:not(#v-home)>.phero .wrap{padding-block:clamp(24px,3vw,40px)}
+  :root .view:not(#v-home)>.phero h1{font-size:clamp(33px,4.5vw,48px);color:var(--royal-hero-title);margin-block:4px 9px;text-shadow:none}
+  :root .view:not(#v-home)>.phero :is(p,.eyebrow){color:var(--royal-hero-text)}
+  :root .view:not(#v-home)>.phero .eyebrow{color:var(--royal-accent)}
+  /* True surface transparency, with opaque text and inexpensive paint on mobile. */
+  :root main .view:not(#v-certificate) :is(.card:not([style*="background"]),.welcome,.empty,.prompt,.frame,.vres,.tablewrap,.family-calendar,.scan-stat,.news-edit-photo,.lux-news-card,.dashboard-filter,.dashboard-search){
+    background:var(--royal-card);border-color:var(--royal-line);border-radius:16px;box-shadow:var(--royal-shine),var(--royal-elevation);backdrop-filter:none;-webkit-backdrop-filter:none
+  }
+  :root main .view:not(#v-certificate) :is(.card:not([style*="background"]),.lux-news-card) > :is(h2,h3){color:var(--heading)}
+  :root :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin,#v-correspondence,#v-correspondence-admin,#v-news-admin,#v-martyrs-admin,#v-security) >.wrap>h1{
+    font-family:var(--royal-ar);font-size:clamp(29px,4vw,42px);font-weight:700;line-height:1.55;color:var(--heading);border-color:var(--royal-line)
+  }
+  :root :is(#v-admin,#v-member-hub,#v-account,#v-member-services-admin) .dashboard-tile{
+    background:var(--royal-card);border:1px solid var(--royal-line);border-radius:15px;box-shadow:var(--royal-shine),var(--royal-elevation)
+  }
+  :root :is(#v-admin,#v-member-hub,#v-account) .dashboard-tile strong{color:var(--gold-ink);font-size:15px;line-height:1.6}
+  :root :is(#v-admin,#v-member-hub,#v-account) .dashboard-tile small{color:var(--fg2);font-size:12px;line-height:1.65;letter-spacing:normal}
+  :root .dashboard-icon{background:var(--band);color:var(--gold-ink);border-color:var(--royal-line)}
+  :root :is(.dashboard-record summary,.mail-compose summary){color:var(--fg);min-height:48px}
+  :root .dashboard-state{font-family:var(--royal-ui);font-weight:600}
+  :root :is(.btn,.btn.sm,.menu-btn,.family-theme-toggle){font-family:var(--royal-ui);font-weight:600;line-height:1.55;border-radius:11px;min-height:44px;text-shadow:none}
+  :root .btn-gold{background:linear-gradient(145deg,#f7e7ba,#dfbf79);border-color:#d4b368;color:#16382d;box-shadow:inset 0 1px 0 #fff4d590}
+  :root[data-theme=dark] :is(.btn-dark,.btn-ghost,.btn-line){background:var(--band);color:var(--fg);border-color:var(--royal-line)}
+  :root[data-theme=light] .btn-dark{background:#174738;color:#fffdf8;border-color:#174738}
+  :root[data-theme=light] :is(.btn-ghost,.btn-line){background:var(--surface);color:var(--fg);border-color:var(--control-edge)}
+  :root :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+    background:var(--royal-field);color:var(--fg);border-color:var(--control-edge);border-radius:10px;line-height:1.55;box-shadow:none
+  }
+  :root :is(input,textarea)::placeholder{color:var(--fg2);opacity:1}
+  :root :is(.f,.form label){font-size:14px;font-weight:600;line-height:1.65}
+  :root form.auth{background:var(--royal-card);border-color:var(--royal-line);border-radius:20px;box-shadow:var(--royal-elevation);backdrop-filter:none;-webkit-backdrop-filter:none}
+  :root form.auth h1{font-family:var(--royal-ar);font-size:clamp(30px,4vw,42px);color:var(--heading);line-height:1.5}
+  :root .authside{background:linear-gradient(150deg,#123b30,#0a2e24);color:#fff5df;border-color:var(--royal-line);box-shadow:none}
+  :root .authside h2{color:#fff5df;font-family:var(--royal-ar);font-size:clamp(31px,4vw,47px)}
+  :root .authside p{color:#e2eee7}
+  :root .authside .brandname{color:#e8cb79}
+  :root .photo-dialog{background:var(--surface);color:var(--fg);border-color:var(--royal-line);border-radius:15px}
+  :root .photo-dialog .btn{background:var(--band);color:var(--gold-ink);border-color:var(--royal-line)}
+  :root footer.site.family-footer{border-color:var(--royal-line);box-shadow:none}
+  :root[data-theme=light] footer.site.family-footer{background:var(--royal-chrome);color:var(--fg)}
+  :root[data-theme=light] footer.site.family-footer :is(.footer-wordmark,.footer-english,.footer-date,.footer-copyright,.copy a){color:var(--fg)}
+  :root[data-theme=light] footer.site.family-footer .footer-links a{color:var(--gold-ink)}
+  :root[data-theme=dark] footer.site.family-footer{background:#0b3025}
+  :root footer.site.family-footer .footer-wordmark{font-family:var(--royal-ar);line-height:1.5}
+  :root :is(.news-feed-card .news-teaser-copy h2,.lux-news-card .lux-title){font-family:var(--royal-ar);line-height:1.6}
+  :root #v-news .news-feed-card h2{font-size:clamp(24px,2.8vw,31px)}
+  :root .news-feed-card .lux-badge{font-family:var(--royal-ui);line-height:1.55}
+  :root [hidden]:not([hidden=until-found i]){display:none!important}
+  @media(max-width:700px){
+    body{font-size:15px;line-height:1.85}
+    :root #v-home .family-hero-copy h1{font-size:clamp(32px,8.5vw,39px)}
+    :root #v-home .home-news-grid .home-news-card h3{font-size:clamp(25px,6.4vw,30px)}
+    :root #v-home .family-welcome{padding:16px;border-radius:18px}
+    :root #v-home .home-section-head h2{font-size:27px}
+    :root header.site .wrap{gap:8px}
+    :root .mobile-dock a{font-family:var(--royal-ui);font-size:11px;line-height:1.45}
+    :root :is(input,select,textarea):not([type=checkbox]):not([type=radio]){font-size:16px}
+    :root main .view:not(#v-certificate) :is(.card:not([style*="background"]),.dashboard-filter,.dashboard-search){box-shadow:none}
+  }
+  @media(prefers-reduced-motion:no-preference){
+    :root :is(.btn,.dashboard-tile,.menu-btn,.family-theme-toggle,nav.main a,.mobile-dock a){transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease}
+    :root :is(.btn,.dashboard-tile):is(:hover,:active){transform:none}
+  }
+  @media(prefers-reduced-motion:reduce){
+    :root :is(.btn,.dashboard-tile,.menu-btn,.family-theme-toggle,.view,.mobile-dock a){animation:none!important;transition:none!important;transform:none!important}
+  }
+  @media(prefers-reduced-transparency:reduce){
+    :root :is(header.site,.mobile-dock,form.auth),:root main .view:not(#v-certificate) :is(.card:not([style*="background"]),.dashboard-tile,.dashboard-filter,.dashboard-search){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+    :root #v-home .family-welcome,:root #v-home .home-news-grid .home-news-card{background:var(--surface)}
+  }
+  :root[data-low-data=true] :is(header.site,.mobile-dock,.card,.dashboard-tile,.family-welcome,.home-news-card){backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;box-shadow:none}
+}
