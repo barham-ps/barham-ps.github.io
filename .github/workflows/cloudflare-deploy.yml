@@ -7,6 +7,7 @@ on:
       - '.github/workflows/cloudflare-deploy.yml'
       - 'scripts/build-pages.sh'
       - 'scripts/validate_public_build.py'
+      - 'scripts/release_verify.py'
       - 'tests/worker-guard.test.mjs'
       - 'tests/security.test.cjs'
       - 'worker/**'
@@ -161,3 +162,11 @@ jobs:
               if attempt==4: raise SystemExit("Live request interception not confirmed: "+", ".join(failed))
               time.sleep(15)
           PY
+
+      - name: Verify complete comparable public release integrity
+        run: |
+          for attempt in 1 2 3; do
+            if python3 scripts/release_verify.py --source-dir dist --host barham-ps-github-io.m0had-b0rh0m.workers.dev --full; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep 15; fi
+          done
+          exit 1

@@ -3,7 +3,7 @@ import sys
 import tempfile
 import unittest
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"scripts"))
-from release_verify import verify,versions
+from release_verify import verify,versions,verify_full,PUBLIC_PARITY,published_path
 from validate_public_build import validate,ALLOWED
 
 class ReleaseTests(unittest.TestCase):
@@ -42,3 +42,25 @@ class ReleaseTests(unittest.TestCase):
             p=pathlib.Path(d)
             (p/"index.html").symlink_to("/does-not-exist")
             with self.assertRaises(ValueError): validate(p,True)
+
+    def test_full_parity_rejects_changed_or_unavailable_assets(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=pathlib.Path(d)
+            bodies={}
+            for name in PUBLIC_PARITY:
+                source=root/(".well-known/security.txt" if name=="security.txt" else name)
+                source.parent.mkdir(parents=True,exist_ok=True)
+                source.write_bytes(b"fixture")
+                bodies[published_path(name)]=b"fixture"
+            get=lambda host,path:bodies[path]
+            result=verify_full(root,fetcher=get)
+            self.assertTrue(result["full_public_parity"])
+            self.assertEqual(result["matched_count"],len(PUBLIC_PARITY))
+            bodies["/sw.js"]=b"modified"
+            del bodies["/captcha.js"]
+            result=verify_full(root,fetcher=get)
+            self.assertFalse(result["full_public_parity"])
+            self.assertEqual(result["files"]["sw.js"],"mismatch")
+            self.assertEqual(result["files"]["captcha.js"],"unverified")
+            self.assertNotIn("_headers",result["files"])
+            self.assertNotIn("404.html",result["files"])
