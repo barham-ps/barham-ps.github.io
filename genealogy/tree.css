@@ -83,3 +83,12 @@
   @media(max-width:420px){.genealogy-page .tree-hero h1{font-size:36px}.genealogy-page .visual-card-name{font-size:16px}.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel){box-shadow:none}}
   @media(prefers-reduced-transparency:reduce){.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface)}}
 }
+
+/* V9 — dimensional glass on explorer panels without transforming chart geometry. */
+@media screen{
+  .genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--depth-surface);box-shadow:inset 0 1px 0 var(--depth-glint),var(--depth-shadow);border-block-start-color:var(--depth-rim)}
+  .genealogy-page :is(.view-tab,.path-item,.visual-card,.result-nav button){box-shadow:inset 0 1px 0 var(--depth-glint),0 2px 0 var(--depth-edge)}
+  .genealogy-page .view-tab[aria-selected=true],.genealogy-page .visual-card.is-focused{box-shadow:inset 0 1px 0 var(--depth-glint),0 3px 0 #987439,0 7px 12px #082e2024}
+  @media(prefers-reduced-transparency:reduce){.genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface)}}
+  :root[data-low-data=true] .genealogy-page :is(.tree-toolbar,.tree-panel,.source-panel,.visual-panel,.stats>div){background:var(--surface);box-shadow:none}
+}

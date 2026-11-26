@@ -244,3 +244,21 @@ h1{font-size:clamp(2.5rem,10vw,3.7rem)}
   @media(prefers-reduced-transparency:reduce){:root[data-theme] :is(.mem-top,.hero-frame,.honor-record,.mem-note,.region-nav,.honor-list){background:var(--navy)}}
   @media(prefers-reduced-motion:reduce){:is(.region-nav a,.mem-actions a,.mem-actions button,.family-theme-toggle){transition:none!important;animation:none!important}}
 }
+
+/* V14 — restrained depth for the memorial, preserving its solemn identity. */
+@media screen{
+  :root{--mem-glint:#ffffff16;--mem-depth-edge:#050d19;--mem-depth-surface:linear-gradient(150deg,#ffffff0c,transparent 50%,#050d191e),var(--mem-glass);--mem-depth-focus:#efcf8a}
+  :root[data-theme=light]{--mem-glint:#fffefbe8;--mem-depth-edge:#bec6cb;--mem-depth-surface:linear-gradient(150deg,#ffffffa6,transparent 50%,#dfe4e733),var(--mem-glass);--mem-depth-focus:#285e48}
+  :root[data-theme] :is(.hero-frame,.honor-list,.mem-note,.region-nav){background:var(--mem-depth-surface);box-shadow:inset 0 1px 0 var(--mem-glint),0 3px 0 #7e8b9426,var(--mem-shadow)}
+  :root[data-theme] :is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry){box-shadow:inset 0 1px 0 var(--mem-glint),0 3px 0 var(--mem-depth-edge);border-radius:12px}
+  :root[data-theme] .region-nav a[aria-current=true]{box-shadow:inset 0 1px 0 var(--mem-glint),0 3px 0 #9c7a42}
+  :root[data-theme] :is(a,button,input,summary):focus-visible{outline:3px solid var(--mem-depth-focus);outline-offset:3px}
+  @media(prefers-reduced-motion:no-preference){
+    :is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry){transition:transform 160ms ease,box-shadow 160ms ease,border-color 160ms ease}
+    :is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry):active{transform:translateY(2px)}
+    @media(hover:hover) and (pointer:fine){:is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry):hover:not(:active){transform:translateY(-2px)}}
+  }
+  @media(max-width:600px){:root{--mem-shadow:0 5px 12px #03061118}}
+  @media(prefers-reduced-transparency:reduce){:root[data-theme] :is(.hero-frame,.honor-list,.mem-note,.region-nav){background:var(--navy)}}
+  @media(prefers-reduced-motion:reduce){:is(.region-nav a,.mem-back,.family-theme-toggle,.mem-actions a,.mem-actions button,.mem-retry){transition:none;transform:none}}
+}

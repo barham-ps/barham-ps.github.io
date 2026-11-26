@@ -171,3 +171,23 @@ a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
     .trust-section{margin-block:26px}
   }
 }
+
+/* V10 — shared dimensional glass and metallic action controls. */
+@media screen{
+  :root{--page-glint:#ffffff18;--page-depth-edge:#061e17;--page-depth-shadow:0 4px 0 #001b1440,0 15px 32px #001b1438;--page-depth-surface:linear-gradient(150deg,#ffffff10,transparent 48%,#001b141e),var(--page-glass);--page-depth-focus:#f5d779}
+  @media(prefers-color-scheme:light){:root{--page-glint:#ffffffed;--page-depth-edge:#acbba9;--page-depth-shadow:0 4px 0 #aebdad30,0 16px 36px #12352c15;--page-depth-surface:linear-gradient(150deg,#ffffff8c,transparent 48%,#d4e4d533),var(--page-glass);--page-depth-focus:#1f6954}}
+  .public-card,.trust-card :is(.trust-control,.trust-approval,.trust-metrics>div,.trust-standards>div){background:var(--page-depth-surface);box-shadow:inset 0 1px 0 var(--page-glint),var(--page-depth-shadow)}
+  .public-card .action{background:linear-gradient(180deg,#fff0c5,#e9d096 47%,#d9b665);color:#16382d;border-color:#b8954a;box-shadow:inset 0 1px 0 #fff9e6,0 3px 0 #856221,0 7px 15px #0a291936}
+  .public-card .secondary-action,.trust-card .trust-nav a{background:var(--page-depth-surface);border-color:var(--page-line);box-shadow:inset 0 1px 0 var(--page-glint),0 3px 0 var(--page-depth-edge),0 5px 12px #082e2018}
+  .public-card :is(.action,.secondary-action){border-radius:12px;font-weight:700}
+  :is(a,button):focus-visible{outline:3px solid var(--page-depth-focus);outline-offset:3px}
+  @media(prefers-reduced-motion:no-preference){
+    .public-card :is(.action,.secondary-action),.trust-card .trust-nav a{transition:transform 160ms cubic-bezier(.2,.75,.25,1),box-shadow 160ms ease,border-color 160ms ease}
+    .public-card :is(.action,.secondary-action):active,.trust-card .trust-nav a:active{transform:translateY(2px);box-shadow:inset 0 2px 4px #082e2028}
+    @media(hover:hover) and (pointer:fine){.public-card :is(.action,.secondary-action):hover:not(:active),.trust-card .trust-nav a:hover:not(:active){transform:translateY(-2px);border-color:var(--page-gold)}}
+  }
+  @media(max-width:700px){:root{--page-depth-shadow:0 2px 0 #76917c26,0 5px 12px #082e2014}}
+  @media(prefers-reduced-transparency:reduce){.public-card,.trust-card :is(.trust-control,.trust-approval,.trust-metrics>div,.trust-standards>div){background:var(--page-surface)}}
+  @media(prefers-reduced-motion:reduce){.public-card a{transition:none;transform:none}}
+  @media(forced-colors:active){.public-card :is(.action,.secondary-action){border:1px solid ButtonText;box-shadow:none}}
+}

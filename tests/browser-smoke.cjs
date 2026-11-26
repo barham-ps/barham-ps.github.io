@@ -32,7 +32,15 @@ const base='http://127.0.0.1:8765/';
    assert.equal((await glass()).opacity,'1');
    await page.locator('[data-family-theme]').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await noOverflow('light mode');
    assert.equal((await glass()).opacity,'1');
-
+   // V98 — the CTA's metallic depth survives the light/dark switch while
+   // reduced motion makes controls stationary and reduced transparency opaque.
+   const cta=page.locator('#family-primary-entry');
+   assert.match(await cta.evaluate(e=>getComputedStyle(e).backgroundImage),/linear-gradient/);
+   assert.ok(await cta.evaluate(e=>e.getBoundingClientRect().height>=44));
+   assert.notEqual(await cta.evaluate(e=>getComputedStyle(e).boxShadow),'none');
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.equal(await cta.evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
+   await page.emulateMedia({reducedMotion:'no-preference'});
    // V75 regression: computed text colors on actual account markup (no login or data access).
    const rgb=(hex)=>hex.match(/../g).map(x=>parseInt(x,16));
    const lum=(v)=>v.map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);
