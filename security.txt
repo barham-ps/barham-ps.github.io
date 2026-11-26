@@ -1,4 +1,4 @@
-Contact: mailto:albarham.inc@gmail.com
+Contact: mailto:albarham.inc@hotmail.com
 Expires: 2027-11-24T00:00:00Z
 Preferred-Languages: ar, en
 Canonical: https://barham-ps.github.io/.well-known/security.txt

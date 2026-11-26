@@ -555,7 +555,7 @@ test('RFC 9116 disclosure and independent evidence links are shipped without thi
  assert.match(fs.readFileSync('_config.yml','utf8'),/include:\s*\n\s*- \.well-known/);
  assert.match(fs.readFileSync('scripts/build-pages.sh','utf8'),/cp \.well-known\/security\.txt dist\/\.well-known\//);
  const page=fs.readFileSync('trust/index.html','utf8');
- for(const host of ['crt.sh','virustotal.com','developer.mozilla.org','45637767950']) assert.ok(page.includes(host));
+ for(const host of ['crt.sh','virustotal.com','developer.mozilla.org','45877913088']) assert.ok(page.includes(host));
  assert.doesNotMatch(page,/<script\b|<iframe\b/i);
 });
 
@@ -762,4 +762,32 @@ test('genealogy privacy notice and edge cache restrictions are explicit',()=>{
  const v=JSON.parse(fs.readFileSync('vercel.json','utf8'));
  assert.ok(v.headers.some(h=>h.source==='/genealogy/(.*)'&&h.headers.some(x=>x.key==='Cache-Control'&&x.value==='no-store')));
  assert.ok(html.includes('الهدف التشغيلي هو تأكيد الاستلام خلال ٧ أيام'));
+});
+
+test('V96 official family endorsement, privacy intake, and security contact stay consistent',()=>{
+ const trust=fs.readFileSync('trust/index.html','utf8');
+ const about=fs.readFileSync('about/index.html','utf8');
+ assert.match(html,/البوابة الرسمية المعتمدة من العائلة/);
+ assert.match(about,/المعتمدة من عائلة آل برهم/);
+ assert.match(trust,/اعتماد عائلي وإداري، لا اعتماد حكومي أو شهادة دولية/);
+ assert.match(trust,/٢٠ \/ ٢٠/);assert.match(trust,/٥ \/ ٥/);
+ assert.match(trust,/المنع الخادمي لكلمات المرور المسرّبة/);
+ assert.match(trust,/WebAuthn \/ FIDO2 غير مفعّلة/);
+ const disclosure=fs.readFileSync('.well-known/security.txt','utf8');
+ const contact=disclosure.match(/^Contact: mailto:(.+)$/m)[1];
+ assert.equal(contact,'albarham.inc@hotmail.com');
+ assert.ok(html.includes('mailto:'+contact+'?subject='));
+ assert.ok(fs.readFileSync('SECURITY.md','utf8').includes(contact));
+ assert.ok(fs.readFileSync('.github/workflows/iso-operational-evidence.yml','utf8').includes('mailto:'+contact+'?subject='));
+ assert.match(html,/class="grid privacy-policy"/);
+ assert.equal((html.match(/id="privacy-rights-procedure"/g)||[]).length,1);
+});
+test('V96 recovery entry remains a real link and stale identity checks do not re-enable controls',()=>{
+ assert.equal((html.match(/href="#reset"/g)||[]).length,1);
+ assert.match(js,/forgot\.addEventListener\('click'/);
+ assert.match(js,/route\(\);showReset\(\);/);
+ assert.match(js,/recoveryEpoch\+\+;recoveryIdentityPending=false/);
+ assert.match(js,/finally\{if\(version===recoveryEpoch\)\{recoveryIdentityPending=false/);
+ assert.match(js,/retryRecovery\.hidden=false/);
+ assert.match(js,/else if\(initialHash==='#reset'\)showReset\(\)/);
 });

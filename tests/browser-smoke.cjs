@@ -15,6 +15,10 @@ const base='http://127.0.0.1:8765/';
     await open('#'+route);await visible('#v-'+route);
     await noOverflow(route);
    }
+   await open('#privacy');await visible('#privacy-rights-procedure');
+   assert.equal(await page.locator('#v-privacy .privacy-policy article').count(),10);
+   assert.equal(await page.locator('#v-privacy .privacy-principles>div').count(),3);
+   await noOverflow('privacy policy');
    await open('#home');await visible('.compact-footer');
    assert.equal(await page.locator('#features,.visitor-entry,.home-search-entry,.family-transparency').count(),0);
    assert.deepEqual(await page.locator('.footer-links a').evaluateAll(els=>els.map(a=>a.getAttribute('href')).filter(h=>h.startsWith('#'))),['#search','#verify','#privacy','#contact']);
@@ -55,16 +59,20 @@ const base='http://127.0.0.1:8765/';
    assert.equal(await page.locator('.footer-links a[href="#verify"]').count(),1);
    await page.locator('#family-join-entry').click();await visible('.family-join-steps');assert.equal(await page.locator('.family-join-steps li').count(),3);await noOverflow('registration steps');
    await open('#home');await page.locator('#family-primary-entry').click();await visible('#logForm');await visible('.family-auth-help');await noOverflow('login foyer');
-   await page.locator('#logForm a[href="#reset"]').click();await visible('#recovery-email-form');await noOverflow('recovery email');
+   await page.locator('#logForm a[href="#reset"]').click();await page.waitForURL('**/#reset');await visible('#v-reset');await visible('#recovery-email-form');await noOverflow('recovery email');
+   assert.equal(await page.locator('#recovery-password-form').isVisible(),false);
    await page.locator('#recovery-email-form input[type=email]').fill('test@example.invalid');
    await page.locator('#recovery-email-form button', {hasText:'لدي رمز بالفعل'}).click();await visible('#recovery-code-form');
    assert.equal(await page.locator('#recovery-password-form').isVisible(),false);
    assert.equal(await page.locator('#recovery-code-form input').getAttribute('autocomplete'),'one-time-code');await noOverflow('recovery OTP');
    await open('#heritage');await visible('#v-heritage');assert.equal(await page.locator('#v-heritage .grid > a').count(),3);
    await open('#search');await visible('#v-search');await page.locator('#v-search input[name="public-query"]').fill('تاريخ');await page.locator('#v-search button[type="submit"]').click();await page.locator('#v-search .public-search-results a[href="#history"]').waitFor({state:'visible'});await noOverflow('search results');
-   for(const slug of ['about','history','membership','en','en/history','en/membership']){
+   for(const slug of ['about','history','membership','en','en/history','en/membership','trust']){
     await open(slug+'/');await visible('h1');await noOverflow(slug);
    }
+   assert.equal(await page.locator('.trust-control').count(),8);
+   assert.equal(await page.locator('.trust-metrics>div').count(),2);
+   await page.locator('.trust-nav a[href="#standards"]').click();await visible('#standards');await noOverflow('trust standards');
    await open('martyrs/');await visible('[data-family-theme]');assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await visible('#gaza');await visible('#memorial-search');
    await page.locator('#memorial-search').fill('اختبار');await noOverflow('memorial search');
    await page.locator('#memorial-search').clear();

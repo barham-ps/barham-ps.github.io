@@ -126,3 +126,48 @@ a:focus-visible{outline:3px solid #f5e6b8;outline-offset:3px}
   @media(prefers-reduced-transparency:reduce){.public-card,header,footer{background:var(--page-surface)}}
   @media(prefers-reduced-motion:no-preference){.public-actions a,nav a{transition:background-color 160ms,border-color 160ms,color 160ms}}
 }
+
+/* V9 — public Trust Center: semantic cards, compact evidence, clear outcomes. */
+@media screen{
+  .trust-page main{max-width:1120px}
+  .trust-card{padding:clamp(18px,4vw,38px)}
+  .trust-hero{padding-block:8px 22px;border-block-end:1px solid var(--page-line)}
+  .trust-hero .trust-tagline{font-family:var(--page-royal);font-size:clamp(21px,3vw,28px);font-weight:700;color:var(--page-heading)}
+  .trust-card .trust-approval{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap;max-width:none;padding:13px 15px;border:1px solid var(--page-line);background:var(--page-surface);border-radius:14px;margin-block:18px;color:var(--page-text)}
+  .trust-icon{flex:none;display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--page-gold);border-radius:50%;font-weight:700;color:var(--page-gold)}
+  .trust-approval strong{color:var(--page-text)}
+  .trust-approval span:last-child{font-size:14px;color:var(--page-muted)}
+  .trust-card .trust-nav{border:0;gap:8px;margin:20px 0;padding:0}
+  .trust-card .trust-nav a{padding:8px 14px;border:1px solid var(--page-line);border-radius:9px;background:var(--page-surface);font-weight:600;text-decoration:none}
+  .trust-section{margin-block:34px;scroll-margin-top:18px}
+  .trust-section h2{margin-block:4px 15px}
+  .trust-section h3{font-size:clamp(21px,3vw,26px);margin:14px 0 7px}
+  .trust-section .trust-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-block:20px}
+  .trust-control{display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:8px;padding:clamp(14px,2.8vw,22px);border:1px solid var(--page-line);border-radius:14px;background:var(--page-surface)}
+  .trust-label{font-size:12px;border:1px solid var(--page-line);border-radius:999px;padding:3px 9px;color:var(--page-gold);font-weight:700}
+  .trust-card .trust-control h3{font:700 clamp(16px,2.2vw,19px)/1.6 var(--page-ui);direction:ltr;text-align:right;color:var(--page-heading);margin:0;overflow-wrap:anywhere}
+  .trust-card .trust-control p{font-size:15px;margin:0}
+  .trust-control a{display:inline-flex;align-items:center;min-height:44px;margin-block-start:auto;font-size:14px}
+  .trust-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .trust-metrics>div{min-width:0;display:grid;gap:5px;place-content:center;text-align:center;background:var(--page-surface);border:1px solid var(--page-line);border-radius:14px;padding:16px}
+  .trust-metrics strong{font:700 clamp(27px,5vw,39px)/1.3 var(--page-ui);color:var(--page-gold);font-variant-numeric:tabular-nums}
+  .trust-metrics span{font-size:14px;color:var(--page-muted);font-weight:600}
+  .trust-disclaimer{padding:15px 18px;border:1px solid var(--page-line);border-inline-start:4px solid var(--page-gold);border-radius:12px;background:var(--page-surface)}
+  .trust-disclaimer strong{color:var(--page-heading)}
+  .trust-disclaimer p{margin:5px 0 0}
+  .trust-standards{display:grid;gap:9px;margin-block:18px}
+  .trust-standards>div{display:grid;grid-template-columns:minmax(165px,1fr) 2fr;gap:10px;align-items:center;padding:12px 15px;border:1px solid var(--page-line);border-radius:10px;background:var(--page-surface)}
+  .trust-standards dt{font-weight:700;overflow-wrap:anywhere}
+  .trust-standards dd{margin:0;color:var(--page-muted);font-size:15px}
+  .trust-contact{padding:18px;border:1px solid var(--page-line);border-radius:14px;background:var(--page-surface)}
+  .trust-card .trust-updated{border-block-start:1px solid var(--page-line);padding-block-start:14px;max-width:none;font-size:13px}
+  .trust-card .public-actions{gap:8px;margin-block:14px}
+  .trust-card .public-actions a{font-size:14px;padding-inline:14px}
+  @media(max-width:660px){
+    .trust-section .trust-grid{grid-template-columns:1fr}
+    .trust-standards>div{grid-template-columns:1fr;gap:4px}
+    .trust-card .trust-nav a{flex:1 1 124px;justify-content:center;text-align:center}
+    .trust-card .public-actions a{flex:1 1 140px}
+    .trust-section{margin-block:26px}
+  }
+}

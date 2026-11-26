@@ -1597,3 +1597,37 @@ html[data-low-data=true] #v-home .family-welcome,html[data-low-data=true] .home-
   }
   :root[data-low-data=true] :is(header.site,.mobile-dock,.card,.dashboard-tile,.family-welcome,.home-news-card){backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;box-shadow:none}
 }
+
+/* V96 — readable, accessible privacy policy using the royal day/night palette. */
+@media screen{
+  #v-privacy .privacy-layout{display:grid;gap:clamp(18px,3vw,28px);max-width:1120px}
+  #v-privacy .privacy-intro{padding:clamp(18px,4vw,32px);border-block-start:3px solid var(--gold-ink)}
+  #v-privacy .privacy-intro h2{margin-block:6px 10px}
+  #v-privacy .privacy-section-heading{margin-block:0 14px;font-size:clamp(26px,4vw,34px);color:var(--heading)}
+  #v-privacy .privacy-principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-block:20px}
+  #v-privacy .privacy-principles>div{display:grid;align-content:start;gap:7px;min-width:0;background:var(--band);border:1px solid var(--royal-line);border-radius:14px;padding:15px}
+  #v-privacy .privacy-principles svg{color:var(--gold-ink)}
+  #v-privacy .privacy-principles strong{font-size:16px;color:var(--fg);line-height:1.6}
+  #v-privacy .privacy-principles p{font-size:14px;margin:0;color:var(--fg2);line-height:1.75}
+  #v-privacy .privacy-policy{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  #v-privacy .privacy-policy .card{min-width:0;padding:clamp(16px,3vw,24px);position:relative}
+  #v-privacy .privacy-number{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:4px 8px;border:1px solid var(--royal-line);border-radius:10px;color:var(--gold-ink);background:var(--band);font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:5px}
+  #v-privacy .privacy-policy h3{color:var(--heading);font-size:clamp(22px,3vw,27px);margin-bottom:8px}
+  #v-privacy .privacy-policy p{color:var(--fg2);max-width:80ch;padding:0;line-height:1.85}
+  #v-privacy .privacy-policy p+p{margin-block-start:12px}
+  #v-privacy .privacy-policy p a{color:var(--gold-ink);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+  #v-privacy .privacy-intro .row{gap:10px;margin-block-start:16px}
+  #v-privacy .privacy-intro .btn{min-height:46px;white-space:normal;justify-content:center;text-align:center}
+  #v-privacy .privacy-signature{margin:0;align-items:center;padding:18px;line-height:1.8}
+  .topline .wrap>span{min-width:0;overflow-wrap:anywhere}
+  @media(max-width:700px){
+    #v-privacy .privacy-principles,#v-privacy .privacy-policy{grid-template-columns:1fr}
+    #v-privacy .privacy-intro .row .btn{flex:1 1 100%}
+    #v-privacy .privacy-principles{margin-block:15px}
+  }
+}
+
+@media screen{
+  #logForm .family-recovery-link{margin-block:10px;text-align:start}
+  #logForm .family-recovery-link a{display:inline-flex;align-items:center;min-height:44px;margin:0;text-decoration:underline;text-underline-offset:4px;color:var(--gold-ink)}
+}
