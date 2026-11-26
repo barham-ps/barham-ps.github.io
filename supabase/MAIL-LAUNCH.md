@@ -69,6 +69,8 @@
 
 ### إعداد سيناريو Make الإنتاجي (لا يُفعّل قبل الاختبار)
 
+**تحديث:** تم إنشاء [Al Barham – Secure event mail](https://us2.make.com/3529839/scenarios/7204609/edit) وحفظه بحالة غير نشطة، مع Custom webhook محمي بمفتاح API مخصص بعد موافقة صاحب الحساب، وضبط Keep data confidential. لم تُرسل بيانات عضو إلى Webhook، ولم يكتمل ربط وحدات الجلب والإرسال والتأكيد. المفتاح محفوظ في Make فقط، وربطه بمخزن الأسرار في Supabase ما زال مطلوبًا. لا تشغّل السيناريو قبل إكمال الخطوات التالية واختبارها.
+
 1. إنشاء سيناريو مستقل، اسم `Al Barham – Secure event mail`، Webhooks → Custom webhook محمي بمفتاح API خاص (`x-make-apikey`). لا تقبل عنوان مستلم أو نصًا داخل طلب Webhook؛ بنية الطلب الوحيدة `{"job_id":"UUID"}`.
 2. تفعيل **Data is confidential** في Scenario settings قبل أي بيانات مستلم. طلب Webhook نفسه يُصفّ في Make حتى مع تفعيل السرية، ولذلك يحتوي فقط على معرّف عشوائي. لا تحفظ بيانات HTTP المرسلة أو المستلمة يدويًا في ملاحظات التنفيذ.
 3. HTTP → Make a request: `POST https://vfxxghfmkmgdqrczeowx.supabase.co/functions/v1/mail-outbox?action=claim`، نوع JSON، Body `{"job_id": <mapped webhook job_id>}`، وتخزين رمز الجلب في Make connection/credential. Header Authorization: Bearer [MAIL_MAKE_PULL_SECRET]. لا يُرسل Supabase service key إلى Make.
